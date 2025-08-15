@@ -1,0 +1,7 @@
+node_modules
+dist
+dist-electron
+*.d.ts
+public
+.vscode
+.kiro
