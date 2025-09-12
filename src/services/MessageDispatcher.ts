@@ -3,8 +3,48 @@
  * 负责统一输入消息的分发和状态管理
  */
 
-import { EventEmitter } from 'events'
 import type { AIProvider, Message } from '../types'
+
+/**
+ * 浏览器兼容的事件发射器
+ */
+class BrowserEventEmitter {
+    private listeners: Map<string, Function[]> = new Map()
+
+    on(event: string, listener: Function): void {
+        if (!this.listeners.has(event)) {
+            this.listeners.set(event, [])
+        }
+        this.listeners.get(event)!.push(listener)
+    }
+
+    off(event: string, listener: Function): void {
+        const eventListeners = this.listeners.get(event)
+        if (eventListeners) {
+            const index = eventListeners.indexOf(listener)
+            if (index > -1) {
+                eventListeners.splice(index, 1)
+            }
+        }
+    }
+
+    emit(event: string, ...args: any[]): void {
+        const eventListeners = this.listeners.get(event)
+        if (eventListeners) {
+            eventListeners.forEach(listener => {
+                try {
+                    listener(...args)
+                } catch (error) {
+                    console.error(`Error in event listener for ${event}:`, error)
+                }
+            })
+        }
+    }
+
+    removeAllListeners(): void {
+        this.listeners.clear()
+    }
+}
 
 /**
  * 消息发送状态
@@ -35,7 +75,7 @@ export interface MessageDispatcherConfig {
 /**
  * 消息分发器类
  */
-export class MessageDispatcher extends EventEmitter {
+export class MessageDispatcher extends BrowserEventEmitter {
     private config: MessageDispatcherConfig
     private sendingStatus: Map<string, MessageSendStatus> = new Map()
     private messageQueue: Map<string, Message> = new Map()

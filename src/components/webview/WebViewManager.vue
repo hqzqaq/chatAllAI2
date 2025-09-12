@@ -393,6 +393,12 @@ onMounted(() => {
     checkAllLoginStatus()
   }, 30000) // 每30秒检查一次
   
+  // 监听来自IPC的消息发送请求
+  if (window.electronAPI) {
+    // 注意：这里需要适配电子应用的IPC通信机制
+    // 由于Electron的限制，我们采用更直接的方式
+  }
+  
   // 保存定时器引用以便清理
   onUnmounted(() => {
     clearInterval(loginCheckInterval)

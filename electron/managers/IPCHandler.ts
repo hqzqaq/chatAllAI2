@@ -94,10 +94,10 @@ export class IPCHandler extends EventEmitter {
     ipcMain.handle('is-maximized', this.handleIsMaximized.bind(this))
 
     // WebView管理
-    ipcMain.handle('send-message-to-webview', this.handleSendMessageToWebView.bind(this))
-    ipcMain.handle('refresh-webview', this.handleRefreshWebView.bind(this))
-    ipcMain.handle('refresh-all-webviews', this.handleRefreshAllWebViews.bind(this))
-    ipcMain.handle('load-webview', this.handleLoadWebView.bind(this))
+    ipcMain.handle('send-message-to-webview', (event, data) => this.handleSendMessageToWebView(data))
+    ipcMain.handle('refresh-webview', (event, webviewId) => this.handleRefreshWebView(webviewId))
+    ipcMain.handle('refresh-all-webviews', () => this.handleRefreshAllWebViews())
+    ipcMain.handle('load-webview', (event, data) => this.handleLoadWebView(data))
 
     // 应用控制
     this.handleInvoke(IPCChannel.APP_READY, this.handleAppReady.bind(this))
@@ -278,9 +278,193 @@ export class IPCHandler extends EventEmitter {
    * 发送消息到WebView
    */
   private async handleSendMessageToWebView(data: { webviewId: string; message: string }): Promise<void> {
-    // 这里应该实现实际的WebView消息发送逻辑
-    // 暂时只记录日志
-    this.log(`Sending message to WebView ${data.webviewId}:`, data.message)
+    try {
+      this.log(`Sending message to WebView ${data.webviewId}:`, data.message)
+
+      const mainWindow = this.windowManager.getMainWindow()
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        throw new Error('Main window not available')
+      }
+
+      // 安全地转义消息内容
+      const escapedMessage = data.message
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+
+      const script = `
+        (async function() {
+          try {
+            console.log('[IPC] Starting message send process...');
+            
+            const webviewElement = document.querySelector('#${data.webviewId}-element');
+            console.log('[IPC] WebView element:', webviewElement);
+            
+            if (!webviewElement) {
+              console.error('[IPC] WebView element not found:', '${data.webviewId}');
+              return false;
+            }
+            
+            // 改进的豆包发送脚本
+            const simpleScript = \`
+              (function() {
+                console.log('[WebView] Starting input simulation...');
+                
+                const inputSelector = '[data-testid="chat_input_input"]';
+                const inputElement = document.querySelector(inputSelector);
+                
+                console.log('[WebView] Input element:', inputElement);
+                
+                if (!inputElement) {
+                  console.error('[WebView] Input element not found');
+                  return false;
+                }
+                
+                try {
+                  // 1. Focus the input
+                  inputElement.focus();
+                  console.log('[WebView] Input focused');
+                  
+                  // 2. Set the value using native setter
+                  const message = '${escapedMessage}';
+                  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+                  if (nativeInputValueSetter) {
+                    nativeInputValueSetter.call(inputElement, message);
+                  } else {
+                    inputElement.value = message;
+                  }
+                  
+                  console.log('[WebView] Input value set to:', inputElement.value);
+                  
+                  // 3. Trigger multiple events to ensure detection
+                  const events = [
+                    new Event('input', { bubbles: true, cancelable: true }),
+                    new Event('change', { bubbles: true, cancelable: true }),
+                    new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: message }),
+                    new Event('keyup', { bubbles: true, cancelable: true })
+                  ];
+                  
+                  events.forEach(event => {
+                    inputElement.dispatchEvent(event);
+                  });
+                  
+                  console.log('[WebView] Input events dispatched');
+                  
+                  // 4. Try multiple methods to trigger send
+                  setTimeout(() => {
+                    console.log('[WebView] Attempting to send message...');
+                    
+                    // Method 1: Try Enter key with different variations
+                    const enterEvents = [
+                      new KeyboardEvent('keydown', {
+                        bubbles: true,
+                        cancelable: true,
+                        key: 'Enter',
+                        code: 'Enter',
+                        keyCode: 13,
+                        which: 13,
+                        shiftKey: false,
+                        ctrlKey: false,
+                        altKey: false,
+                        metaKey: false
+                      }),
+                      new KeyboardEvent('keypress', {
+                        bubbles: true,
+                        cancelable: true,
+                        key: 'Enter',
+                        code: 'Enter',
+                        keyCode: 13,
+                        which: 13
+                      }),
+                      new KeyboardEvent('keyup', {
+                        bubbles: true,
+                        cancelable: true,
+                        key: 'Enter',
+                        code: 'Enter',
+                        keyCode: 13,
+                        which: 13
+                      })
+                    ];
+                    
+                    enterEvents.forEach((event, index) => {
+                      const result = inputElement.dispatchEvent(event);
+                      console.log('[WebView] Enter event ' + (index + 1) + ' dispatched, prevented: ' + !result);
+                    });
+                    
+                    // Method 2: Look for and click send button
+                    setTimeout(() => {
+                      const sendSelectors = [
+                        '[data-testid="send-button"]',
+                        'button[type="submit"]',
+                        'button:has(svg)',
+                        '.send-btn',
+                        '.send-button',
+                        '[aria-label*="send" i]',
+                        '[aria-label*="发送" i]',
+                        'button:contains("发送")',
+                        'button:contains("Send")'
+                      ];
+                      
+                      let sendButton = null;
+                      for (const selector of sendSelectors) {
+                        try {
+                          sendButton = document.querySelector(selector);
+                          if (sendButton) {
+                            console.log('[WebView] Found send button with selector:', selector);
+                            break;
+                          }
+                        } catch (e) {
+                          // Ignore selector errors
+                        }
+                      }
+                      
+                      if (sendButton && !sendButton.disabled) {
+                        console.log('[WebView] Clicking send button');
+                        sendButton.click();
+                      } else {
+                        console.log('[WebView] No send button found or button is disabled');
+                        
+                        // Method 3: Try form submission
+                        const form = inputElement.closest('form');
+                        if (form) {
+                          console.log('[WebView] Attempting form submission');
+                          form.submit();
+                        }
+                      }
+                    }, 100);
+                  }, 200);
+                  
+                  return true;
+                } catch (e) {
+                  console.error('[WebView] Error:', e);
+                  return false;
+                }
+              })()
+            \`;
+            
+            console.log('[IPC] Executing script in WebView...');
+            const result = await webviewElement.executeJavaScript(simpleScript);
+            console.log('[IPC] Script result:', result);
+            
+            return result;
+          } catch (error) {
+            console.error('[IPC] Error in script execution:', error);
+            return false;
+          }
+        })()
+      `;
+
+      // 执行脚本
+      const result = await mainWindow.webContents.executeJavaScript(script)
+      this.log(`Message send script executed for ${data.webviewId}, result:`, result)
+
+    } catch (error) {
+      this.log(`Failed to send message to WebView ${data.webviewId}:`, error)
+      throw error
+    }
   }
 
   /**

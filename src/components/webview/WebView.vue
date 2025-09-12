@@ -65,6 +65,7 @@ const webviewElement = ref<Electron.WebviewTag | null>(null)
 const retryCount = ref(0)
 const maxRetries = 3
 const saveSessionTimer = ref<NodeJS.Timeout | null>(null)
+const loginCheckTimer = ref<NodeJS.Timeout | null>(null)
 const sessionLoaded = ref(false)
 const isInitialLoad = ref(true)
 const currentUrl = ref('')
@@ -298,6 +299,15 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
             })
           }
         }, 15 * 60 * 1000)
+      }
+      
+      // 设置定期检查登录状态（每30秒），特别是对于豆包
+      if (!loginCheckTimer.value) {
+        loginCheckTimer.value = setInterval(() => {
+          if (webviewElement.value && !isLoading.value) {
+            checkLoginStatus()
+          }
+        }, 30 * 1000) // 30秒检查一次
       }
     }
     
@@ -601,10 +611,79 @@ const getLoginCheckScript = (providerId: string): string => {
          document.querySelector('[class*="avatar"]'))
     `,
     doubao: `
-      // 检查豆包的登录状态
-      !!(document.querySelector('.user-info') ||
-         document.querySelector('.avatar') ||
-         document.querySelector('[class*="user"]'))
+      // 检查豆包的登录状态 - 更准确的检测方法
+      (function() {
+        // 检查多种可能的登录状态指示器
+        const loginIndicators = [
+          // 用户头像或个人信息
+          '.user-avatar',
+          '.avatar-wrapper',
+          '.profile-avatar', 
+          '.user-info',
+          '[class*="avatar"]',
+          '[class*="user-info"]',
+          '[class*="profile"]',
+          
+          // 导航栏中的用户相关元素
+          '.nav-user',
+          '.header-user',
+          '.top-user',
+          
+          // 特定的数据属性或ID
+          '[data-testid*="user"]',
+          '[data-testid*="avatar"]',
+          '[data-testid*="profile"]',
+          
+          // 通用的用户指示器
+          '.login-user',
+          '.user-menu',
+          '.account-info'
+        ];
+        
+        // 检查登录指示器
+        for (const selector of loginIndicators) {
+          const element = document.querySelector(selector);
+          if (element && element.offsetWidth > 0 && element.offsetHeight > 0) {
+            console.log('[Login Check] Found login indicator:', selector);
+            return true;
+          }
+        }
+        
+        // 检查是否在登录页面（如果在登录页面，认为未登录）
+        const isLoginPage = window.location.href.includes('login') ||
+                           window.location.href.includes('auth') ||
+                           window.location.href.includes('signin') ||
+                           document.querySelector('.login-form') ||
+                           document.querySelector('.auth-form') ||
+                           document.querySelector('[class*="login"]') ||
+                           document.querySelector('input[type="password"]');
+        
+        if (isLoginPage) {
+          console.log('[Login Check] On login page, not logged in');
+          return false;
+        }
+        
+        // 检查页面内容，如果有聊天界面相关元素，可能已登录
+        const chatIndicators = [
+          '[data-testid="chat_input_input"]',
+          '.chat-input',
+          '.message-input',
+          '.conversation',
+          '.chat-container',
+          '.dialogue'
+        ];
+        
+        for (const selector of chatIndicators) {
+          const element = document.querySelector(selector);
+          if (element && element.offsetWidth > 0 && element.offsetHeight > 0) {
+            console.log('[Login Check] Found chat interface, likely logged in:', selector);
+            return true;
+          }
+        }
+        
+        console.log('[Login Check] No clear login indicators found');
+        return false;
+      })()
     `,
     qwen: `
       // 检查通义千问的登录状态
@@ -681,6 +760,7 @@ const sendMessage = async (message: string): Promise<void> => {
   }
 
   try {
+    console.log('[WebView] Sending message:', message)
     const sendScript = getSendMessageScript(props.provider.id, message)
     await webviewElement.value.executeJavaScript(sendScript)
   } catch (error) {
@@ -694,7 +774,7 @@ const sendMessage = async (message: string): Promise<void> => {
  */
 const getSendMessageScript = (providerId: string, message: string): string => {
   const escapedMessage = message.replace(/'/g, "\\'").replace(/\n/g, '\\n')
-  
+  console.log('escapedMessage',escapedMessage)
   const scripts: Record<string, string> = {
     chatgpt: `
       (function() {
@@ -761,20 +841,79 @@ const getSendMessageScript = (providerId: string, message: string): string => {
     `,
     doubao: `
       (function() {
-        const textarea = document.querySelector('textarea') ||
-                        document.querySelector('.chat-input textarea');
-        if (textarea) {
-          textarea.value = '${escapedMessage}';
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          
-          const sendButton = document.querySelector('.send-btn') ||
-                           document.querySelector('button:has(svg)');
-          if (sendButton && !sendButton.disabled) {
-            sendButton.click();
+        // --- Configuration ---
+        const CHAT_INPUT_SELECTOR = '[data-testid="chat_input_input"]';
+        const INPUT_SEND_DELAY_MS = 200;
+        
+        // --- Input Handling ---
+        function findChatInput() {
+          const element = document.querySelector(CHAT_INPUT_SELECTOR);
+          if (element && element.tagName === 'TEXTAREA') {
+            return element;
           }
-          return true;
+          return null;
         }
-        return false;
+        
+        const inputElement = findChatInput();
+        
+        if (!inputElement) {
+          console.error("[Input] Chat input TEXTAREA element not found using selector:", CHAT_INPUT_SELECTOR);
+          return false;
+        }
+        
+        try {
+          inputElement.focus();
+          console.log("[Input] Focused the textarea element.");
+          
+          const newValue = '${escapedMessage}';
+          
+          // 使用更可靠的方式设置input值
+          try {
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+            if (nativeInputValueSetter) {
+              nativeInputValueSetter.call(inputElement, newValue);
+              console.log("Successfully set input value using native setter:", newValue);
+            } else {
+              inputElement.value = newValue;
+              console.warn("Native value setter not available. Set input value using direct assignment as a fallback.");
+            }
+          } catch (e) {
+            console.error("Error setting input value using native setter or direct assignment:", e);
+            if (inputElement.value !== newValue) {
+              inputElement.value = newValue;
+              console.warn("Forced input value setting after error.");
+            }
+          }
+          
+          // 触发input事件
+          const inputEvent = new Event('input', {
+            bubbles: true,
+            cancelable: false,
+          });
+          
+          inputElement.dispatchEvent(inputEvent);
+          console.log("Simulated 'input' event dispatched.");
+          
+          // 延迟后发送Enter键事件
+          setTimeout(() => {
+            const enterEvent = new KeyboardEvent('keydown', {
+              bubbles: true,
+              cancelable: true,
+              key: 'Enter',
+              code: 'Enter',
+              keyCode: 13,
+              which: 13,
+            });
+            
+            const dispatched = inputElement.dispatchEvent(enterEvent);
+            console.log(\`[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: \${!dispatched}.\`);
+          }, INPUT_SEND_DELAY_MS);
+          
+          return true;
+        } catch (e) {
+          console.error("[Input] Error during input simulation:", e);
+          return false;
+        }
       })()
     `,
     qwen: `
@@ -826,6 +965,11 @@ const destroy = (): void => {
   if (saveSessionTimer.value) {
     clearInterval(saveSessionTimer.value)
     saveSessionTimer.value = null
+  }
+  
+  if (loginCheckTimer.value) {
+    clearInterval(loginCheckTimer.value)
+    loginCheckTimer.value = null
   }
   
   if (webviewElement.value) {
