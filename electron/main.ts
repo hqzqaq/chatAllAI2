@@ -1,8 +1,7 @@
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { WindowManager } from './managers/WindowManager'
 import { SessionManager } from './managers/SessionManager'
 import { IPCHandler } from './managers/IPCHandler'
-import { join } from 'path'
 
 /**
  * 应用管理器实例
@@ -21,9 +20,6 @@ async function initializeApp(): Promise<void> {
     sessionManager = new SessionManager()
     ipcHandler = new IPCHandler(windowManager, sessionManager)
 
-    // 加载Chrome扩展
-    await loadChromeExtension()
-
     // 创建主窗口
     await windowManager.createMainWindow()
 
@@ -34,19 +30,6 @@ async function initializeApp(): Promise<void> {
   } catch (error) {
     console.error('Failed to initialize application:', error)
     app.quit()
-  }
-}
-
-/**
- * 加载Chrome扩展
- */
-async function loadChromeExtension(): Promise<void> {
-  try {
-    const extensionPath = join(__dirname, '../chrome-extension')
-    await session.defaultSession.loadExtension(extensionPath)
-    console.log('Chrome extension loaded successfully')
-  } catch (error) {
-    console.error('Failed to load Chrome extension:', error)
   }
 }
 
