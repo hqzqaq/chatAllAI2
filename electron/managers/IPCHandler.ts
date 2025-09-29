@@ -304,6 +304,7 @@ export class IPCHandler extends EventEmitter {
 
       this.log('[IPC] Generated send script:', sendScript)
 
+      // 避免两层转义：直接将sendScript作为字符串传递给WebView
       const script = `
         (async function() {
           try {
@@ -318,9 +319,11 @@ export class IPCHandler extends EventEmitter {
             }
             
             console.log('[IPC] Executing script in WebView...');
-            const result = await webviewElement.executeJavaScript(\`${sendScript}\`);
-            console.log('[IPC] Script result:', result);
             
+            // 直接执行sendScript，避免两层转义
+            const result = await webviewElement.executeJavaScript(${JSON.stringify(sendScript)});
+            
+            console.log('[IPC] Script result:', result);
             return result;
           } catch (error) {
             console.error('[IPC] Error in script execution:', error);
