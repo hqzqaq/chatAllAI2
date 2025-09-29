@@ -9,42 +9,6 @@ export const useChatStore = defineStore('chat', () => {
   // AI提供商列表
   const providers = ref<AIProvider[]>([
     {
-      id: 'chatgpt',
-      name: 'ChatGPT',
-      url: 'https://chat.openai.com',
-      icon: '/icons/chatgpt.svg',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-chatgpt',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'gemini',
-      name: 'Gemini',
-      url: 'https://gemini.google.com',
-      icon: '/icons/gemini.svg',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-gemini',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
       id: 'deepseek',
       name: 'DeepSeek',
       url: 'https://chat.deepseek.com',
@@ -83,7 +47,7 @@ export const useChatStore = defineStore('chat', () => {
     {
       id: 'qwen',
       name: 'Qwen',
-      url: 'https://tongyi.aliyun.com',
+      url: 'https://tongyi.com',
       icon: '/icons/qwen.svg',
       isLoggedIn: false,
       sessionData: {
@@ -94,6 +58,42 @@ export const useChatStore = defineStore('chat', () => {
         lastActiveTime: new Date()
       },
       webviewId: 'webview-qwen',
+      isEnabled: false,
+      loadingState: 'idle',
+      retryCount: 0
+    },
+        {
+      id: 'chatgpt',
+      name: 'ChatGPT',
+      url: 'https://chat.openai.com',
+      icon: '/icons/chatgpt.svg',
+      isLoggedIn: false,
+      sessionData: {
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        isActive: false,
+        lastActiveTime: new Date()
+      },
+      webviewId: 'webview-chatgpt',
+      isEnabled: false,
+      loadingState: 'idle',
+      retryCount: 0
+    },
+    {
+      id: 'gemini',
+      name: 'Gemini',
+      url: 'https://gemini.google.com',
+      icon: '/icons/gemini.svg',
+      isLoggedIn: false,
+      sessionData: {
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        isActive: false,
+        lastActiveTime: new Date()
+      },
+      webviewId: 'webview-gemini',
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0

@@ -12,10 +12,9 @@ export const useLayoutStore = defineStore('layout', () => {
   // 网格布局设置
   const gridSettings = ref({
     columns: 3,
-    rows: 2,
     gap: 16,
     minCardWidth: 300,
-    minCardHeight: 200
+    minCardHeight: 1000
   })
 
   // 窗口尺寸
@@ -33,7 +32,7 @@ export const useLayoutStore = defineStore('layout', () => {
 
   const cardWidth = computed(() => (availableWidth.value - gridSettings.value.gap * (gridSettings.value.columns - 1)) / gridSettings.value.columns)
 
-  const cardHeight = computed(() => (availableHeight.value - gridSettings.value.gap * (gridSettings.value.rows - 1)) / gridSettings.value.rows)
+  const cardHeight = computed(() => gridSettings.value.minCardHeight)
 
   /**
      * 初始化卡片配置
@@ -137,8 +136,8 @@ export const useLayoutStore = defineStore('layout', () => {
     const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible)
 
     visibleCards.forEach((config, index) => {
-      const row = Math.floor(index / gridSettings.value.columns)
       const col = index % gridSettings.value.columns
+      const row = Math.floor(index / gridSettings.value.columns)
 
       config.position = {
         x: col * (cardWidth.value + gridSettings.value.gap) + gridSettings.value.gap,
@@ -153,6 +152,14 @@ export const useLayoutStore = defineStore('layout', () => {
       }
     })
     saveLayoutConfig()
+  }
+
+  /**
+     * 更新网格设置并重新计算布局
+     */
+  const updateGridSettings = (newSettings: Partial<typeof gridSettings.value>): void => {
+    gridSettings.value = { ...gridSettings.value, ...newSettings }
+    recalculateLayout()
   }
 
   /**

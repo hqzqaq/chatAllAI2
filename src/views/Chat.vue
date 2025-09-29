@@ -85,7 +85,7 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-view {
-  height: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -96,6 +96,7 @@ onUnmounted(() => {
   flex-direction: column;
   padding: 16px;
   gap: 16px;
+  min-height: 0; /* 允许flex子项收缩 */
 }
 
 .input-section {
@@ -107,12 +108,14 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0; /* 允许flex子项收缩 */
+  max-height: calc(100vh - 120px); /* 确保有足够的高度用于滚动 */
 }
 
 .card-item {
   width: 100%;
   max-width: 100%;
   min-width: 300px; /* 最小宽度 */
+  height: 100%; /* 根据内容自适应高度 */
 }
 
 /* 响应式布局 */

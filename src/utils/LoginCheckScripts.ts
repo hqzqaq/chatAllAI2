@@ -39,9 +39,8 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     qwen: `
       // 检查通义千问的登录状态
-      !!(document.querySelector('.user-avatar') ||
-         document.querySelector('.login-info') ||
-         document.querySelector('[class*="avatar"]'))
+      !Array.from(document.querySelectorAll('button'))
+        .some(btn => btn.textContent.trim() === '立即登录')
     `,
     copilot: `
       // 检查Copilot的登录状态
