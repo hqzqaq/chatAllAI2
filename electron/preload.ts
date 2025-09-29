@@ -17,14 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isMaximized: () => ipcRenderer.invoke('is-maximized'),
 
   // WebView管理
-  sendMessageToWebView: (webviewId: string, message: string) =>
-    ipcRenderer.invoke('send-message-to-webview', { webviewId, message }),
-  refreshWebView: (webviewId: string) =>
-    ipcRenderer.invoke('refresh-webview', webviewId),
-  refreshAllWebViews: () =>
-    ipcRenderer.invoke('refresh-all-webviews'),
-  loadWebView: (webviewId: string, url: string) =>
-    ipcRenderer.invoke('load-webview', { webviewId, url }),
+  sendMessageToWebView: (webviewId: string, message: string) => ipcRenderer.invoke('send-message-to-webview', { webviewId, message }),
+  refreshWebView: (webviewId: string) => ipcRenderer.invoke('refresh-webview', webviewId),
+  refreshAllWebViews: () => ipcRenderer.invoke('refresh-all-webviews'),
+  loadWebView: (webviewId: string, url: string) => ipcRenderer.invoke('load-webview', { webviewId, url }),
 
   // 应用控制
   appReady: () => ipcRenderer.invoke(IPCChannel.APP_READY),

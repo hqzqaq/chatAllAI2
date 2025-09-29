@@ -1,0 +1,396 @@
+/**
+ * 消息发送脚本工具类
+ * 提供不同AI网站的消息发送脚本
+ *
+ * @author huquanzhi
+ * @since 2024-12-19 14:30
+ * @version 1.0
+ */
+
+/**
+ * 安全转义字符串，用于JavaScript字符串字面量
+ * @param str 要转义的字符串
+ * @returns 转义后的安全字符串
+ */
+function escapeJavaScriptString(str: string): string {
+    // 使用更安全的转义方式，确保字符串在JavaScript中安全使用
+    return str
+        .replace(/\\/g, '\\\\')  // 转义反斜杠
+        .replace(/\'/g, "\\'")     // 转义单引号
+        .replace(/"/g, '\\"')     // 转义双引号
+        .replace(/\n/g, '\\n')     // 转义换行符
+        .replace(/\r/g, '\\r')     // 转义回车符
+        .replace(/\t/g, '\\t')     // 转义制表符
+        .replace(/\f/g, '\\f')     // 转义换页符
+        .replace(/\v/g, '\\v');    // 转义垂直制表符
+}
+
+/**
+ * 获取发送消息的脚本
+ * @param providerId AI提供商ID
+ * @param message 要发送的消息
+ * @returns 对应的JavaScript脚本字符串
+ */
+export function getSendMessageScript(providerId: string, message: string): string {
+    const escapedMessage = escapeJavaScriptString(message)
+    console.log('providerId123', providerId)
+    const scripts: Record<string, string> = {
+        chatgpt: getChatGPTScript(escapedMessage),
+        gemini: getGeminiScript(escapedMessage),
+        deepseek: getDeepSeekScript(escapedMessage),
+        doubao: getDouBaoScript(escapedMessage),
+        qwen: getQwenScript(escapedMessage),
+        copilot: getCopilotScript(escapedMessage)
+    }
+
+    return scripts[providerId] || getGenericScript(escapedMessage)
+}
+
+/**
+ * ChatGPT发送脚本
+ */
+function getChatGPTScript(escapedMessage: string): string {
+    return `
+    (function() {
+      const textarea = document.querySelector('textarea[placeholder*="Message"]') ||
+                      document.querySelector('#prompt-textarea') ||
+                      document.querySelector('textarea');
+      if (textarea) {
+        textarea.value = '${escapedMessage}';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // 查找发送按钮
+        const sendButton = document.querySelector('[data-testid="send-button"]') ||
+                         document.querySelector('button[aria-label*="Send"]') ||
+                         document.querySelector('button:has(svg)');
+        if (sendButton && !sendButton.disabled) {
+          sendButton.click();
+        }
+        return true;
+      }
+      return false;
+    })()
+  `
+}
+
+/**
+ * Gemini发送脚本
+ */
+function getGeminiScript(escapedMessage: string): string {
+    return `
+    (function() {
+      const textarea = document.querySelector('textarea') ||
+                      document.querySelector('[contenteditable="true"]');
+      if (textarea) {
+        if (textarea.tagName === 'TEXTAREA') {
+          textarea.value = '${escapedMessage}';
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          textarea.textContent = '${escapedMessage}';
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // 查找发送按钮
+        const sendButton = document.querySelector('button[aria-label*="Send"]') ||
+                         document.querySelector('button:has(svg)');
+        if (sendButton && !sendButton.disabled) {
+          sendButton.click();
+        }
+        return true;
+      }
+      return false;
+    })()
+  `
+}
+
+/**
+ * DeepSeek发送脚本
+ */
+function getDeepSeekScript(escapedMessage: string): string {
+    return `
+    (function() {
+      // --- Configuration ---
+      const CHAT_INPUT_SELECTOR = 'textarea';
+      const INPUT_SEND_DELAY_MS = 200;
+
+      // --- Input Handling ---
+      function findChatInput() {
+        const element = document.querySelector(CHAT_INPUT_SELECTOR);
+        if (element && element.tagName === 'TEXTAREA') {
+          return element;
+        }
+        return null;
+      }
+
+      const inputElement = findChatInput();
+
+      if (!inputElement) {
+        console.error("[Input] Chat input TEXTAREA element not found using selector:", CHAT_INPUT_SELECTOR);
+        return false;
+      }
+
+      try {
+        inputElement.focus();
+        console.log("[Input] Focused the textarea element.");
+
+        const newValue = '${escapedMessage}';
+
+        // 使用更可靠的方式设置input值
+        try {
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLTextAreaElement.prototype, 'value'
+          ).set;
+          if (nativeInputValueSetter) {
+            nativeInputValueSetter.call(inputElement, newValue);
+            console.log("Successfully set input value using native setter:", newValue);
+          } else {
+            inputElement.value = newValue;
+            console.warn("Native value setter not available. Set input value using direct assignment as a fallback.");
+          }
+        } catch (e) {
+          console.error("Error setting input value using native setter or direct assignment:", e);
+          if (inputElement.value !== newValue) {
+            inputElement.value = newValue;
+            console.warn("Forced input value setting after error.");
+          }
+        }
+
+        // 触发input事件
+        const inputEvent = new Event('input', {
+          bubbles: true,
+          cancelable: false,
+        });
+
+        inputElement.dispatchEvent(inputEvent);
+        console.log("Simulated 'input' event dispatched.");
+
+        // 延迟后发送Enter键事件
+        setTimeout(() => {
+          const enterEvent = new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+          });
+
+          const dispatched = inputElement.dispatchEvent(enterEvent);
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + !dispatched + '.');
+        }, INPUT_SEND_DELAY_MS);
+
+        return true;
+      } catch (e) {
+        console.error("[Input] Error during input simulation:", e);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
+ * 豆包发送脚本
+ */
+function getDouBaoScript(escapedMessage: string): string {
+    return `
+    (function() {
+      // --- Configuration ---
+      const CHAT_INPUT_SELECTOR = '[data-testid="chat_input_input"]';
+      const INPUT_SEND_DELAY_MS = 200;
+
+      // --- Input Handling ---
+      function findChatInput() {
+        const element = document.querySelector(CHAT_INPUT_SELECTOR);
+        if (element && element.tagName === 'TEXTAREA') {
+          return element;
+        }
+        return null;
+      }
+
+      const inputElement = findChatInput();
+
+      if (!inputElement) {
+        console.error("[Input] Chat input TEXTAREA element not found using selector:", CHAT_INPUT_SELECTOR);
+        return false;
+      }
+
+      try {
+        inputElement.focus();
+        console.log("[Input] Focused the textarea element.");
+
+        const newValue = '${escapedMessage}';
+
+        // 使用更可靠的方式设置input值
+        try {
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLTextAreaElement.prototype, 'value'
+          ).set;
+          if (nativeInputValueSetter) {
+            nativeInputValueSetter.call(inputElement, newValue);
+            console.log("Successfully set input value using native setter:", newValue);
+          } else {
+            inputElement.value = newValue;
+            console.warn("Native value setter not available. Set input value using direct assignment as a fallback.");
+          }
+        } catch (e) {
+          console.error("Error setting input value using native setter or direct assignment:", e);
+          if (inputElement.value !== newValue) {
+            inputElement.value = newValue;
+            console.warn("Forced input value setting after error.");
+          }
+        }
+
+        // 触发input事件
+        const inputEvent = new Event('input', {
+          bubbles: true,
+          cancelable: false,
+        });
+
+        inputElement.dispatchEvent(inputEvent);
+        console.log("Simulated 'input' event dispatched.");
+
+        // 延迟后发送Enter键事件
+        setTimeout(() => {
+          const enterEvent = new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+          });
+
+          const dispatched = inputElement.dispatchEvent(enterEvent);
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + !dispatched + '.');
+        }, INPUT_SEND_DELAY_MS);
+
+        return true;
+      } catch (e) {
+        console.error("[Input] Error during input simulation:", e);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
+ * 通义千问发送脚本
+ */
+function getQwenScript(escapedMessage: string): string {
+    return `
+    (function() {
+      const textarea = document.querySelector('textarea') ||
+                      document.querySelector('.input-box textarea');
+      if (textarea) {
+        textarea.value = '${escapedMessage}';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const sendButton = document.querySelector('.send-button') ||
+                         document.querySelector('button:has(svg)');
+        if (sendButton && !sendButton.disabled) {
+          sendButton.click();
+        }
+        return true;
+      }
+      return false;
+    })()
+  `
+}
+
+/**
+ * Copilot发送脚本
+ */
+function getCopilotScript(escapedMessage: string): string {
+    return `
+    (function() {
+      const textarea = document.querySelector('textarea') ||
+                      document.querySelector('.chat-input textarea');
+      if (textarea) {
+        textarea.value = '${escapedMessage}';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const sendButton = document.querySelector('button[aria-label*="Send"]') ||
+                         document.querySelector('button:has(svg)');
+        if (sendButton && !sendButton.disabled) {
+          sendButton.click();
+        }
+        return true;
+      }
+      return false;
+    })()
+  `
+}
+
+/**
+ * 通用发送脚本（用于未知提供商）
+ */
+function getGenericScript(escapedMessage: string): string {
+    return `
+    (function() {
+      // 尝试多种选择器
+      const selectors = [
+        'textarea[placeholder*="Message"]',
+        'textarea[placeholder*="消息"]',
+        'textarea',
+        '[contenteditable="true"]',
+        '.chat-input',
+        '.input-box'
+      ];
+      
+      let inputElement = null;
+      for (const selector of selectors) {
+        inputElement = document.querySelector(selector);
+        if (inputElement) break;
+      }
+      
+      if (!inputElement) {
+        console.error('No suitable input element found');
+        return false;
+      }
+      
+      try {
+        inputElement.focus();
+        
+        if (inputElement.tagName === 'TEXTAREA') {
+          inputElement.value = '${escapedMessage}';
+        } else {
+          inputElement.textContent = '${escapedMessage}';
+        }
+        
+        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // 尝试发送
+        setTimeout(() => {
+          const enterEvent = new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+          });
+          inputElement.dispatchEvent(enterEvent);
+        }, 100);
+        
+        return true;
+      } catch (e) {
+        console.error('Error in generic script:', e);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
+ * 获取所有支持的提供商列表
+ */
+export function getSupportedProviders(): string[] {
+    return ['chatgpt', 'gemini', 'deepseek', 'doubao', 'qwen', 'copilot']
+}
+
+/**
+ * 检查提供商是否支持
+ */
+export function isProviderSupported(providerId: string): boolean {
+    return getSupportedProviders().includes(providerId)
+}

@@ -14,7 +14,7 @@ import { useAppStore } from './stores'
 const appStore = useAppStore()
 
 // 应用初始化
-onMounted(async () => {
+onMounted(async() => {
   await appStore.initializeApp()
 })
 </script>

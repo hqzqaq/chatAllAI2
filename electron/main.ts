@@ -77,7 +77,7 @@ function setupEventListeners(): void {
 app.whenReady().then(() => {
   initializeApp()
 
-  app.on('activate', async () => {
+  app.on('activate', async() => {
     // 在 macOS 上，当点击 dock 图标并且没有其他窗口打开时，
     // 通常在应用程序中重新创建一个窗口。
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -102,9 +102,9 @@ app.on('window-all-closed', () => {
 /**
  * 应用即将退出时的清理工作
  */
-app.on('before-quit', async () => {
+app.on('before-quit', async() => {
   console.log('Application is quitting, performing cleanup...')
-  
+
   try {
     // 保存所有会话
     if (sessionManager) {

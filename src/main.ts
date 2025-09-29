@@ -11,15 +11,15 @@ const pinia = createPinia()
 
 // 注册所有Element Plus图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-    app.component(key, component)
+  app.component(key, component)
 }
 
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus, {
-    // Element Plus 配置
-    size: 'default',
-    zIndex: 3000,
+  // Element Plus 配置
+  size: 'default',
+  zIndex: 3000
 })
 
 app.mount('#app')

@@ -1,31 +1,31 @@
 <template>
-  <div 
+  <div
     class="ai-card"
-    :class="{ 
+    :class="{
       'minimized': config?.isMinimized,
-      'logged-in': props.provider.isLoggedIn 
+      'logged-in': props.provider.isLoggedIn
     }"
     :style="cardStyle"
   >
     <!-- 卡片头部 -->
     <div class="card-header">
       <div class="header-left">
-        <img 
-          :src="props.provider.icon" 
+        <img
+          :src="props.provider.icon"
           :alt="props.provider.name"
           class="provider-icon"
           @error="handleIconError"
-        />
+        >
         <span class="provider-name">{{ props.provider.name }}</span>
-        <el-tag 
-          :type="props.provider.isLoggedIn ? 'success' : 'info'" 
+        <el-tag
+          :type="props.provider.isLoggedIn ? 'success' : 'info'"
           size="small"
           class="status-tag"
         >
           {{ props.provider.isLoggedIn ? '已登录' : '未登录' }}
         </el-tag>
       </div>
-      
+
       <div class="header-right">
         <el-button
           :icon="config?.isMinimized ? ArrowUp : ArrowDown"
@@ -37,15 +37,15 @@
           :icon="Refresh"
           size="small"
           circle
-          @click="refreshWebView"
           :loading="isRefreshing"
+          @click="refreshWebView"
         />
       </div>
     </div>
-    
+
     <!-- WebView容器 -->
-    <div 
-      v-show="!config?.isMinimized" 
+    <div
+      v-show="!config?.isMinimized"
       class="webview-container"
       :style="webviewStyle"
     >
@@ -63,35 +63,62 @@
         @title-changed="handleTitleChanged"
         @url-changed="handleUrlChanged"
       />
-      
-      <div v-else class="webview-placeholder">
-        <div v-if="!props.provider.isLoggedIn && !isLoading" class="login-prompt">
-          <el-icon class="prompt-icon"><User /></el-icon>
+
+      <div
+        v-else
+        class="webview-placeholder"
+      >
+        <div
+          v-if="!props.provider.isLoggedIn && !isLoading"
+          class="login-prompt"
+        >
+          <el-icon class="prompt-icon">
+            <User />
+          </el-icon>
           <p>请在此处登录 {{ props.provider.name }}</p>
-          <el-button type="primary" @click="enableWebView">
+          <el-button
+            type="primary"
+            @click="enableWebView"
+          >
             打开登录页面
           </el-button>
         </div>
-        
-        <div v-else-if="isLoading" class="loading-state">
-          <el-icon class="loading-icon"><Loading /></el-icon>
+
+        <div
+          v-else-if="isLoading"
+          class="loading-state"
+        >
+          <el-icon class="loading-icon">
+            <Loading />
+          </el-icon>
           <p>加载中...</p>
         </div>
-        
-        <div v-else-if="props.provider.loadingState === 'error'" class="error-state">
-          <el-icon class="error-icon"><Close /></el-icon>
+
+        <div
+          v-else-if="props.provider.loadingState === 'error'"
+          class="error-state"
+        >
+          <el-icon class="error-icon">
+            <Close />
+          </el-icon>
           <p>{{ props.provider.lastError || '加载失败' }}</p>
-          <el-button type="primary" @click="retryWebView">
+          <el-button
+            type="primary"
+            @click="retryWebView"
+          >
             重试
           </el-button>
         </div>
       </div>
     </div>
-    
+
     <!-- 消息状态指示器 -->
-    <div v-if="sendingStatus !== 'idle'" class="status-indicator">
-      <el-icon 
-        :class="{ 
+    <div
+      v-if="sendingStatus !== 'idle'"
+      class="status-indicator"
+    >
+      <el-icon
+        :class="{
           'loading': sendingStatus === 'sending',
           'success': sendingStatus === 'sent',
           'error': sendingStatus === 'error'
@@ -101,9 +128,9 @@
       </el-icon>
       <span>{{ getStatusText() }}</span>
     </div>
-    
+
     <!-- 调整大小手柄 -->
-    <div 
+    <div
       v-show="!config?.isMinimized"
       class="resize-handle"
       @mousedown="startResize"
@@ -114,16 +141,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick } from 'vue'
-import { 
-  ArrowUp, 
-  ArrowDown, 
-  Refresh, 
-  User, 
-  Loading, 
-  Check, 
-  Close, 
-  Rank 
+import {
+  computed, ref, onMounted, nextTick
+} from 'vue'
+import {
+  ArrowUp,
+  ArrowDown,
+  Refresh,
+  User,
+  Loading,
+  Check,
+  Close,
+  Rank
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
@@ -147,13 +176,11 @@ const isLoading = ref(false)
 const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
 
 // 计算属性
-const sendingStatus = computed(() => 
-  chatStore.sendingStatus[props.provider.id] || 'idle'
-)
+const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] || 'idle')
 
 const cardStyle = computed(() => {
   if (!props.config) return {}
-  
+
   return {
     width: `${props.config.size.width}px`,
     height: props.config.isMinimized ? 'auto' : `${props.config.size.height}px`,
@@ -165,24 +192,20 @@ const cardStyle = computed(() => {
 
 const webviewStyle = computed(() => {
   if (!props.config || props.config.isMinimized) return {}
-  
+
   return {
     height: `${props.config.size.height - 120}px` // 减去头部和状态栏高度
   }
 })
 
-const shouldShowWebView = computed(() => {
+const shouldShowWebView = computed(() =>
   // 只有在provider启用且不在初始加载状态时才显示WebView
-  return props.provider.isEnabled && (props.provider.loadingState !== 'idle')
-})
+  props.provider.isEnabled && (props.provider.loadingState !== 'idle'))
 
-const webviewWidth = computed(() => {
-  return props.config?.size.width || 800
-})
+const webviewWidth = computed(() => props.config?.size.width || 800)
 
-const webviewHeight = computed(() => {
-  return (props.config?.size.height || 600) - 120 // 减去头部高度
-})
+const webviewHeight = computed(() => (props.config?.size.height || 600) - 120 // 减去头部高度
+)
 
 /**
  * 获取状态图标
@@ -226,7 +249,7 @@ const toggleMinimized = (): void => {
 /**
  * 刷新WebView
  */
-const refreshWebView = async (): Promise<void> => {
+const refreshWebView = async(): Promise<void> => {
   isRefreshing.value = true
   try {
     if (window.electronAPI) {
@@ -244,9 +267,9 @@ const refreshWebView = async (): Promise<void> => {
 /**
  * 启用WebView
  */
-const enableWebView = async (): Promise<void> => {
+const enableWebView = async(): Promise<void> => {
   console.log(`Enabling WebView for ${props.provider.name}`)
-  
+
   isLoading.value = true
   const provider = chatStore.getProvider(props.provider.id)
   if (provider) {
@@ -254,11 +277,11 @@ const enableWebView = async (): Promise<void> => {
     provider.loadingState = 'loading'
     console.log(`Provider ${props.provider.name} enabled, isEnabled: ${provider.isEnabled}`)
   }
-  
+
   // 等待下一个tick，确保WebView组件已经渲染
   await nextTick()
   console.log(`After nextTick, webViewRef exists: ${!!webViewRef.value}`)
-  
+
   // 如果WebView组件存在，手动创建WebView
   if (webViewRef.value) {
     try {
@@ -364,32 +387,32 @@ const handleIconError = (event: Event): void => {
  */
 const startResize = (event: MouseEvent): void => {
   event.preventDefault()
-  
+
   const startX = event.clientX
   const startY = event.clientY
   const startWidth = props.config?.size.width || 300
   const startHeight = props.config?.size.height || 400
-  
+
   const handleMouseMove = (e: MouseEvent): void => {
     const deltaX = e.clientX - startX
     const deltaY = e.clientY - startY
-    
+
     const newWidth = Math.max(startWidth + deltaX, 300)
     const newHeight = Math.max(startHeight + deltaY, 200)
-    
+
     layoutStore.updateCardSize(props.provider.id, {
       width: newWidth,
       height: newHeight
     })
   }
-  
+
   const handleMouseUp = (): void => {
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
     // 调整大小完成后重新计算布局
     layoutStore.recalculateLayout()
   }
-  
+
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
 }
@@ -397,11 +420,11 @@ const startResize = (event: MouseEvent): void => {
 /**
  * 发送消息到WebView
  */
-const sendMessage = async (message: string): Promise<boolean> => {
+const sendMessage = async(message: string): Promise<boolean> => {
   if (!webViewRef.value) {
     return false
   }
-  
+
   try {
     await webViewRef.value.sendMessage(message)
     return true

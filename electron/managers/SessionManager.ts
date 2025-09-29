@@ -39,9 +39,13 @@ interface EncryptionConfig {
  */
 export class SessionManager extends EventEmitter {
   private sessions: Map<string, SessionData> = new Map()
+
   private electronSessions: Map<string, Session> = new Map()
+
   private dataPath: string
+
   private encryptionKey: Buffer
+
   private encryptionConfig: EncryptionConfig = {
     algorithm: 'aes-256-gcm',
     keyLength: 32,
@@ -71,7 +75,7 @@ export class SessionManager extends EventEmitter {
    */
   private generateEncryptionKey(): Buffer {
     const keyPath = join(app.getPath('userData'), 'session.key')
-    
+
     try {
       // 尝试读取现有密钥
       const existingKey = require('fs').readFileSync(keyPath)
@@ -111,7 +115,7 @@ export class SessionManager extends EventEmitter {
       lastAccess: new Date(),
       isActive: false
     }
-    
+
     this.sessions.set(providerId, sessionData)
 
     this.emit('session-created', { providerId })
@@ -150,14 +154,14 @@ export class SessionManager extends EventEmitter {
    */
   private getUserAgent(providerId: string): string | undefined {
     const userAgents: Record<string, string> = {
-      'chatgpt': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'gemini': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'deepseek': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'doubao': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'qwen': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'copilot': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      chatgpt: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      gemini: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      deepseek: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      doubao: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      qwen: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      copilot: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
-    
+
     return userAgents[providerId]
   }
 
@@ -173,7 +177,7 @@ export class SessionManager extends EventEmitter {
 
       // 获取cookies
       const cookies = await electronSession.cookies.get({})
-      
+
       // 获取当前会话数据
       const sessionData = this.sessions.get(providerId) || {
         providerId,
@@ -212,7 +216,7 @@ export class SessionManager extends EventEmitter {
   async loadSession(providerId: string): Promise<SessionData | null> {
     try {
       const filePath = join(this.dataPath, `${providerId}.session`)
-      
+
       // 检查文件是否存在
       try {
         await fs.access(filePath)
@@ -385,7 +389,7 @@ export class SessionManager extends EventEmitter {
    */
   async cleanupExpiredSessions(maxAge: number = 24 * 60 * 60 * 1000): Promise<string[]> {
     const expiredSessions: string[] = []
-    
+
     for (const [providerId, sessionData] of Array.from(this.sessions.entries())) {
       if (this.isSessionExpired(providerId, maxAge)) {
         await this.clearSession(providerId)
@@ -406,10 +410,10 @@ export class SessionManager extends EventEmitter {
   private encryptData(data: any): Buffer {
     const iv = crypto.randomBytes(this.encryptionConfig.ivLength)
     const cipher = crypto.createCipher(this.encryptionConfig.algorithm, this.encryptionKey)
-    
+
     let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex')
     encrypted += cipher.final('hex')
-    
+
     // 组合IV和加密数据
     return Buffer.concat([iv, Buffer.from(encrypted, 'hex')])
   }
@@ -420,12 +424,12 @@ export class SessionManager extends EventEmitter {
   private decryptData(encryptedBuffer: Buffer): any {
     const iv = encryptedBuffer.slice(0, this.encryptionConfig.ivLength)
     const encrypted = encryptedBuffer.slice(this.encryptionConfig.ivLength)
-    
+
     const decipher = crypto.createDecipher(this.encryptionConfig.algorithm, this.encryptionKey)
-    
+
     let decrypted = decipher.update(encrypted, undefined, 'utf8')
     decrypted += decipher.final('utf8')
-    
+
     return JSON.parse(decrypted)
   }
 
@@ -434,16 +438,14 @@ export class SessionManager extends EventEmitter {
    */
   async destroy(): Promise<void> {
     // 保存所有活跃会话
-    const savePromises = Array.from(this.sessions.keys()).map(providerId => 
-      this.saveSession(providerId)
-    )
-    
+    const savePromises = Array.from(this.sessions.keys()).map((providerId) => this.saveSession(providerId))
+
     await Promise.allSettled(savePromises)
 
     // 清理内存
     this.sessions.clear()
     this.electronSessions.clear()
-    
+
     // 移除所有监听器
     this.removeAllListeners()
 

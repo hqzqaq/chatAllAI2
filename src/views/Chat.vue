@@ -5,9 +5,12 @@
       <div class="input-section">
         <UnifiedInput />
       </div>
-      
+
       <!-- AI卡片网格 -->
-      <div class="cards-grid" :style="gridStyle">
+      <div
+        class="cards-grid"
+        :style="gridStyle"
+      >
         <AICard
           v-for="provider in visibleProviders"
           :key="provider.id"
@@ -32,17 +35,15 @@ const layoutStore = useLayoutStore()
 // 计算属性
 const providers = computed(() => chatStore.providers)
 
-const visibleProviders = computed(() => 
-  providers.value.filter(provider => {
-    const config = getCardConfig(provider.id)
-    return config?.isVisible !== false
-  })
-)
+const visibleProviders = computed(() => providers.value.filter((provider) => {
+  const config = getCardConfig(provider.id)
+  return config?.isVisible !== false
+}))
 
 const gridStyle = computed(() => {
-  const columns = layoutStore.gridSettings.columns
-  const gap = layoutStore.gridSettings.gap
-  
+  const { columns } = layoutStore.gridSettings
+  const { gap } = layoutStore.gridSettings
+
   return {
     display: 'grid',
     gridTemplateColumns: `repeat(${columns}, 1fr)`,
@@ -55,9 +56,7 @@ const gridStyle = computed(() => {
 /**
  * 获取卡片配置
  */
-const getCardConfig = (providerId: string) => {
-  return layoutStore.getCardConfig(providerId)
-}
+const getCardConfig = (providerId: string) => layoutStore.getCardConfig(providerId)
 
 // 响应式布局处理
 const handleResize = () => {
@@ -68,12 +67,12 @@ const handleResize = () => {
 onMounted(() => {
   // 初始化聊天数据
   chatStore.initializeConversations()
-  
+
   // 初始化布局配置
-  const providerIds = providers.value.map(p => p.id)
+  const providerIds = providers.value.map((p) => p.id)
   layoutStore.initializeCardConfigs(providerIds)
   layoutStore.loadLayoutConfig()
-  
+
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
 })

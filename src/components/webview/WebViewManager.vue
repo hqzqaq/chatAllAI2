@@ -8,20 +8,22 @@
       :width="getWebViewWidth(provider.id)"
       :height="getWebViewHeight(provider.id)"
       :auto-load="provider.isEnabled"
+      class="webview-instance"
+      :style="getWebViewStyle(provider.id)"
       @ready="handleWebViewReady(provider.id)"
       @loading="handleWebViewLoading(provider.id, $event)"
       @error="handleWebViewError(provider.id, $event)"
       @login-status-changed="handleLoginStatusChanged(provider.id, $event)"
       @title-changed="handleTitleChanged(provider.id, $event)"
       @url-changed="handleUrlChanged(provider.id, $event)"
-      class="webview-instance"
-      :style="getWebViewStyle(provider.id)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import {
+  ref, computed, onMounted, onUnmounted
+} from 'vue'
 import { ElMessage } from 'element-plus'
 import WebView from './WebView.vue'
 import type { AIProvider, Message } from '../../types'
@@ -75,7 +77,7 @@ const RESTART_DELAY = 2000
  */
 const setWebViewRef = (providerId: string, el: InstanceType<typeof WebView> | null): void => {
   webViewRefs.value[providerId] = el
-  
+
   // 初始化状态
   if (!webViewStates.value[providerId]) {
     webViewStates.value[providerId] = {
@@ -87,7 +89,7 @@ const setWebViewRef = (providerId: string, el: InstanceType<typeof WebView> | nu
       currentUrl: ''
     }
   }
-  
+
   if (!retryCounters.value[providerId]) {
     retryCounters.value[providerId] = 0
   }
@@ -115,7 +117,7 @@ const getWebViewHeight = (providerId: string): number => {
 const getWebViewStyle = (providerId: string) => {
   const cardConfig = layoutStore.getCardConfig(providerId)
   if (!cardConfig) return {}
-  
+
   return {
     display: cardConfig.isVisible ? 'block' : 'none',
     position: 'absolute',
@@ -135,9 +137,9 @@ const handleWebViewReady = (providerId: string): void => {
   webViewStates.value[providerId].isLoading = false
   webViewStates.value[providerId].hasError = false
   retryCounters.value[providerId] = 0
-  
+
   emit('provider-ready', providerId)
-  
+
   console.log(`WebView ready: ${providerId}`)
 }
 
@@ -146,9 +148,9 @@ const handleWebViewReady = (providerId: string): void => {
  */
 const handleWebViewLoading = (providerId: string, isLoading: boolean): void => {
   webViewStates.value[providerId].isLoading = isLoading
-  
+
   // 更新provider状态
-  const provider = props.providers.find(p => p.id === providerId)
+  const provider = props.providers.find((p) => p.id === providerId)
   if (provider) {
     provider.loadingState = isLoading ? 'loading' : 'loaded'
   }
@@ -161,15 +163,15 @@ const handleWebViewError = (providerId: string, error: string): void => {
   webViewStates.value[providerId].hasError = true
   webViewStates.value[providerId].errorMessage = error
   webViewStates.value[providerId].isReady = false
-  
-  const provider = props.providers.find(p => p.id === providerId)
+
+  const provider = props.providers.find((p) => p.id === providerId)
   if (provider) {
     provider.loadingState = 'error'
     provider.lastError = error
   }
-  
+
   emit('provider-error', providerId, error)
-  
+
   // 自动重试机制
   if (retryCounters.value[providerId] < MAX_RETRIES) {
     setTimeout(() => {
@@ -186,7 +188,7 @@ const handleWebViewError = (providerId: string, error: string): void => {
 const handleLoginStatusChanged = (providerId: string, isLoggedIn: boolean): void => {
   chatStore.updateProviderLoginStatus(providerId, isLoggedIn)
   emit('login-status-changed', providerId, isLoggedIn)
-  
+
   console.log(`Login status changed: ${providerId} = ${isLoggedIn}`)
 }
 
@@ -195,7 +197,7 @@ const handleLoginStatusChanged = (providerId: string, isLoggedIn: boolean): void
  */
 const handleTitleChanged = (providerId: string, title: string): void => {
   webViewStates.value[providerId].title = title
-  
+
   // 更新卡片标题
   layoutStore.updateCardTitle(providerId, title)
 }
@@ -210,25 +212,25 @@ const handleUrlChanged = (providerId: string, url: string): void => {
 /**
  * 重启WebView
  */
-const restartWebView = async (providerId: string): Promise<void> => {
+const restartWebView = async(providerId: string): Promise<void> => {
   const webViewRef = webViewRefs.value[providerId]
   if (!webViewRef) return
-  
+
   retryCounters.value[providerId]++
-  
+
   try {
     // 销毁当前WebView
     webViewRef.destroy()
-    
+
     // 等待一段时间后重新创建
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
     // 重新加载
-    const provider = props.providers.find(p => p.id === providerId)
+    const provider = props.providers.find((p) => p.id === providerId)
     if (provider) {
       webViewRef.navigateTo(provider.url)
     }
-    
+
     console.log(`WebView restarted: ${providerId} (attempt ${retryCounters.value[providerId]})`)
   } catch (error) {
     console.error(`Failed to restart WebView ${providerId}:`, error)
@@ -249,7 +251,7 @@ const refreshWebView = (providerId: string): void => {
  * 刷新所有WebView
  */
 const refreshAllWebViews = (): void => {
-  Object.keys(webViewRefs.value).forEach(providerId => {
+  Object.keys(webViewRefs.value).forEach((providerId) => {
     refreshWebView(providerId)
   })
 }
@@ -257,12 +259,12 @@ const refreshAllWebViews = (): void => {
 /**
  * 发送消息到指定WebView
  */
-const sendMessageToWebView = async (providerId: string, message: string): Promise<boolean> => {
+const sendMessageToWebView = async(providerId: string, message: string): Promise<boolean> => {
   const webViewRef = webViewRefs.value[providerId]
   if (!webViewRef || !webViewStates.value[providerId].isReady) {
     return false
   }
-  
+
   try {
     await webViewRef.sendMessage(message)
     emit('message-sent', providerId, true)
@@ -277,18 +279,18 @@ const sendMessageToWebView = async (providerId: string, message: string): Promis
 /**
  * 发送消息到所有WebView
  */
-const sendMessageToAllWebViews = async (message: string): Promise<Record<string, boolean>> => {
+const sendMessageToAllWebViews = async(message: string): Promise<Record<string, boolean>> => {
   const results: Record<string, boolean> = {}
-  
+
   const sendPromises = props.providers
-    .filter(provider => provider.isLoggedIn && provider.isEnabled)
-    .map(async (provider) => {
+    .filter((provider) => provider.isLoggedIn && provider.isEnabled)
+    .map(async(provider) => {
       const success = await sendMessageToWebView(provider.id, message)
       results[provider.id] = success
-      
+
       // 更新发送状态
       chatStore.setSendingStatus(provider.id, success ? 'sent' : 'error')
-      
+
       // 添加消息到对话历史
       if (success) {
         const messageObj: Message = {
@@ -302,7 +304,7 @@ const sendMessageToAllWebViews = async (message: string): Promise<Record<string,
         chatStore.addMessage(provider.id, messageObj)
       }
     })
-  
+
   await Promise.all(sendPromises)
   return results
 }
@@ -310,8 +312,8 @@ const sendMessageToAllWebViews = async (message: string): Promise<Record<string,
 /**
  * 检查所有WebView的登录状态
  */
-const checkAllLoginStatus = async (): Promise<void> => {
-  const checkPromises = Object.entries(webViewRefs.value).map(async ([providerId, webViewRef]) => {
+const checkAllLoginStatus = async(): Promise<void> => {
+  const checkPromises = Object.entries(webViewRefs.value).map(async([providerId, webViewRef]) => {
     if (webViewRef && webViewStates.value[providerId].isReady) {
       try {
         await webViewRef.checkLoginStatus()
@@ -320,32 +322,28 @@ const checkAllLoginStatus = async (): Promise<void> => {
       }
     }
   })
-  
+
   await Promise.all(checkPromises)
 }
 
 /**
  * 获取WebView状态
  */
-const getWebViewState = (providerId: string) => {
-  return webViewStates.value[providerId] || null
-}
+const getWebViewState = (providerId: string) => webViewStates.value[providerId] || null
 
 /**
  * 获取所有WebView状态
  */
-const getAllWebViewStates = () => {
-  return { ...webViewStates.value }
-}
+const getAllWebViewStates = () => ({ ...webViewStates.value })
 
 /**
  * 启用/禁用WebView
  */
 const toggleWebView = (providerId: string, enabled: boolean): void => {
-  const provider = props.providers.find(p => p.id === providerId)
+  const provider = props.providers.find((p) => p.id === providerId)
   if (provider) {
     provider.isEnabled = enabled
-    
+
     if (!enabled) {
       const webViewRef = webViewRefs.value[providerId]
       if (webViewRef) {
@@ -371,7 +369,7 @@ defineExpose({
 // 生命周期
 onMounted(() => {
   // 初始化所有WebView状态
-  props.providers.forEach(provider => {
+  props.providers.forEach((provider) => {
     if (!webViewStates.value[provider.id]) {
       webViewStates.value[provider.id] = {
         isReady: false,
@@ -382,23 +380,23 @@ onMounted(() => {
         currentUrl: provider.url
       }
     }
-    
+
     if (!retryCounters.value[provider.id]) {
       retryCounters.value[provider.id] = 0
     }
   })
-  
+
   // 定期检查登录状态
   const loginCheckInterval = setInterval(() => {
     checkAllLoginStatus()
   }, 30000) // 每30秒检查一次
-  
+
   // 监听来自IPC的消息发送请求
   if (window.electronAPI) {
     // 注意：这里需要适配电子应用的IPC通信机制
     // 由于Electron的限制，我们采用更直接的方式
   }
-  
+
   // 保存定时器引用以便清理
   onUnmounted(() => {
     clearInterval(loginCheckInterval)
@@ -407,7 +405,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   // 销毁所有WebView
-  Object.values(webViewRefs.value).forEach(webViewRef => {
+  Object.values(webViewRefs.value).forEach((webViewRef) => {
     if (webViewRef) {
       webViewRef.destroy()
     }

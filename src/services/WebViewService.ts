@@ -39,19 +39,24 @@ export interface MessageSendResult {
  */
 export class WebViewService {
   private webViewConfigs: Map<string, WebViewConfig> = new Map()
+
   private webViewStates: Map<string, WebViewState> = new Map()
+
   private messageQueue: Map<string, string[]> = new Map()
+
   private retryCounters: Map<string, number> = new Map()
 
   private readonly MAX_RETRIES = 3
+
   private readonly RETRY_DELAY = 2000
+
   private readonly MESSAGE_TIMEOUT = 10000
 
   /**
    * 初始化WebView配置
    */
   public initializeWebViewConfigs(providers: AIProvider[]): void {
-    providers.forEach(provider => {
+    providers.forEach((provider) => {
       const config: WebViewConfig = {
         id: provider.webviewId,
         url: provider.url,
@@ -520,7 +525,7 @@ export class WebViewService {
       `
     }
 
-    return scripts[providerId] || `{ success: false, error: 'Provider not supported' }`
+    return scripts[providerId] || '{ success: false, error: \'Provider not supported\' }'
   }
 
   /**
@@ -529,7 +534,7 @@ export class WebViewService {
   private escapeMessage(message: string): string {
     return message
       .replace(/\\/g, '\\\\')
-      .replace(/'/g, "\\'")
+      .replace(/'/g, '\\\'')
       .replace(/"/g, '\\"')
       .replace(/\n/g, '\\n')
       .replace(/\r/g, '\\r')
@@ -569,7 +574,7 @@ export class WebViewService {
       }
 
       // 添加延迟避免发送过快
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     }
 
     return results
@@ -598,7 +603,6 @@ export class WebViewService {
 
       // 模拟发送成功
       result.success = true
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : 'Unknown error'
     }
@@ -636,7 +640,7 @@ export class WebViewService {
    */
   public getRetryDelay(providerId: string): number {
     const count = this.retryCounters.get(providerId) || 0
-    return this.RETRY_DELAY * Math.pow(2, count) // 指数退避
+    return this.RETRY_DELAY * 2 ** count // 指数退避
   }
 
   /**
@@ -669,19 +673,19 @@ export class WebViewService {
     loadingWebViews: number
     errorWebViews: number
     queuedMessages: number
-  } {
+    } {
     let readyCount = 0
     let loadingCount = 0
     let errorCount = 0
     let queuedMessages = 0
 
-    this.webViewStates.forEach(state => {
+    this.webViewStates.forEach((state) => {
       if (state.isReady) readyCount++
       if (state.isLoading) loadingCount++
       if (state.hasError) errorCount++
     })
 
-    this.messageQueue.forEach(queue => {
+    this.messageQueue.forEach((queue) => {
       queuedMessages += queue.length
     })
 

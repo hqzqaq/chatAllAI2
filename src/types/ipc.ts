@@ -12,13 +12,13 @@ export enum IPCChannel {
   APP_MINIMIZE = 'app:minimize',
   APP_MAXIMIZE = 'app:maximize',
   APP_RESTORE = 'app:restore',
-  
+
   // 消息处理
   MESSAGE_SEND = 'message:send',
   MESSAGE_SEND_ALL = 'message:send-all',
   MESSAGE_RECEIVED = 'message:received',
   MESSAGE_ERROR = 'message:error',
-  
+
   // WebView管理
   WEBVIEW_CREATE = 'webview:create',
   WEBVIEW_DESTROY = 'webview:destroy',
@@ -26,35 +26,35 @@ export enum IPCChannel {
   WEBVIEW_NAVIGATE = 'webview:navigate',
   WEBVIEW_EXECUTE_SCRIPT = 'webview:execute-script',
   WEBVIEW_INSERT_CSS = 'webview:insert-css',
-  
+
   // 会话管理
   SESSION_SAVE = 'session:save',
   SESSION_LOAD = 'session:load',
   SESSION_CLEAR = 'session:clear',
   SESSION_CHECK = 'session:check',
-  
+
   // 存储操作
   STORAGE_GET = 'storage:get',
   STORAGE_SET = 'storage:set',
   STORAGE_DELETE = 'storage:delete',
   STORAGE_CLEAR = 'storage:clear',
-  
+
   // 插件管理
   PLUGIN_LOAD = 'plugin:load',
   PLUGIN_UNLOAD = 'plugin:unload',
   PLUGIN_ENABLE = 'plugin:enable',
   PLUGIN_DISABLE = 'plugin:disable',
   PLUGIN_GET_LIST = 'plugin:get-list',
-  
+
   // 设置管理
   SETTINGS_GET = 'settings:get',
   SETTINGS_SET = 'settings:set',
   SETTINGS_RESET = 'settings:reset',
-  
+
   // 错误处理
   ERROR_REPORT = 'error:report',
   ERROR_HANDLE = 'error:handle',
-  
+
   // 性能监控
   PERFORMANCE_GET_METRICS = 'performance:get-metrics',
   PERFORMANCE_START_MONITORING = 'performance:start-monitoring',
@@ -276,19 +276,19 @@ export interface IPCHandler {
     channel: IPCChannel,
     handler: (request: TRequest) => Promise<TResponse> | TResponse
   ): void
-  
+
   invoke<TRequest = any, TResponse = any>(
     channel: IPCChannel,
     data?: TRequest
   ): Promise<TResponse>
-  
+
   send<T = any>(channel: IPCChannel, data?: T): void
-  
+
   on<T = any>(
     channel: IPCChannel,
     listener: (data: T) => void
   ): void
-  
+
   off(channel: IPCChannel, listener?: Function): void
 }
 
@@ -300,37 +300,37 @@ export interface IPCEventDataMap {
   [IPCChannel.MESSAGE_SEND_ALL]: MessageSendRequest
   [IPCChannel.MESSAGE_RECEIVED]: { messageId: string; providerId: string; content: string }
   [IPCChannel.MESSAGE_ERROR]: { messageId: string; providerId: string; error: string }
-  
+
   [IPCChannel.WEBVIEW_CREATE]: WebViewCreateRequest
   [IPCChannel.WEBVIEW_DESTROY]: { webviewId: string }
   [IPCChannel.WEBVIEW_RELOAD]: { webviewId: string }
   [IPCChannel.WEBVIEW_NAVIGATE]: { webviewId: string; url: string }
   [IPCChannel.WEBVIEW_EXECUTE_SCRIPT]: WebViewExecuteScriptRequest
   [IPCChannel.WEBVIEW_INSERT_CSS]: { webviewId: string; css: string }
-  
+
   [IPCChannel.SESSION_SAVE]: SessionSaveRequest
   [IPCChannel.SESSION_LOAD]: SessionLoadRequest
   [IPCChannel.SESSION_CLEAR]: { providerId: string }
   [IPCChannel.SESSION_CHECK]: { providerId: string }
-  
+
   [IPCChannel.STORAGE_GET]: StorageRequest
   [IPCChannel.STORAGE_SET]: StorageRequest
   [IPCChannel.STORAGE_DELETE]: StorageRequest
   [IPCChannel.STORAGE_CLEAR]: { namespace?: string }
-  
+
   [IPCChannel.PLUGIN_LOAD]: PluginRequest
   [IPCChannel.PLUGIN_UNLOAD]: PluginRequest
   [IPCChannel.PLUGIN_ENABLE]: PluginRequest
   [IPCChannel.PLUGIN_DISABLE]: PluginRequest
   [IPCChannel.PLUGIN_GET_LIST]: {}
-  
+
   [IPCChannel.SETTINGS_GET]: SettingsRequest
   [IPCChannel.SETTINGS_SET]: SettingsRequest
   [IPCChannel.SETTINGS_RESET]: { section?: string }
-  
+
   [IPCChannel.ERROR_REPORT]: ErrorReportRequest
   [IPCChannel.ERROR_HANDLE]: { errorId: string; action: string }
-  
+
   [IPCChannel.PERFORMANCE_GET_METRICS]: {}
   [IPCChannel.PERFORMANCE_START_MONITORING]: { interval?: number }
   [IPCChannel.PERFORMANCE_STOP_MONITORING]: {}

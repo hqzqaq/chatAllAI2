@@ -40,7 +40,9 @@ export interface WindowState {
  */
 export class WindowManager extends EventEmitter {
   private windows: Map<string, BrowserWindow> = new Map()
+
   private windowConfigs: Map<string, WindowConfig> = new Map()
+
   private mainWindowId: string | null = null
 
   /**
@@ -308,7 +310,7 @@ export class WindowManager extends EventEmitter {
    */
   closeAllWindows(): void {
     const windowIds = Array.from(this.windows.keys())
-    windowIds.forEach(id => {
+    windowIds.forEach((id) => {
       this.closeWindow(id)
     })
   }
@@ -318,7 +320,7 @@ export class WindowManager extends EventEmitter {
    */
   destroyAllWindows(): void {
     const windowIds = Array.from(this.windows.keys())
-    windowIds.forEach(id => {
+    windowIds.forEach((id) => {
       this.destroyWindow(id)
     })
   }

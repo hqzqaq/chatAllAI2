@@ -3,23 +3,31 @@
     <div class="hero-section">
       <div class="hero-content">
         <div class="app-logo">
-          <el-icon class="logo-icon"><ChatDotRound /></el-icon>
+          <el-icon class="logo-icon">
+            <ChatDotRound />
+          </el-icon>
         </div>
-        <h1 class="app-title">ChatAllAI</h1>
-        <p class="app-description">多AI模型对话比较工具</p>
-        <p class="app-subtitle">同时与多个AI模型对话，比较不同AI的回答</p>
-        
+        <h1 class="app-title">
+          ChatAllAI
+        </h1>
+        <p class="app-description">
+          多AI模型对话比较工具
+        </p>
+        <p class="app-subtitle">
+          同时与多个AI模型对话，比较不同AI的回答
+        </p>
+
         <div class="action-buttons">
-          <el-button 
-            type="primary" 
-            size="large" 
+          <el-button
+            type="primary"
+            size="large"
             :icon="ChatDotRound"
             @click="goToChat"
           >
             开始对话
           </el-button>
-          <el-button 
-            size="large" 
+          <el-button
+            size="large"
             :icon="Setting"
             @click="goToSettings"
           >
@@ -28,35 +36,43 @@
         </div>
       </div>
     </div>
-    
+
     <div class="features-section">
       <div class="features-grid">
         <div class="feature-card">
-          <el-icon class="feature-icon"><Connection /></el-icon>
+          <el-icon class="feature-icon">
+            <Connection />
+          </el-icon>
           <h3>多AI集成</h3>
           <p>支持ChatGPT、Gemini、DeepSeek、豆包、Qwen、Copilot等主流AI模型</p>
         </div>
-        
+
         <div class="feature-card">
-          <el-icon class="feature-icon"><EditPen /></el-icon>
+          <el-icon class="feature-icon">
+            <EditPen />
+          </el-icon>
           <h3>统一输入</h3>
           <p>一次输入，同时发送给所有已登录的AI模型，快速比较回答</p>
         </div>
-        
+
         <div class="feature-card">
-          <el-icon class="feature-icon"><Grid /></el-icon>
+          <el-icon class="feature-icon">
+            <Grid />
+          </el-icon>
           <h3>卡片布局</h3>
           <p>灵活的卡片式布局，支持拖拽调整大小，自定义界面排列</p>
         </div>
-        
+
         <div class="feature-card">
-          <el-icon class="feature-icon"><Lock /></el-icon>
+          <el-icon class="feature-icon">
+            <Lock />
+          </el-icon>
           <h3>会话保持</h3>
           <p>安全保存登录状态和对话历史，重启应用后自动恢复</p>
         </div>
       </div>
     </div>
-    
+
     <div class="status-section">
       <div class="status-info">
         <div class="status-item">
@@ -69,7 +85,10 @@
         </div>
         <div class="status-item">
           <span class="status-label">应用状态:</span>
-          <el-tag :type="isInitialized ? 'success' : 'warning'" size="small">
+          <el-tag
+            :type="isInitialized ? 'success' : 'warning'"
+            size="small"
+          >
             {{ isInitialized ? '已就绪' : '初始化中' }}
           </el-tag>
         </div>
@@ -81,13 +100,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { 
-  ChatDotRound, 
-  Setting, 
-  Connection, 
-  EditPen, 
-  Grid, 
-  Lock 
+import {
+  ChatDotRound,
+  Setting,
+  Connection,
+  EditPen,
+  Grid,
+  Lock
 } from '@element-plus/icons-vue'
 import { useAppStore } from '../stores'
 
@@ -254,22 +273,22 @@ const goToSettings = (): void => {
   .app-title {
     font-size: 2.5rem;
   }
-  
+
   .app-description {
     font-size: 1.25rem;
   }
-  
+
   .features-grid {
     grid-template-columns: 1fr;
     gap: 24px;
   }
-  
+
   .status-info {
     flex-direction: column;
     align-items: center;
     gap: 16px;
   }
-  
+
   .action-buttons {
     flex-direction: column;
     align-items: center;

@@ -1,13 +1,16 @@
 <template>
-  <div class="app-layout" :class="{ 'dark-mode': isDarkMode }">
+  <div
+    class="app-layout"
+    :class="{ 'dark-mode': isDarkMode }"
+  >
     <!-- 顶部导航栏 -->
     <AppHeader />
-    
+
     <!-- 主内容区域 -->
     <main class="main-content">
       <router-view />
     </main>
-    
+
     <!-- 底部状态栏 -->
     <AppFooter />
   </div>

@@ -10,13 +10,13 @@ export enum EventType {
   APP_READY = 'APP_READY',
   APP_QUIT = 'APP_QUIT',
   APP_ERROR = 'APP_ERROR',
-  
+
   // 消息事件
   MESSAGE_SEND = 'MESSAGE_SEND',
   MESSAGE_RECEIVED = 'MESSAGE_RECEIVED',
   MESSAGE_ERROR = 'MESSAGE_ERROR',
   MESSAGE_RETRY = 'MESSAGE_RETRY',
-  
+
   // WebView事件
   WEBVIEW_READY = 'WEBVIEW_READY',
   WEBVIEW_LOADING = 'WEBVIEW_LOADING',
@@ -24,32 +24,32 @@ export enum EventType {
   WEBVIEW_ERROR = 'WEBVIEW_ERROR',
   WEBVIEW_CRASHED = 'WEBVIEW_CRASHED',
   WEBVIEW_NAVIGATION = 'WEBVIEW_NAVIGATION',
-  
+
   // 会话事件
   SESSION_LOGIN = 'SESSION_LOGIN',
   SESSION_LOGOUT = 'SESSION_LOGOUT',
   SESSION_EXPIRED = 'SESSION_EXPIRED',
   SESSION_RESTORED = 'SESSION_RESTORED',
-  
+
   // 布局事件
   LAYOUT_CHANGED = 'LAYOUT_CHANGED',
   CARD_RESIZED = 'CARD_RESIZED',
   CARD_MOVED = 'CARD_MOVED',
   CARD_MINIMIZED = 'CARD_MINIMIZED',
   CARD_MAXIMIZED = 'CARD_MAXIMIZED',
-  
+
   // 插件事件
   PLUGIN_LOADED = 'PLUGIN_LOADED',
   PLUGIN_UNLOADED = 'PLUGIN_UNLOADED',
   PLUGIN_ERROR = 'PLUGIN_ERROR',
   PLUGIN_ENABLED = 'PLUGIN_ENABLED',
   PLUGIN_DISABLED = 'PLUGIN_DISABLED',
-  
+
   // 设置事件
   SETTINGS_CHANGED = 'SETTINGS_CHANGED',
   THEME_CHANGED = 'THEME_CHANGED',
   LANGUAGE_CHANGED = 'LANGUAGE_CHANGED',
-  
+
   // 存储事件
   DATA_SAVED = 'DATA_SAVED',
   DATA_LOADED = 'DATA_LOADED',
@@ -90,7 +90,7 @@ export interface MessageEvent extends BaseEvent {
  * WebView事件接口
  */
 export interface WebViewEvent extends BaseEvent {
-  type: EventType.WEBVIEW_READY | EventType.WEBVIEW_LOADING | EventType.WEBVIEW_LOADED | 
+  type: EventType.WEBVIEW_READY | EventType.WEBVIEW_LOADING | EventType.WEBVIEW_LOADED |
         EventType.WEBVIEW_ERROR | EventType.WEBVIEW_CRASHED | EventType.WEBVIEW_NAVIGATION
   webviewId: string
   providerId: string
@@ -113,7 +113,7 @@ export interface SessionEvent extends BaseEvent {
  * 布局事件接口
  */
 export interface LayoutEvent extends BaseEvent {
-  type: EventType.LAYOUT_CHANGED | EventType.CARD_RESIZED | EventType.CARD_MOVED | 
+  type: EventType.LAYOUT_CHANGED | EventType.CARD_RESIZED | EventType.CARD_MOVED |
         EventType.CARD_MINIMIZED | EventType.CARD_MAXIMIZED
   cardId?: string
   position?: { x: number; y: number }
@@ -125,7 +125,7 @@ export interface LayoutEvent extends BaseEvent {
  * 插件事件接口
  */
 export interface PluginEvent extends BaseEvent {
-  type: EventType.PLUGIN_LOADED | EventType.PLUGIN_UNLOADED | EventType.PLUGIN_ERROR | 
+  type: EventType.PLUGIN_LOADED | EventType.PLUGIN_UNLOADED | EventType.PLUGIN_ERROR |
         EventType.PLUGIN_ENABLED | EventType.PLUGIN_DISABLED
   pluginId: string
   pluginName: string
@@ -156,14 +156,14 @@ export interface StorageEvent extends BaseEvent {
 /**
  * 应用事件联合类型
  */
-export type AppEventUnion = 
-  | AppEvent 
-  | MessageEvent 
-  | WebViewEvent 
-  | SessionEvent 
-  | LayoutEvent 
-  | PluginEvent 
-  | SettingsEvent 
+export type AppEventUnion =
+  | AppEvent
+  | MessageEvent
+  | WebViewEvent
+  | SessionEvent
+  | LayoutEvent
+  | PluginEvent
+  | SettingsEvent
   | StorageEvent
 
 /**

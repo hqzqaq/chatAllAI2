@@ -3,16 +3,21 @@
     <el-card class="input-card">
       <div class="input-header">
         <div class="header-left">
-          <el-icon class="input-icon"><EditPen /></el-icon>
+          <el-icon class="input-icon">
+            <EditPen />
+          </el-icon>
           <span class="input-title">统一输入</span>
         </div>
         <div class="header-right">
-          <el-tag :type="loggedInCount > 0 ? 'success' : 'info'" size="small">
+          <el-tag
+            :type="loggedInCount > 0 ? 'success' : 'info'"
+            size="small"
+          >
             {{ loggedInCount }}/{{ totalProviders }} 已连接
           </el-tag>
         </div>
       </div>
-      
+
       <div class="input-content">
         <el-input
           v-model="currentMessage"
@@ -20,43 +25,43 @@
           :rows="3"
           :placeholder="inputPlaceholder"
           :disabled="loggedInCount === 0"
-          @keydown.ctrl.enter="handleSend"
-          @keydown.meta.enter="handleSend"
           class="message-input"
           data-testid="message-input"
+          @keydown.ctrl.enter="handleSend"
+          @keydown.meta.enter="handleSend"
         />
-        
+
         <div class="input-actions">
           <div class="actions-left">
             <el-button
               :icon="Refresh"
               size="small"
-              @click="handleRefresh"
               :disabled="hasSendingMessages"
               data-testid="refresh-button"
+              @click="handleRefresh"
             >
               刷新连接
             </el-button>
-            
+
             <el-button
               :icon="Delete"
               size="small"
-              @click="handleClear"
               :disabled="!currentMessage"
               data-testid="clear-button"
+              @click="handleClear"
             >
               清空
             </el-button>
           </div>
-          
+
           <div class="actions-right">
             <el-button
               type="primary"
               :icon="Position"
               :loading="hasSendingMessages"
               :disabled="!currentMessage || loggedInCount === 0"
-              @click="handleSend"
               data-testid="send-button"
+              @click="handleSend"
             >
               发送到所有AI (Ctrl+Enter)
             </el-button>
@@ -69,7 +74,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
-import { EditPen, Position, Refresh, Delete } from '@element-plus/icons-vue'
+import {
+  EditPen, Position, Refresh, Delete
+} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
@@ -88,9 +95,7 @@ const currentMessage = computed({
 const loggedInCount = computed(() => chatStore.loggedInCount)
 const totalProviders = computed(() => chatStore.totalProviders)
 
-const hasSendingMessages = computed(() => {
-  return messageDispatcher.hasSendingMessages()
-})
+const hasSendingMessages = computed(() => messageDispatcher.hasSendingMessages())
 
 const inputPlaceholder = computed(() => {
   if (loggedInCount.value === 0) {
@@ -102,34 +107,34 @@ const inputPlaceholder = computed(() => {
 /**
  * 发送消息
  */
-const handleSend = async (): Promise<void> => {
+const handleSend = async(): Promise<void> => {
   if (loggedInCount.value === 0) {
     ElMessage.warning('请先登录至少一个AI网站')
     return
   }
-  
+
   if (!currentMessage.value.trim()) {
     ElMessage.warning('请输入消息内容')
     return
   }
-  
+
   try {
     // 获取已登录的提供商
-    const loggedInProviders = chatStore.loggedInProviders
+    const { loggedInProviders } = chatStore
     const messageContent = currentMessage.value
-    
+
     // 清空输入框（提前清空，避免重复发送）
     chatStore.clearCurrentMessage()
-    
+
     // 使用消息分发器发送消息
     const results = await messageDispatcher.sendMessage(messageContent, loggedInProviders)
-    
+
     // 处理发送结果
-    const successCount = results.filter(result => result.success).length
+    const successCount = results.filter((result) => result.success).length
     const errorCount = results.length - successCount
-    
+
     // 将消息添加到对话历史
-    results.forEach(result => {
+    results.forEach((result) => {
       const message = {
         id: result.messageId,
         content: messageContent,
@@ -141,7 +146,7 @@ const handleSend = async (): Promise<void> => {
       }
       chatStore.addMessage(result.providerId, message)
     })
-    
+
     // 显示结果消息
     if (successCount > 0 && errorCount === 0) {
       ElMessage.success(`消息已成功发送到 ${successCount} 个AI`)
@@ -150,7 +155,6 @@ const handleSend = async (): Promise<void> => {
     } else {
       ElMessage.error('所有消息发送失败')
     }
-    
   } catch (error) {
     console.error('Failed to send messages:', error)
     ElMessage.error('发送消息失败')
@@ -160,11 +164,11 @@ const handleSend = async (): Promise<void> => {
 /**
  * 刷新连接
  */
-const handleRefresh = async (): Promise<void> => {
+const handleRefresh = async(): Promise<void> => {
   try {
     // 重置消息分发器状态
     messageDispatcher.resetAllStatus()
-    
+
     // 刷新所有WebView的连接状态
     if (window.electronAPI) {
       await window.electronAPI.refreshAllWebViews()

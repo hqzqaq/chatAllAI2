@@ -8,7 +8,7 @@
         ChatAllAI
       </h1>
     </div>
-    
+
     <div class="header-center">
       <el-menu
         :default-active="activeRoute"
@@ -30,26 +30,33 @@
         </el-menu-item>
       </el-menu>
     </div>
-    
+
     <div class="header-right">
       <!-- 登录状态指示器 -->
       <div class="login-status">
-        <el-badge :value="loggedInCount" :max="99" class="status-badge">
-          <el-icon class="status-icon" :class="{ 'online': loggedInCount > 0 }">
+        <el-badge
+          :value="loggedInCount"
+          :max="99"
+          class="status-badge"
+        >
+          <el-icon
+            class="status-icon"
+            :class="{ 'online': loggedInCount > 0 }"
+          >
             <Connection />
           </el-icon>
         </el-badge>
         <span class="status-text">{{ loggedInCount }}/{{ totalProviders }}</span>
       </div>
-      
+
       <!-- 主题切换 -->
       <el-button
         :icon="isDarkMode ? Sunny : Moon"
         circle
-        @click="toggleTheme"
         class="theme-toggle"
+        @click="toggleTheme"
       />
-      
+
       <!-- 窗口控制按钮 -->
       <div class="window-controls">
         <el-button
@@ -73,15 +80,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { 
-  ChatDotRound, 
-  House, 
-  Setting, 
-  Connection, 
-  Sunny, 
-  Moon, 
-  Minus, 
-  Close 
+import {
+  ChatDotRound,
+  House,
+  Setting,
+  Connection,
+  Sunny,
+  Moon,
+  Minus,
+  Close
 } from '@element-plus/icons-vue'
 import { useAppStore, useChatStore } from '../../stores'
 

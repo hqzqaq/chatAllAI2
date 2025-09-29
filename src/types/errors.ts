@@ -140,15 +140,15 @@ export interface PermissionError extends BaseError {
 /**
  * 应用错误联合类型
  */
-export type AppError = 
-  | NetworkError 
-  | AuthError 
-  | WebViewError 
-  | PluginError 
-  | StorageError 
-  | SystemError 
-  | ValidationError 
-  | TimeoutError 
+export type AppError =
+  | NetworkError
+  | AuthError
+  | WebViewError
+  | PluginError
+  | StorageError
+  | SystemError
+  | ValidationError
+  | TimeoutError
   | PermissionError
 
 /**
