@@ -471,6 +471,17 @@ onMounted(() => {
 
 .ai-card.minimized {
   height: auto !important;
+  min-height: 60px !important;
+  max-height: 60px !important;
+  overflow: hidden;
+}
+
+.ai-card.minimized .webview-container {
+  display: none !important;
+}
+
+.ai-card.minimized .resize-handle {
+  display: none !important;
 }
 
 .card-header {

@@ -130,8 +130,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 重新计算布局
-     */
+   * 重新计算布局
+   */
   const recalculateLayout = (): void => {
     const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible)
 
@@ -148,6 +148,12 @@ export const useLayoutStore = defineStore('layout', () => {
         config.size = {
           width: cardWidth.value,
           height: cardHeight.value
+        }
+      } else {
+        // 最小化状态下，保持宽度但设置较小的高度
+        config.size = {
+          width: cardWidth.value,
+          height: 60 // 最小化后的高度
         }
       }
     })
