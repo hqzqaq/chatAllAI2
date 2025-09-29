@@ -118,14 +118,20 @@ const getWebViewStyle = (providerId: string) => {
   const cardConfig = layoutStore.getCardConfig(providerId)
   if (!cardConfig) return {}
 
+  // 如果卡片被隐藏（最大化时），使用visibility和opacity隐藏，但不销毁WebView
+  const isHidden = cardConfig.isHidden === true
+  
   return {
     display: cardConfig.isVisible ? 'block' : 'none',
+    visibility: isHidden ? 'hidden' : 'visible',
+    opacity: isHidden ? 0 : 1,
     position: 'absolute',
     left: `${cardConfig.position.x}px`,
     top: `${cardConfig.position.y}px`,
     width: `${cardConfig.size.width}px`,
     height: `${cardConfig.size.height}px`,
-    zIndex: cardConfig.zIndex
+    zIndex: cardConfig.zIndex,
+    transition: 'opacity 0.3s ease, visibility 0.3s ease'
   }
 }
 

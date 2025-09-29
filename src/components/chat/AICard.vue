@@ -3,6 +3,7 @@
     class="ai-card"
     :class="{
       'minimized': config?.isMinimized,
+      'maximized': config?.isMaximized,
       'logged-in': props.provider.isLoggedIn
     }"
     :style="cardStyle"
@@ -27,6 +28,20 @@
       </div>
 
       <div class="header-right">
+        <el-button
+          v-if="!config?.isMaximized"
+          :icon="FullScreen"
+          size="small"
+          circle
+          @click="toggleMaximized"
+        />
+        <el-button
+          v-if="config?.isMaximized"
+          :icon="Close"
+          size="small"
+          circle
+          @click="toggleMaximized"
+        />
         <el-button
           :icon="config?.isMinimized ? ArrowUp : ArrowDown"
           size="small"
@@ -152,7 +167,8 @@ import {
   Loading,
   Check,
   Close,
-  Rank
+  Rank,
+  FullScreen
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
@@ -181,12 +197,17 @@ const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] 
 const cardStyle = computed(() => {
   if (!props.config) return {}
 
+  // 如果卡片被隐藏（最大化时），使用visibility和opacity隐藏
+  const isHidden = props.config.isHidden === true
+  
   return {
     width: `${props.config.size.width}px`,
     height: props.config.isMinimized ? 'auto' : `${props.config.size.height}px`,
     minHeight: props.config.isMinimized ? '60px' : `${props.config.size.height}px`,
     zIndex: props.config.zIndex,
-    transition: 'all 0.3s ease'
+    transition: 'all 0.3s ease',
+    visibility: isHidden ? 'hidden' : 'visible',
+    opacity: isHidden ? 0 : 1
   }
 })
 
@@ -244,6 +265,13 @@ const getStatusText = (): string => {
  */
 const toggleMinimized = (): void => {
   layoutStore.toggleCardMinimized(props.provider.id)
+}
+
+/**
+ * 切换最大化状态
+ */
+const toggleMaximized = (): void => {
+  layoutStore.toggleCardMaximized(props.provider.id)
 }
 
 /**
@@ -476,11 +504,25 @@ onMounted(() => {
   overflow: hidden;
 }
 
+.ai-card.maximized {
+  position: fixed !important;
+  top: 16px !important;
+  left: 16px !important;
+  width: calc(100vw - 32px) !important;
+  height: calc(100vh - 120px) !important;
+  z-index: 1000 !important;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
+}
+
 .ai-card.minimized .webview-container {
   display: none !important;
 }
 
 .ai-card.minimized .resize-handle {
+  display: none !important;
+}
+
+.ai-card.maximized .resize-handle {
   display: none !important;
 }
 

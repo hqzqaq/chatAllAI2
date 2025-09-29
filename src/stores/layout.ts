@@ -56,6 +56,7 @@ export const useLayoutStore = defineStore('layout', () => {
           },
           isVisible: true,
           isMinimized: false,
+          isMaximized: false,
           zIndex: 1,
           title: providerId
         }
@@ -103,10 +104,94 @@ export const useLayoutStore = defineStore('layout', () => {
      */
   const toggleCardMinimized = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
+      // 如果卡片已经最大化，先恢复再最小化
+      if (cardConfigs.value[providerId].isMaximized) {
+        restoreCardFromMaximized(providerId)
+      }
       cardConfigs.value[providerId].isMinimized = !cardConfigs.value[providerId].isMinimized
       // 重新计算布局以适应最小化状态
       recalculateLayout()
       saveLayoutConfig()
+    }
+  }
+
+  /**
+     * 最大化卡片
+     */
+  const maximizeCard = (providerId: string): void => {
+    if (cardConfigs.value[providerId]) {
+      const config = cardConfigs.value[providerId]
+      
+      // 保存原始状态
+      config.originalSize = { ...config.size }
+      config.originalPosition = { ...config.position }
+      
+      // 设置最大化状态
+      config.isMaximized = true
+      config.isMinimized = false
+      
+      // 设置最大化尺寸和位置
+      config.size = {
+        width: windowSize.value.width - 32, // 减去边距
+        height: windowSize.value.height - 120 // 减去头部和输入区域高度
+      }
+      config.position = {
+        x: 16, // 左边距
+        y: 16  // 上边距
+      }
+      config.zIndex = 1000 // 设置最高z-index
+      
+      // 设置其他卡片为隐藏状态（但不销毁WebView）
+      Object.keys(cardConfigs.value).forEach((id) => {
+        if (id !== providerId) {
+          cardConfigs.value[id].isHidden = true // 使用isHidden而不是isVisible
+        }
+      })
+      
+      saveLayoutConfig()
+    }
+  }
+
+  /**
+     * 恢复卡片从最大化状态
+     */
+  const restoreCardFromMaximized = (providerId: string): void => {
+    if (cardConfigs.value[providerId]) {
+      const config = cardConfigs.value[providerId]
+      
+      if (config.isMaximized && config.originalSize && config.originalPosition) {
+        // 恢复原始状态
+        config.size = { ...config.originalSize }
+        config.position = { ...config.originalPosition }
+        config.isMaximized = false
+        config.zIndex = 1
+        
+        // 删除保存的原始状态
+        delete config.originalSize
+        delete config.originalPosition
+        
+        // 显示所有卡片（清除隐藏状态）
+        Object.keys(cardConfigs.value).forEach((id) => {
+          cardConfigs.value[id].isHidden = false
+        })
+        
+        // 重新计算布局
+        recalculateLayout()
+        saveLayoutConfig()
+      }
+    }
+  }
+
+  /**
+     * 切换卡片最大化状态
+     */
+  const toggleCardMaximized = (providerId: string): void => {
+    if (cardConfigs.value[providerId]) {
+      if (cardConfigs.value[providerId].isMaximized) {
+        restoreCardFromMaximized(providerId)
+      } else {
+        maximizeCard(providerId)
+      }
     }
   }
 
@@ -133,7 +218,7 @@ export const useLayoutStore = defineStore('layout', () => {
    * 重新计算布局
    */
   const recalculateLayout = (): void => {
-    const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible)
+    const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible && !config.isMaximized)
 
     visibleCards.forEach((config, index) => {
       const col = index % gridSettings.value.columns
@@ -241,6 +326,9 @@ export const useLayoutStore = defineStore('layout', () => {
     updateCardSize,
     toggleCardVisibility,
     toggleCardMinimized,
+    maximizeCard,
+    restoreCardFromMaximized,
+    toggleCardMaximized,
     updateWindowSize,
     recalculateLayout,
     resetLayout,

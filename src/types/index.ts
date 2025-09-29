@@ -104,7 +104,11 @@ export interface CardConfig {
   position: { x: number; y: number }
   size: { width: number; height: number }
   isVisible: boolean
+  isHidden?: boolean // 新增：临时隐藏状态，用于最大化时隐藏其他卡片但不销毁WebView
   isMinimized: boolean
+  isMaximized: boolean
+  originalSize?: { width: number; height: number }
+  originalPosition?: { x: number; y: number }
   zIndex: number
   title: string
 }
