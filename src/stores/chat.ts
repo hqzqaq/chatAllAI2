@@ -115,6 +115,24 @@ export const useChatStore = defineStore('chat', () => {
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0
+    },
+    {
+      id: 'glm',
+      name: 'GLM',
+      url: 'https://chatglm.cn/main/alltoolsdetail?lang=zh',
+      icon: '/icons/glm.svg',
+      isLoggedIn: false,
+      sessionData: {
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        isActive: false,
+        lastActiveTime: new Date()
+      },
+      webviewId: 'webview-glm',
+      isEnabled: false,
+      loadingState: 'idle',
+      retryCount: 0
     }
   ])
 

@@ -39,7 +39,8 @@ export function getSendMessageScript(providerId: string, message: string): strin
     deepseek: getDeepSeekScript(escapedMessage),
     doubao: getDouBaoScript(escapedMessage),
     qwen: getQwenScript(escapedMessage),
-    copilot: getCopilotScript(escapedMessage)
+    copilot: getCopilotScript(escapedMessage),
+    glm: getGLMScript(escapedMessage)
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -96,6 +97,13 @@ function getKimiScript(escapedMessage: string): string {
  * gork发送脚本
  */
 function getGorkScript(escapedMessage: string): string {
+  return getDeepSeekScript(escapedMessage)
+}
+
+/**
+ * GLM发送脚本
+ */
+function getGLMScript(escapedMessage: string): string {
   return getDeepSeekScript(escapedMessage)
 }
 
@@ -425,7 +433,7 @@ function getGenericScript(escapedMessage: string): string {
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'gork', 'deepseek', 'doubao', 'qwen', 'copilot']
+  return ['kimi', 'gork', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm']
 }
 
 /**

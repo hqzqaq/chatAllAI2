@@ -242,6 +242,11 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       }
     }
 
+    // GLM - 聊天导航不重要
+    if (hostname.includes('chatglm.cn')) {
+      return false
+    }
+
     // 通用规则：查询参数或锚点变化不重要
     if (current.origin + current.pathname === next.origin + next.pathname) {
       return false
@@ -338,30 +343,6 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
   webview.addEventListener('will-navigate', (event) => {
     console.log(`${props.provider.name} navigating to: ${event.url}`)
     emit('url-changed', event.url)
-  })
-
-  // 页面内导航完成
-  webview.addEventListener('did-navigate-in-page', (event) => {
-    console.log(`${props.provider.name} in-page navigation: ${event.url}`)
-  })
-
-  // 监听WebView的focus事件
-  webview.addEventListener('focus', () => {
-  })
-
-  // 监听WebView的blur事件
-  webview.addEventListener('blur', () => {
-    if (props.provider.id === 'qwen') {
-      // 防止失去焦点时页面变灰
-      setTimeout(() => {
-        webview.executeJavaScript(`
-          document.body.style.opacity = '1';
-          document.body.style.backgroundColor = 'white';
-        `).catch((error) => {
-          console.warn('Failed to fix Qwen blur issue:', error)
-        })
-      }, 100)
-    }
   })
 
   // 新窗口请求
