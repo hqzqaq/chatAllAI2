@@ -4,7 +4,7 @@
 
 ChatAllAI 是一个基于 Electron + Vue3 + TypeScript 的桌面应用程序，允许用户通过单一界面同时与多个AI网站进行对话。该应用类似于多个浏览器标签页，每个标签页访问一个AI模型网站，用户可以统一输入内容给所有的模型网站，实现多模型对话比较功能。
 
-支持的AI网站包括：ChatGPT、Gemini、DeepSeek、豆包、Qwen、Copilot等。
+支持的AI网站包括：kimi、Gemini、DeepSeek、豆包、Qwen、Copilot等。
 
 ## Requirements
 

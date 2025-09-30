@@ -35,7 +35,7 @@ export function getSendMessageScript(providerId: string, message: string): strin
   const escapedMessage = escapeJavaScriptString(message)
   console.log('providerId123', providerId)
   const scripts: Record<string, string> = {
-    chatgpt: getChatGPTScript(escapedMessage),
+    kimi: getKimiScript(escapedMessage),
     gemini: getGeminiScript(escapedMessage),
     deepseek: getDeepSeekScript(escapedMessage),
     doubao: getDouBaoScript(escapedMessage),
@@ -47,9 +47,9 @@ export function getSendMessageScript(providerId: string, message: string): strin
 }
 
 /**
- * ChatGPT发送脚本
+ * kimi发送脚本
  */
-function getChatGPTScript(escapedMessage: string): string {
+function getKimiScript(escapedMessage: string): string {
   return `
     (function() {
       const textarea = document.querySelector('textarea[placeholder*="Message"]') ||
@@ -446,7 +446,7 @@ function getGenericScript(escapedMessage: string): string {
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['chatgpt', 'gemini', 'deepseek', 'doubao', 'qwen', 'copilot']
+  return ['kimi', 'gemini', 'deepseek', 'doubao', 'qwen', 'copilot']
 }
 
 /**

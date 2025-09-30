@@ -26,6 +26,7 @@ export enum IPCChannel {
   WEBVIEW_NAVIGATE = 'webview:navigate',
   WEBVIEW_EXECUTE_SCRIPT = 'webview:execute-script',
   WEBVIEW_INSERT_CSS = 'webview:insert-css',
+  WEBVIEW_SET_PROXY = 'webview:set-proxy',
 
   // 会话管理
   SESSION_SAVE = 'session:save',

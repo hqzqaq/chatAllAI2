@@ -154,7 +154,7 @@ export class SessionManager extends EventEmitter {
    */
   private getUserAgent(providerId: string): string | undefined {
     const userAgents: Record<string, string> = {
-      chatgpt: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      kimi: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       gemini: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       deepseek: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       doubao: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -342,6 +342,13 @@ export class SessionManager extends EventEmitter {
    */
   getElectronSession(providerId: string): Session | null {
     return this.electronSessions.get(providerId) || null
+  }
+
+  /**
+   * 获取会话（兼容性方法，与getElectronSession相同）
+   */
+  getSession(providerId: string): Session | null {
+    return this.getElectronSession(providerId)
   }
 
   /**

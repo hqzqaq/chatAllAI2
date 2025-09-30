@@ -62,11 +62,11 @@ export const useChatStore = defineStore('chat', () => {
       loadingState: 'idle',
       retryCount: 0
     },
-        {
-      id: 'chatgpt',
-      name: 'ChatGPT',
-      url: 'https://chat.openai.com',
-      icon: '/icons/chatgpt.svg',
+    {
+      id: 'kimi',
+      name: 'kimi',
+      url: 'https://www.kimi.com/',
+      icon: '/icons/kimi.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -75,7 +75,7 @@ export const useChatStore = defineStore('chat', () => {
         isActive: false,
         lastActiveTime: new Date()
       },
-      webviewId: 'webview-chatgpt',
+      webviewId: 'webview-kimi',
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0
@@ -83,7 +83,7 @@ export const useChatStore = defineStore('chat', () => {
     {
       id: 'gemini',
       name: 'Gemini',
-      url: 'https://gemini.google.com',
+      url: 'https://aistudio.google.com/prompts/new_chat',
       icon: '/icons/gemini.svg',
       isLoggedIn: false,
       sessionData: {

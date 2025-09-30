@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   navigateWebView: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_NAVIGATE, data),
   executeScript: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, data),
   insertCSS: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_INSERT_CSS, data),
+  setProxy: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_SET_PROXY, data),
 
   // 会话管理
   saveSession: (data: any) => ipcRenderer.invoke(IPCChannel.SESSION_SAVE, data),
@@ -117,6 +118,7 @@ declare global {
       navigateWebView: (data: any) => Promise<any>
       executeScript: (data: any) => Promise<any>
       insertCSS: (data: any) => Promise<any>
+      setProxy: (data: any) => Promise<any>
 
       // 会话管理
       saveSession: (data: any) => Promise<any>

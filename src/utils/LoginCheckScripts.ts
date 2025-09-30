@@ -14,7 +14,7 @@
  */
 export function getLoginCheckScript(providerId: string): string {
   const scripts: Record<string, string> = {
-    chatgpt: `
+    kimi: `
       // 检查是否存在用户头像或登录相关元素
       !!(document.querySelector('[data-testid="profile-button"]') ||
          document.querySelector('.flex.items-center.gap-2') ||

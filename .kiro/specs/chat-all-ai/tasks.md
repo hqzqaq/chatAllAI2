@@ -31,7 +31,7 @@
 
 - [x] 5. WebView组件和AI网站集成
   - 实现可复用的WebView组件
-  - 创建六个AI网站的WebView实例（ChatGPT、Gemini、DeepSeek、豆包、Qwen、Copilot）
+  - 创建六个AI网站的WebView实例（kimi、Gemini、DeepSeek、豆包、Qwen、Copilot）
   - 实现WebView的生命周期管理
   - 添加WebView错误处理和重启机制
   - 编写WebView组件集成测试

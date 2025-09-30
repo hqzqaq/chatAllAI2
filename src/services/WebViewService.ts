@@ -131,9 +131,9 @@ export class WebViewService {
    */
   public getLoginCheckScript(providerId: string): string {
     const scripts: Record<string, string> = {
-      chatgpt: `
+      kimi: `
         (function() {
-          // 检查ChatGPT登录状态的多种方式
+          // 检查kimi登录状态的多种方式
           const selectors = [
             '[data-testid="profile-button"]',
             '.flex.items-center.gap-2 img',
@@ -296,7 +296,7 @@ export class WebViewService {
     const escapedMessage = this.escapeMessage(message)
 
     const scripts: Record<string, string> = {
-      chatgpt: `
+      kimi: `
         (function() {
           try {
             // 查找输入框的多种方式

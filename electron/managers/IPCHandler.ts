@@ -125,6 +125,7 @@ export class IPCHandler extends EventEmitter {
     this.handleInvoke(IPCChannel.WEBVIEW_NAVIGATE, this.handleWebViewNavigate.bind(this))
     this.handleInvoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, this.handleWebViewExecuteScript.bind(this))
     this.handleInvoke(IPCChannel.WEBVIEW_INSERT_CSS, this.handleWebViewInsertCSS.bind(this))
+    this.handleInvoke(IPCChannel.WEBVIEW_SET_PROXY, this.handleWebViewSetProxy.bind(this))
 
     // 会话管理
     this.handleInvoke(IPCChannel.SESSION_SAVE, this.handleSessionSave.bind(this))
@@ -294,7 +295,7 @@ export class IPCHandler extends EventEmitter {
         throw new Error('Main window not available')
       }
 
-      // 从webviewId推断providerId（webview-webview-chatgpt -> chatgpt）
+      // 从webviewId推断providerId（webview-webview-kimi -> kimi）
       const providerId = data.webviewId.replace('webview-', '')
 
       this.log('[IPC] Provider ID:', providerId)
@@ -735,6 +736,53 @@ export class IPCHandler extends EventEmitter {
    */
   private handleMessageError(data: { messageId: string; providerId: string; error: string }): void {
     this.emit('message-error', data)
+  }
+
+  /**
+   * 处理WebView代理设置
+   */
+  private async handleWebViewSetProxy(data: {
+    webviewId: string
+    proxyRules: string
+    enabled: boolean
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.log(`Setting proxy for webview ${data.webviewId}: ${data.proxyRules}`)
+      
+      // 获取webview对应的session - 使用providerId而不是webviewId
+      // 首先需要从webviewId映射到providerId
+      const providerId = data.webviewId.replace('webview-', '')
+      
+      // 检查会话是否存在，如果不存在则创建
+      let session = this.sessionManager.getSession(providerId)
+      if (!session) {
+        this.log(`Session not found for webview: ${data.webviewId}, creating new session...`)
+        session = await this.sessionManager.createProviderSession(providerId)
+      }
+
+      if (data.enabled) {
+        // 设置代理
+        await session.setProxy({
+          proxyRules: data.proxyRules
+        })
+        this.log(`Proxy set successfully for webview ${data.webviewId}`)
+      } else {
+        // 禁用代理，使用直连
+        await session.setProxy({
+          proxyRules: 'direct://'
+        })
+        this.log(`Proxy disabled for webview ${data.webviewId}`)
+      }
+
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      this.log(`Failed to set proxy for webview ${data.webviewId}:`, errorMessage)
+      return {
+        success: false,
+        error: errorMessage
+      }
+    }
   }
 
   /**

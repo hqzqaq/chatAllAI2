@@ -29,6 +29,13 @@
 
       <div class="header-right">
         <el-button
+          :icon="Connection"
+          size="small"
+          circle
+          :type="proxyConfig.enabled ? 'primary' : 'default'"
+          @click="openProxyDialog"
+        />
+        <el-button
           v-if="!config?.isMaximized"
           :icon="FullScreen"
           size="small"
@@ -152,6 +159,68 @@
     >
       <el-icon><Rank /></el-icon>
     </div>
+
+    <!-- 代理配置对话框 -->
+    <el-dialog
+      v-model="proxyDialogVisible"
+      :title="`${props.provider.name} - 代理配置`"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="proxyFormRef"
+        :model="proxyConfig"
+        label-width="100px"
+      >
+        <el-form-item label="启用代理">
+          <el-switch
+            v-model="proxyConfig.enabled"
+            @change="handleProxyToggle"
+          />
+        </el-form-item>
+        
+        <el-form-item label="代理协议">
+          <el-select
+            v-model="proxyConfig.protocol"
+            :disabled="!proxyConfig.enabled"
+            style="width: 100%"
+          >
+            <el-option label="HTTP" value="http" />
+            <el-option label="HTTPS" value="https" />
+            <el-option label="SOCKS5" value="socks5" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="代理地址">
+          <el-input
+            v-model="proxyConfig.address"
+            :disabled="!proxyConfig.enabled"
+            placeholder="请输入代理服务器地址"
+          />
+        </el-form-item>
+        
+        <el-form-item label="端口">
+          <el-input
+            v-model="proxyConfig.port"
+            :disabled="!proxyConfig.enabled"
+            placeholder="请输入代理端口"
+            type="number"
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="proxyDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            @click="saveProxyConfig"
+          >
+            保存并应用
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -168,7 +237,8 @@ import {
   Check,
   Close,
   Rank,
-  FullScreen
+  FullScreen,
+  Connection
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
@@ -190,6 +260,16 @@ const layoutStore = useLayoutStore()
 const isRefreshing = ref(false)
 const isLoading = ref(false)
 const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
+const proxyDialogVisible = ref(false)
+const proxyFormRef = ref()
+
+// 代理配置
+const proxyConfig = ref({
+  enabled: false,
+  protocol: 'http',
+  address: '127.0.0.1',
+  port: '7897'
+})
 
 // 计算属性
 const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] || 'idle')
@@ -443,6 +523,134 @@ const startResize = (event: MouseEvent): void => {
 
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
+}
+
+/**
+ * 打开代理配置对话框
+ */
+const openProxyDialog = (): void => {
+  // 从存储中加载代理配置
+  loadProxyConfig()
+  proxyDialogVisible.value = true
+}
+
+/**
+ * 处理代理开关切换
+ */
+const handleProxyToggle = (enabled: boolean): void => {
+  if (!enabled) {
+    // 禁用代理时重置为默认值
+    proxyConfig.value = {
+      enabled: false,
+      protocol: 'http',
+      address: '127.0.0.1',
+      port: '7897'
+    }
+  }
+}
+
+/**
+ * 保存代理配置
+ */
+const saveProxyConfig = async(): Promise<void> => {
+  try {
+    // 验证配置
+    if (proxyConfig.value.enabled) {
+      if (!proxyConfig.value.address || !proxyConfig.value.port) {
+        ElMessage.error('请填写完整的代理配置信息')
+        return
+      }
+      
+      // 验证端口号
+      const port = parseInt(proxyConfig.value.port)
+      if (port < 1 || port > 65535) {
+        ElMessage.error('端口号必须在1-65535之间')
+        return
+      }
+    }
+
+    // 保存配置到本地存储
+    saveProxyConfigToStorage()
+    
+    // 应用代理配置到webview
+    await applyProxyConfig()
+    
+    ElMessage.success('代理配置已保存并应用')
+    proxyDialogVisible.value = false
+  } catch (error) {
+    console.error('保存代理配置失败:', error)
+    ElMessage.error('保存代理配置失败')
+  }
+}
+
+/**
+ * 从存储中加载代理配置
+ */
+const loadProxyConfig = (): void => {
+  try {
+    const storedConfig = localStorage.getItem(`proxy-config-${props.provider.id}`)
+    if (storedConfig) {
+      const config = JSON.parse(storedConfig)
+      proxyConfig.value = { ...proxyConfig.value, ...config }
+    }
+  } catch (error) {
+    console.error('加载代理配置失败:', error)
+  }
+}
+
+/**
+ * 保存代理配置到存储
+ */
+const saveProxyConfigToStorage = (): void => {
+  try {
+    localStorage.setItem(`proxy-config-${props.provider.id}`, JSON.stringify(proxyConfig.value))
+  } catch (error) {
+    console.error('保存代理配置到存储失败:', error)
+  }
+}
+
+/**
+ * 应用代理配置到webview
+ */
+const applyProxyConfig = async(): Promise<void> => {
+  if (!window.electronAPI) {
+    console.warn('Electron API不可用，无法设置代理')
+    return
+  }
+
+  try {
+    if (proxyConfig.value.enabled) {
+      const proxyUrl = `${proxyConfig.value.protocol}://${proxyConfig.value.address}:${proxyConfig.value.port}`
+      
+      // 通过IPC通知主进程设置代理
+      await window.electronAPI.setProxy({
+        webviewId: props.provider.webviewId,
+        proxyRules: proxyUrl,
+        enabled: true
+      })
+      
+      console.log(`已为 ${props.provider.name} 设置代理: ${proxyUrl}`)
+    } else {
+      // 禁用代理
+      await window.electronAPI.setProxy({
+        webviewId: props.provider.webviewId,
+        proxyRules: 'direct://',
+        enabled: false
+      })
+      
+      console.log(`已为 ${props.provider.name} 禁用代理`)
+    }
+    
+    // 重新加载webview使代理配置生效
+    if (webViewRef.value) {
+      setTimeout(() => {
+        webViewRef.value?.refresh()
+      }, 500)
+    }
+  } catch (error) {
+    console.error('应用代理配置失败:', error)
+    throw error
+  }
 }
 
 /**

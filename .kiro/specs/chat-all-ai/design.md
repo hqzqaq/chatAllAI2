@@ -31,7 +31,7 @@ graph TB
     end
     
     subgraph "WebView Processes"
-        WV1[ChatGPT WebView]
+        WV1[kimi WebView]
         WV2[Gemini WebView]
         WV3[DeepSeek WebView]
         WV4[豆包 WebView]
@@ -96,7 +96,7 @@ interface RendererComponents {
 
 // WebView组件
 interface WebViewComponents {
-  chatgptView: WebViewInstance;
+  kimiView: WebViewInstance;
   geminiView: WebViewInstance;
   deepseekView: WebViewInstance;
   doubaoView: WebViewInstance;

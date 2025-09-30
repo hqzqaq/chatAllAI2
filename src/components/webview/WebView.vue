@@ -166,8 +166,8 @@ const isSignificantNavigation = (newUrl: string): boolean => {
     // 针对不同AI网站的特殊处理
     const { hostname } = current
 
-    // ChatGPT - 对话ID变化不算重要导航
-    if (hostname.includes('openai.com')) {
+    // kimi - 对话ID变化不算重要导航
+    if (hostname.includes('kimi.com')) {
       const currentPath = current.pathname
       const nextPath = next.pathname
 
