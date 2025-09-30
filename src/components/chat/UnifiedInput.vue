@@ -18,6 +18,50 @@
         </div>
       </div>
 
+      <!-- 模型选择器 -->
+      <div class="model-selector">
+        <div class="selector-header">
+          <el-icon class="selector-icon">
+            <Select />
+          </el-icon>
+          <span class="selector-title">选择AI模型</span>
+        </div>
+        <el-checkbox-group 
+          v-model="selectedProviders" 
+          class="provider-checkboxes"
+          @change="handleProviderSelection"
+        >
+          <el-checkbox 
+            v-for="provider in availableProviders" 
+            :key="provider.id" 
+            :label="provider.id"
+            :disabled="provider.loadingState === 'loading'"
+            class="provider-checkbox"
+          >
+            <div class="provider-option">
+              <img 
+                :src="provider.icon" 
+                :alt="provider.name" 
+                class="provider-icon-small"
+                @error="handleIconError"
+              />
+              <span class="provider-name">{{ provider.name }}</span>
+              <el-tag 
+                v-if="provider.isLoggedIn" 
+                type="success" 
+                size="small"
+                class="status-tag"
+              >
+                已登录
+              </el-tag>
+              <el-icon v-if="provider.loadingState === 'loading'" class="loading-icon">
+                <Loading />
+              </el-icon>
+            </div>
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+
       <div class="input-content">
         <el-input
           v-model="currentMessage"
@@ -73,9 +117,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete
+  EditPen, Position, Refresh, Delete, Select, Loading
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
@@ -84,6 +128,9 @@ import type { MessageSendResult } from '../../services/MessageDispatcher'
 
 const chatStore = useChatStore()
 
+// 响应式数据
+const selectedProviders = ref<string[]>([])
+
 // 计算属性
 const currentMessage = computed({
   get: () => chatStore.currentMessage,
@@ -91,6 +138,53 @@ const currentMessage = computed({
     chatStore.currentMessage = value
   }
 })
+
+const availableProviders = computed(() => chatStore.providers)
+
+// 从本地存储加载选中的提供商
+const loadSelectedProviders = (): void => {
+  try {
+    const stored = localStorage.getItem('selected-providers')
+    if (stored) {
+      selectedProviders.value = JSON.parse(stored)
+      // 应用选中的提供商
+      applySelectedProviders()
+    }
+  } catch (error) {
+    console.error('加载选中的提供商失败:', error)
+  }
+}
+
+// 保存选中的提供商到本地存储
+const saveSelectedProviders = (): void => {
+  try {
+    localStorage.setItem('selected-providers', JSON.stringify(selectedProviders.value))
+  } catch (error) {
+    console.error('保存选中的提供商失败:', error)
+  }
+}
+
+// 应用选中的提供商到聊天存储
+const applySelectedProviders = (): void => {
+  chatStore.providers.forEach(provider => {
+    const shouldEnable = selectedProviders.value.includes(provider.id)
+    if (provider.isEnabled !== shouldEnable) {
+      chatStore.toggleProvider(provider.id, shouldEnable)
+    }
+  })
+}
+
+// 处理提供商选择变化
+const handleProviderSelection = (): void => {
+  saveSelectedProviders()
+  applySelectedProviders()
+}
+
+// 处理图标加载错误
+const handleIconError = (event: Event): void => {
+  const img = event.target as HTMLImageElement
+  img.src = '/icons/default.svg'
+}
 
 const loggedInCount = computed(() => chatStore.loggedInCount)
 const totalProviders = computed(() => chatStore.totalProviders)
@@ -208,6 +302,8 @@ const handleMessageSent = (data: { messageId: string; results: MessageSendResult
 onMounted(() => {
   messageDispatcher.on('status-changed', handleStatusChanged)
   messageDispatcher.on('message-sent', handleMessageSent)
+  // 加载选中的提供商
+  loadSelectedProviders()
 })
 
 /**
@@ -251,6 +347,140 @@ onUnmounted(() => {
   color: var(--el-text-color-primary);
 }
 
+/* 模型选择器样式 */
+.model-selector {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.selector-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.selector-icon {
+  color: #007AFF;
+  font-size: 16px;
+}
+
+.selector-title {
+  font-weight: 600;
+  color: #1c1c1e;
+  font-size: 14px;
+}
+
+.provider-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.provider-checkbox {
+  margin: 0;
+  width: 100%;
+}
+
+/* iOS风格复选框样式 */
+:deep(.provider-checkbox .el-checkbox__input) {
+  display: none;
+}
+
+:deep(.provider-checkbox .el-checkbox__label) {
+  padding: 0;
+  margin: 0;
+}
+
+.provider-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 2px solid #e5e5ea;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* iOS风格选中状态 */
+:deep(.provider-checkbox.is-checked .provider-option) {
+  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+  border-color: #007AFF;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+/* iOS风格悬停效果 */
+.provider-option:hover {
+  border-color: #007AFF;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+}
+
+/* iOS风格选中状态下的图标和文字 */
+:deep(.provider-checkbox.is-checked .provider-option .provider-icon-small) {
+  filter: brightness(0) invert(1);
+}
+
+:deep(.provider-checkbox.is-checked .provider-option .provider-name) {
+  color: white;
+}
+
+:deep(.provider-checkbox.is-checked .provider-option .status-tag) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.provider-icon-small {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.provider-name {
+  font-weight: 500;
+  color: #1c1c1e;
+  font-size: 14px;
+  flex: 1;
+}
+
+.status-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.loading-icon {
+  color: #8e8e93;
+  animation: rotate 1s linear infinite;
+}
+
+:deep(.provider-checkbox.is-checked .provider-option .loading-icon) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 禁用状态样式 */
+:deep(.provider-checkbox.is-disabled .provider-option) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:deep(.provider-checkbox.is-disabled .provider-option:hover) {
+  transform: none;
+  border-color: #e5e5ea;
+  box-shadow: none;
+}
+
 .input-content {
   display: flex;
   flex-direction: column;
@@ -280,5 +510,25 @@ onUnmounted(() => {
 
 :deep(.el-textarea__inner:focus) {
   border-color: var(--el-color-primary);
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .provider-checkboxes {
+    grid-template-columns: 1fr;
+  }
+  
+  .model-selector {
+    padding: 12px;
+  }
+  
+  .provider-option {
+    padding: 10px 12px;
+  }
 }
 </style>

@@ -37,7 +37,8 @@ const providers = computed(() => chatStore.providers)
 
 const visibleProviders = computed(() => providers.value.filter((provider) => {
   const config = getCardConfig(provider.id)
-  return config?.isVisible !== false
+  // 只有当模型被选中且可见时才显示卡片
+  return provider.isEnabled && config?.isVisible !== false
 }))
 
 const gridStyle = computed(() => {

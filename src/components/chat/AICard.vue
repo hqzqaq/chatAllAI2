@@ -94,24 +94,19 @@
       />
 
       <div
-        v-else
-        class="webview-placeholder"
-      >
-        <div
-          v-if="!props.provider.isLoggedIn && !isLoading"
-          class="login-prompt"
+          v-else
+          class="webview-placeholder"
         >
-          <el-icon class="prompt-icon">
-            <User />
-          </el-icon>
-          <p>请在此处登录 {{ props.provider.name }}</p>
-          <el-button
-            type="primary"
-            @click="enableWebView"
+          <div
+            v-if="!props.provider.isLoggedIn && !isLoading"
+            class="login-prompt"
           >
-            打开登录页面
-          </el-button>
-        </div>
+            <el-icon class="prompt-icon">
+              <User />
+            </el-icon>
+            <p>请先在左侧选择 {{ props.provider.name }}</p>
+            <p class="hint-text">选中后将自动加载登录页面</p>
+          </div>
 
         <div
           v-else-if="isLoading"
@@ -827,6 +822,12 @@ onMounted(() => {
   font-size: 32px;
   margin-bottom: 12px;
   color: var(--el-color-info);
+}
+
+.hint-text {
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  margin-top: 4px;
 }
 
 .error-icon {
