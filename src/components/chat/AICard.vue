@@ -290,7 +290,7 @@ const cardStyle = computed(() => {
   
   return {
     width: `${props.config.size.width}px`,
-    height: props.config.isMinimized ? 'auto' : `${props.config.size.height}px`,
+    height: props.config.isMinimized ? 'auto' : '100%', // 使用100%自适应高度
     minHeight: props.config.isMinimized ? '60px' : `${props.config.size.height}px`,
     zIndex: props.config.zIndex,
     transition: 'all 0.3s ease',

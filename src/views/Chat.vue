@@ -99,7 +99,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 6px;
   gap: 16px;
   min-height: 0; /* 允许flex子项收缩 */
 }
