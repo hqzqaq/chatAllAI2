@@ -224,11 +224,17 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       }
     }
 
-    // Copilot - 聊天导航不重要
+    // Copilot - 聊天导航不重要，但登录相关页面是重要导航
     if (hostname.includes('copilot.microsoft.com')) {
       const currentPath = current.pathname
       const nextPath = next.pathname
 
+      // 如果导航到登录页面或Microsoft认证页面，这是重要导航
+      if (nextPath.includes('/login') || next.hostname.includes('login.microsoftonline.com')) {
+        return false
+      }
+
+      // 只有聊天页面之间的导航才不重要
       if (currentPath.includes('/chats') && nextPath.includes('/chats')) {
         return false
       }

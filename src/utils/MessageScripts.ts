@@ -33,7 +33,6 @@ function escapeJavaScriptString(str: string): string {
  */
 export function getSendMessageScript(providerId: string, message: string): string {
   const escapedMessage = escapeJavaScriptString(message)
-  console.log('providerId123', providerId)
   const scripts: Record<string, string> = {
     kimi: getKimiScript(escapedMessage),
     gemini: getGeminiScript(escapedMessage),
@@ -97,30 +96,7 @@ function getKimiScript(escapedMessage: string): string {
  * Gemini发送脚本
  */
 function getGeminiScript(escapedMessage: string): string {
-  return `
-    (function() {
-      const textarea = document.querySelector('textarea') ||
-                      document.querySelector('[contenteditable="true"]');
-      if (textarea) {
-        if (textarea.tagName === 'TEXTAREA') {
-          textarea.value = '${escapedMessage}';
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        } else {
-          textarea.textContent = '${escapedMessage}';
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-
-        // 查找发送按钮
-        const sendButton = document.querySelector('button[aria-label*="Send"]') ||
-                         document.querySelector('button:has(svg)');
-        if (sendButton && !sendButton.disabled) {
-          sendButton.click();
-        }
-        return true;
-      }
-      return false;
-    })()
-  `
+  return getDeepSeekScript(escapedMessage)
 }
 
 /**
@@ -382,24 +358,7 @@ function getQwenScript(escapedMessage: string): string {
  * Copilot发送脚本
  */
 function getCopilotScript(escapedMessage: string): string {
-  return `
-    (function() {
-      const textarea = document.querySelector('textarea') ||
-                      document.querySelector('.chat-input textarea');
-      if (textarea) {
-        textarea.value = '${escapedMessage}';
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-
-        const sendButton = document.querySelector('button[aria-label*="Send"]') ||
-                         document.querySelector('button:has(svg)');
-        if (sendButton && !sendButton.disabled) {
-          sendButton.click();
-        }
-        return true;
-      }
-      return false;
-    })()
-  `
+  return getDeepSeekScript(escapedMessage)
 }
 
 /**

@@ -43,9 +43,7 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     copilot: `
       // 检查Copilot的登录状态
-      !!(document.querySelector('[data-testid="user-menu"]') ||
-         document.querySelector('.user-profile') ||
-         document.querySelector('[aria-label*="Profile"]'))
+      !(document.querySelector('[alt="Profile image"]'))
     `
   }
 
