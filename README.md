@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- 🤖 支持多个AI模型同时对话（kimi、Gemini、DeepSeek、豆包、Qwen、Copilot）
+- 🤖 支持多个AI模型同时对话（kimi、Gork、DeepSeek、豆包、Qwen、Copilot）
 - 💬 统一输入框，一次输入多模型响应
 - 🎨 卡片式布局，可自由调整大小
 - 🔐 会话状态持久化，自动保持登录

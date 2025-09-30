@@ -156,7 +156,7 @@ export class WebViewService {
           return !isLoginPage;
         })()
       `,
-      gemini: `
+      gork: `
         (function() {
           const selectors = [
             '[data-ved]',
@@ -368,7 +368,7 @@ export class WebViewService {
           }
         })()
       `,
-      gemini: `
+      gork: `
         (function() {
           try {
             const textarea = document.querySelector('textarea') ||

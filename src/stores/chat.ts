@@ -81,10 +81,10 @@ export const useChatStore = defineStore('chat', () => {
       retryCount: 0
     },
     {
-      id: 'gemini',
-      name: 'Gemini',
-      url: 'https://aistudio.google.com/prompts/new_chat',
-      icon: '/icons/gemini.svg',
+      id: 'gork',
+      name: 'gork',
+      url: 'https://grok.com/',
+      icon: '/icons/gork.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -93,7 +93,7 @@ export const useChatStore = defineStore('chat', () => {
         isActive: false,
         lastActiveTime: new Date()
       },
-      webviewId: 'webview-gemini',
+      webviewId: 'webview-gork',
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0

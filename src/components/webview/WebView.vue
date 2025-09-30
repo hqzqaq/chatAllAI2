@@ -193,15 +193,18 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       }
     }
 
-    // Gemini - 对话相关导航不重要
-    if (hostname.includes('gemini.google.com')) {
+    // Grok - 对话页面内导航不重要，但其他导航重要
+    if (hostname.includes('grok.com')) {
       const currentPath = current.pathname
       const nextPath = next.pathname
 
-      // 对话页面内导航不重要
-      if (currentPath.includes('/app') && nextPath.includes('/app')) {
+      // 对话页面内导航不重要（不需要显示加载状态）
+      if (currentPath.includes('/c/') && nextPath.includes('/c/')) {
         return false
       }
+      
+      // 其他导航都是重要的（需要显示加载状态）
+      return false
     }
 
     // DeepSeek - 聊天导航不重要

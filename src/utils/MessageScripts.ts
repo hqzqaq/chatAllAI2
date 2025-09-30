@@ -35,7 +35,7 @@ export function getSendMessageScript(providerId: string, message: string): strin
   const escapedMessage = escapeJavaScriptString(message)
   const scripts: Record<string, string> = {
     kimi: getKimiScript(escapedMessage),
-    gemini: getGeminiScript(escapedMessage),
+    gork: getGorkScript(escapedMessage),
     deepseek: getDeepSeekScript(escapedMessage),
     doubao: getDouBaoScript(escapedMessage),
     qwen: getQwenScript(escapedMessage),
@@ -93,9 +93,9 @@ function getKimiScript(escapedMessage: string): string {
 }
 
 /**
- * Gemini发送脚本
+ * gork发送脚本
  */
-function getGeminiScript(escapedMessage: string): string {
+function getGorkScript(escapedMessage: string): string {
   return getDeepSeekScript(escapedMessage)
 }
 
@@ -425,7 +425,7 @@ function getGenericScript(escapedMessage: string): string {
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'gemini', 'deepseek', 'doubao', 'qwen', 'copilot']
+  return ['kimi', 'gork', 'deepseek', 'doubao', 'qwen', 'copilot']
 }
 
 /**

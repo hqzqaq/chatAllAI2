@@ -44,7 +44,7 @@
             <Connection />
           </el-icon>
           <h3>多AI集成</h3>
-          <p>支持kimi、Gemini、DeepSeek、豆包、Qwen、Copilot等主流AI模型</p>
+          <p>支持kimi、gork、DeepSeek、豆包、Qwen、Copilot等主流AI模型</p>
         </div>
 
         <div class="feature-card">

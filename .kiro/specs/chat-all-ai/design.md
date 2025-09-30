@@ -32,7 +32,7 @@ graph TB
     
     subgraph "WebView Processes"
         WV1[kimi WebView]
-        WV2[Gemini WebView]
+        WV2[gork WebView]
         WV3[DeepSeek WebView]
         WV4[豆包 WebView]
         WV5[Qwen WebView]
@@ -97,7 +97,7 @@ interface RendererComponents {
 // WebView组件
 interface WebViewComponents {
   kimiView: WebViewInstance;
-  geminiView: WebViewInstance;
+  gorkView: WebViewInstance;
   deepseekView: WebViewInstance;
   doubaoView: WebViewInstance;
   qwenView: WebViewInstance;
