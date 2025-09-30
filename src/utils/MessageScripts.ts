@@ -52,23 +52,43 @@ export function getSendMessageScript(providerId: string, message: string): strin
 function getKimiScript(escapedMessage: string): string {
   return `
     (function() {
-      const textarea = document.querySelector('textarea[placeholder*="Message"]') ||
-                      document.querySelector('#prompt-textarea') ||
-                      document.querySelector('textarea');
-      if (textarea) {
-        textarea.value = '${escapedMessage}';
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        function setKimiInputValue(text = '${escapedMessage}') {
+          const input = document.querySelector('[role="textbox"][contenteditable="true"]'); 
+          
+          if (input) { 
+              input.focus();
+              document.execCommand('selectAll', false, null);
+              document.execCommand('delete', false, null);
+              const success = document.execCommand('insertText', false, text);
+              if (success) {
+                  ['input', 'change', 'keydown', 'keyup', 'keypress', 'focus', 'blur'].forEach(eventType => {
+                      const event = new Event(eventType, { bubbles: true });
+                      input.dispatchEvent(event);
+                  });
+                  return '使用execCommand成功设置文本: ' + text;
+              }
+          } else {
+              return '未找到输入框'; 
+          }
+        } 
 
-        // 查找发送按钮
-        const sendButton = document.querySelector('[data-testid="send-button"]') ||
-                         document.querySelector('button[aria-label*="Send"]') ||
-                         document.querySelector('button:has(svg)');
-        if (sendButton && !sendButton.disabled) {
-          sendButton.click();
-        }
-        return true;
+    function sendKimiMessage(text = '${escapedMessage}') {
+        const result = setKimiInputValue(text);
+        console.log(result);
+        setTimeout(() => {
+            const sendButton = document.querySelector('[class="send-button"]')
+            
+            if (sendButton && !sendButton.disabled) {
+                sendButton.click();
+                console.log('已点击发送按钮');
+            } else {
+                console.error('未找到可用的发送按钮或按钮被禁用');
+                console.log('找到的按钮:', sendButton);
+            }
+        }, 500);
       }
-      return false;
+      sendKimiMessage('${escapedMessage}');
+      return true;
     })()
   `
 }

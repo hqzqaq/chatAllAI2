@@ -68,10 +68,15 @@ onMounted(() => {
   // 初始化聊天数据
   chatStore.initializeConversations()
 
-  // 初始化布局配置
+  // 初始化布局配置 - 先加载保存的配置，再确保所有provider都有配置
   const providerIds = providers.value.map((p) => p.id)
-  layoutStore.initializeCardConfigs(providerIds)
   layoutStore.loadLayoutConfig()
+  
+  // 检查是否所有provider都有卡片配置，如果没有则初始化
+  const missingProviders = providerIds.filter(id => !layoutStore.getCardConfig(id))
+  if (missingProviders.length > 0) {
+    layoutStore.initializeCardConfigs(missingProviders)
+  }
 
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)

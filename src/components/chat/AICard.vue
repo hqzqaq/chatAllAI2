@@ -36,6 +36,13 @@
           @click="openProxyDialog"
         />
         <el-button
+          :icon="Monitor"
+          size="small"
+          circle
+          @click="openDevTools"
+          title="打开控制台"
+        />
+        <el-button
           v-if="!config?.isMaximized"
           :icon="FullScreen"
           size="small"
@@ -238,7 +245,8 @@ import {
   Close,
   Rank,
   FullScreen,
-  Connection
+  Connection,
+  Monitor
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
@@ -352,6 +360,27 @@ const toggleMinimized = (): void => {
  */
 const toggleMaximized = (): void => {
   layoutStore.toggleCardMaximized(props.provider.id)
+}
+
+/**
+ * 打开WebView控制台
+ */
+const openDevTools = async(): Promise<void> => {
+  try {
+    if (window.electronAPI && window.electronAPI.openDevTools) {
+      await window.electronAPI.openDevTools(props.provider.webviewId)
+      ElMessage.success(`${props.provider.name} 控制台已打开`)
+    } else if (webViewRef.value?.$el?.openDevTools) {
+      // 直接调用WebView元素的openDevTools方法
+      webViewRef.value.$el.openDevTools()
+      ElMessage.success(`${props.provider.name} 控制台已打开`)
+    } else {
+      ElMessage.error('无法打开控制台：WebView未就绪')
+    }
+  } catch (error) {
+    console.error(`Failed to open devtools for ${props.provider.name}:`, error)
+    ElMessage.error(`打开 ${props.provider.name} 控制台失败`)
+  }
 }
 
 /**

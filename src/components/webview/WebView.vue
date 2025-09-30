@@ -296,7 +296,7 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
         }, 15 * 60 * 1000)
       }
 
-      // 设置定期检查登录状态（每30秒），特别是对于豆包
+      // 设置定期检查登录状态（每10秒）
       if (!loginCheckTimer.value) {
         loginCheckTimer.value = setInterval(() => {
           if (webviewElement.value && !isLoading.value) {

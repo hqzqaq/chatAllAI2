@@ -16,9 +16,8 @@ export function getLoginCheckScript(providerId: string): string {
   const scripts: Record<string, string> = {
     kimi: `
       // 检查是否存在用户头像或登录相关元素
-      !!(document.querySelector('[data-testid="profile-button"]') ||
-         document.querySelector('.flex.items-center.gap-2') ||
-         document.querySelector('[aria-label*="User"]'))
+      !!(document.querySelector("[class='user-name']") && 
+      document.querySelector("[class='user-name']").innerText != '登录')
     `,
     gemini: `
       // 检查Gemini的登录状态

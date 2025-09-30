@@ -106,6 +106,7 @@ export class IPCHandler extends EventEmitter {
     ipcMain.handle('refresh-webview', (event, webviewId) => this.handleRefreshWebView(webviewId))
     ipcMain.handle('refresh-all-webviews', () => this.handleRefreshAllWebViews())
     ipcMain.handle('load-webview', (event, data) => this.handleLoadWebView(data))
+    ipcMain.handle('open-devtools', (event, webviewId) => this.handleOpenDevTools(webviewId))
 
     // 应用控制
     this.handleInvoke(IPCChannel.APP_READY, this.handleAppReady.bind(this))
@@ -364,6 +365,50 @@ export class IPCHandler extends EventEmitter {
   private async handleLoadWebView(data: { webviewId: string; url: string }): Promise<void> {
     // 这里应该实现实际的WebView加载逻辑
     this.log(`Loading WebView ${data.webviewId} with URL:`, data.url)
+  }
+
+  /**
+   * 打开WebView控制台
+   */
+  private async handleOpenDevTools(webviewId: string): Promise<void> {
+    try {
+      this.log(`Opening DevTools for WebView: ${webviewId}`)
+
+      const mainWindow = this.windowManager.getMainWindow()
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        throw new Error('Main window not available')
+      }
+
+      // 执行JavaScript代码来打开WebView的控制台
+      const script = `
+        (function() {
+          try {
+            const webviewElement = document.querySelector('#${webviewId}-element');
+            if (webviewElement && webviewElement.openDevTools) {
+              webviewElement.openDevTools();
+              console.log('DevTools opened for WebView: ${webviewId}');
+              return true;
+            } else {
+              console.error('WebView element not found or does not support openDevTools: ${webviewId}');
+              return false;
+            }
+          } catch (error) {
+            console.error('Error opening DevTools:', error);
+            return false;
+          }
+        })()
+      `
+
+      const result = await mainWindow.webContents.executeJavaScript(script)
+      this.log(`DevTools open result for ${webviewId}:`, result)
+
+      if (!result) {
+        throw new Error('Failed to open DevTools - WebView may not be ready')
+      }
+    } catch (error) {
+      this.log(`Failed to open DevTools for WebView ${webviewId}:`, error)
+      throw error
+    }
   }
 
   /**

@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   refreshWebView: (webviewId: string) => ipcRenderer.invoke('refresh-webview', webviewId),
   refreshAllWebViews: () => ipcRenderer.invoke('refresh-all-webviews'),
   loadWebView: (webviewId: string, url: string) => ipcRenderer.invoke('load-webview', { webviewId, url }),
+  openDevTools: (webviewId: string) => ipcRenderer.invoke('open-devtools', webviewId),
 
   // 应用控制
   appReady: () => ipcRenderer.invoke(IPCChannel.APP_READY),
@@ -99,6 +100,7 @@ declare global {
       refreshWebView: (webviewId: string) => Promise<void>
       refreshAllWebViews: () => Promise<void>
       loadWebView: (webviewId: string, url: string) => Promise<void>
+      openDevTools: (webviewId: string) => Promise<void>
 
       // 应用控制
       appReady: () => Promise<any>
