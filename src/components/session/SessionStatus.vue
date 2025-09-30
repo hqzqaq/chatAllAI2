@@ -16,7 +16,7 @@
         v-for="provider in providers"
         :key="provider.id"
         class="session-item"
-        :class="{ 'logged-in': provider.isLoggedIn }"
+        :class="{ 'logged-in': sessionStates[provider.id] }"
       >
         <div class="provider-info">
           <img
@@ -29,10 +29,10 @@
 
         <div class="session-actions">
           <el-tag
-            :type="provider.isLoggedIn ? 'success' : 'info'"
+            :type="sessionStates[provider.id] ? 'success' : 'info'"
             size="small"
           >
-            {{ provider.isLoggedIn ? '已登录' : '未登录' }}
+            {{ sessionStates[provider.id] ? '已登录' : '未登录' }}
           </el-tag>
 
           <el-button-group size="small">
@@ -44,7 +44,7 @@
             </el-button>
 
             <el-button
-              v-if="provider.isLoggedIn"
+              v-if="sessionStates[provider.id]"
               :loading="savingStates[provider.id]"
               @click="saveSession(provider.id)"
             >
@@ -95,8 +95,13 @@ const loadingStates = ref<Record<string, boolean>>({})
 const savingStates = ref<Record<string, boolean>>({})
 const clearingStates = ref<Record<string, boolean>>({})
 
+// 响应式数据 - 会话状态
+const sessionStates = ref<Record<string, boolean>>({})
+
 // 计算属性
-const loggedInCount = computed(() => props.providers.filter((p) => p.isLoggedIn).length)
+const loggedInCount = computed(() => {
+  return Object.values(sessionStates.value).filter(state => state).length
+})
 
 const totalCount = computed(() => props.providers.length)
 
@@ -109,14 +114,17 @@ const checkSession = async(providerId: string): Promise<void> => {
   loadingStates.value[providerId] = true
 
   try {
-    const response = await window.electronAPI.checkSession({ providerId })
+    // 直接从本地文件加载会话数据
+    const loadResponse = await window.electronAPI.loadSession({ providerId })
+    console.log('loadSession response:', loadResponse)
 
-    if (response.exists && response.active) {
-      // 更新登录状态
-      chatStore.updateProviderLoginStatus(providerId, true)
+    if (loadResponse.exists && loadResponse.sessionData) {
+      // 成功加载会话数据，更新登录状态
+      sessionStates.value[providerId] = true
       ElMessage.success(`${getProviderName(providerId)} 会话有效`)
     } else {
-      chatStore.updateProviderLoginStatus(providerId, false)
+      // 无法加载会话数据，标记为未登录
+      sessionStates.value[providerId] = false
       ElMessage.info(`${getProviderName(providerId)} 未登录`)
     }
   } catch (error) {
@@ -164,7 +172,7 @@ const clearSession = async(providerId: string): Promise<void> => {
 
     if (response.success) {
       // 更新登录状态
-      chatStore.updateProviderLoginStatus(providerId, false)
+      sessionStates.value[providerId] = false
       ElMessage.success(`${getProviderName(providerId)} 会话已清除`)
     } else {
       ElMessage.error(`清除 ${getProviderName(providerId)} 会话失败`)
@@ -212,6 +220,8 @@ const initializeStates = (): void => {
     loadingStates.value[provider.id] = false
     savingStates.value[provider.id] = false
     clearingStates.value[provider.id] = false
+    // 初始化会话状态为false
+    sessionStates.value[provider.id] = false
   })
 }
 

@@ -203,7 +203,6 @@ const isSignificantNavigation = (newUrl: string): boolean => {
         return false
       }
       
-      // 其他导航都是重要的（需要显示加载状态）
       return false
     }
 

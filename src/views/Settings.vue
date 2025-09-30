@@ -196,7 +196,7 @@ const userPreferences = computed(() => appStore.userPreferences)
 const gridSettings = computed(() => layoutStore.gridSettings)
 const appVersion = computed(() => appStore.appVersion)
 const providers = computed(() => chatStore.providers)
-
+console.log(chatStore.providers)
 // 静态数据
 const techStack = [
   'Electron', 'Vue 3', 'TypeScript', 'Vite',

@@ -47,7 +47,7 @@ export class SessionManager extends EventEmitter {
   private encryptionKey: Buffer
 
   private encryptionConfig: EncryptionConfig = {
-    algorithm: 'aes-256-gcm',
+    algorithm: 'aes-256-cbc',
     keyLength: 32,
     ivLength: 16
   }
@@ -106,16 +106,42 @@ export class SessionManager extends EventEmitter {
     // 存储会话
     this.electronSessions.set(providerId, electronSession)
 
-    // 初始化会话数据
-    const sessionData: SessionData = {
-      providerId,
-      cookies: [],
-      localStorage: {},
-      sessionStorage: {},
-      lastAccess: new Date(),
-      isActive: false
+    // 检查是否已有会话文件存在
+    const hasExistingSession = await this.hasSession(providerId)
+    let sessionData: SessionData
+    
+    if (hasExistingSession) {
+      // 加载现有会话数据
+      const loadedSession = await this.loadSession(providerId)
+      if (loadedSession) {
+        sessionData = loadedSession
+        // 更新最后访问时间并标记为活跃
+        sessionData.lastAccess = new Date()
+        sessionData.isActive = true // 有会话文件存在，说明之前登录过
+      } else {
+        // 如果加载失败，创建新的会话数据
+        sessionData = {
+          providerId,
+          cookies: [],
+          localStorage: {},
+          sessionStorage: {},
+          lastAccess: new Date(),
+          isActive: false
+        }
+      }
+    } else {
+      // 创建新的会话数据
+      sessionData = {
+        providerId,
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        lastAccess: new Date(),
+        isActive: false
+      }
     }
 
+    // 确保会话数据正确设置到内存中
     this.sessions.set(providerId, sessionData)
 
     this.emit('session-created', { providerId })
@@ -170,13 +196,18 @@ export class SessionManager extends EventEmitter {
    */
   async saveSession(providerId: string): Promise<boolean> {
     try {
-      const electronSession = this.electronSessions.get(providerId)
+      console.log(`Starting to save session for ${providerId}`)
+      let electronSession = this.electronSessions.get(providerId)
+      
+      // 如果会话不存在，尝试创建会话
       if (!electronSession) {
-        throw new Error(`Session for provider ${providerId} not found`)
+        console.log(`Creating new session for ${providerId}`)
+        electronSession = await this.createProviderSession(providerId)
       }
 
       // 获取cookies
       const cookies = await electronSession.cookies.get({})
+      console.log(`Retrieved ${cookies.length} cookies for ${providerId}`)
 
       // 获取当前会话数据
       const sessionData = this.sessions.get(providerId) || {
@@ -194,13 +225,16 @@ export class SessionManager extends EventEmitter {
       sessionData.isActive = true
 
       // 加密并保存到文件
+      console.log(`Encrypting session data for ${providerId}`)
       const encryptedData = this.encryptData(sessionData)
       const filePath = join(this.dataPath, `${providerId}.session`)
+      console.log(`Writing session file to: ${filePath}, size: ${encryptedData.length} bytes`)
       await fs.writeFile(filePath, encryptedData)
 
       // 更新内存中的会话数据
       this.sessions.set(providerId, sessionData)
 
+      console.log(`Successfully saved session for ${providerId}`)
       this.emit('session-saved', { providerId })
       return true
     } catch (error) {
@@ -216,28 +250,40 @@ export class SessionManager extends EventEmitter {
   async loadSession(providerId: string): Promise<SessionData | null> {
     try {
       const filePath = join(this.dataPath, `${providerId}.session`)
+      console.log(`Loading session for ${providerId}, file path: ${filePath}`)
 
       // 检查文件是否存在
       try {
         await fs.access(filePath)
+        console.log(`Session file exists for ${providerId}`)
       } catch {
+        console.log(`Session file does not exist for ${providerId}`)
         return null // 文件不存在
       }
 
       // 读取并解密数据
       const encryptedData = await fs.readFile(filePath)
-      const sessionData = this.decryptData(encryptedData) as SessionData
+      console.log(`Read encrypted data for ${providerId}, size: ${encryptedData.length} bytes`)
+      
+      try {
+        const sessionData = this.decryptData(encryptedData) as SessionData
+        console.log(`Successfully decrypted session data for ${providerId}`)
 
-      // 验证数据完整性
-      if (!sessionData || sessionData.providerId !== providerId) {
-        throw new Error('Invalid session data')
+        // 验证数据完整性
+        if (!sessionData || sessionData.providerId !== providerId) {
+          console.error(`Invalid session data for ${providerId}`)
+          throw new Error('Invalid session data')
+        }
+
+        // 恢复会话
+        await this.restoreSession(providerId, sessionData)
+
+        this.emit('session-loaded', { providerId })
+        return sessionData
+      } catch (decryptError) {
+        console.error(`Failed to decrypt session data for ${providerId}:`, decryptError)
+        throw decryptError
       }
-
-      // 恢复会话
-      await this.restoreSession(providerId, sessionData)
-
-      this.emit('session-loaded', { providerId })
-      return sessionData
     } catch (error) {
       console.error(`Failed to load session for ${providerId}:`, error)
       this.emit('session-load-error', { providerId, error })
@@ -272,6 +318,10 @@ export class SessionManager extends EventEmitter {
         console.warn(`Failed to restore cookie ${cookie.name}:`, error)
       }
     }
+
+    // 更新会话状态为活跃，并更新最后访问时间
+    sessionData.isActive = true
+    sessionData.lastAccess = new Date()
 
     // 更新内存中的会话数据
     this.sessions.set(providerId, sessionData)
@@ -325,9 +375,32 @@ export class SessionManager extends EventEmitter {
   /**
    * 检查会话是否活跃
    */
-  isSessionActive(providerId: string): boolean {
+  async isSessionActive(providerId: string): Promise<boolean> {
     const sessionData = this.sessions.get(providerId)
-    return sessionData?.isActive || false
+    
+    // 如果内存中有活跃状态，直接返回
+    if (sessionData?.isActive) {
+      return true
+    }
+    
+    // 检查会话文件是否存在
+    const hasSessionFile = await this.hasSession(providerId)
+    if (!hasSessionFile) {
+      return false
+    }
+    
+    // 如果会话文件存在但内存中没有数据，尝试加载会话
+    if (!sessionData) {
+      const loadedSession = await this.loadSession(providerId)
+      if (loadedSession) {
+        // 检查会话是否过期
+        return !this.isSessionExpired(providerId)
+      }
+      return false
+    }
+    
+    // 检查会话是否过期
+    return !this.isSessionExpired(providerId)
   }
 
   /**
@@ -416,7 +489,7 @@ export class SessionManager extends EventEmitter {
    */
   private encryptData(data: any): Buffer {
     const iv = crypto.randomBytes(this.encryptionConfig.ivLength)
-    const cipher = crypto.createCipher(this.encryptionConfig.algorithm, this.encryptionKey)
+    const cipher = crypto.createCipheriv(this.encryptionConfig.algorithm, this.encryptionKey, iv)
 
     let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex')
     encrypted += cipher.final('hex')
@@ -432,9 +505,9 @@ export class SessionManager extends EventEmitter {
     const iv = encryptedBuffer.slice(0, this.encryptionConfig.ivLength)
     const encrypted = encryptedBuffer.slice(this.encryptionConfig.ivLength)
 
-    const decipher = crypto.createDecipher(this.encryptionConfig.algorithm, this.encryptionKey)
+    const decipher = crypto.createDecipheriv(this.encryptionConfig.algorithm, this.encryptionKey, iv)
 
-    let decrypted = decipher.update(encrypted, undefined, 'utf8')
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8')
     decrypted += decipher.final('utf8')
 
     return JSON.parse(decrypted)

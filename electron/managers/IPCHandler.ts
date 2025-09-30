@@ -614,7 +614,7 @@ export class IPCHandler extends EventEmitter {
    */
   private async handleSessionCheck(data: { providerId: string }): Promise<{ exists: boolean; active: boolean }> {
     const exists = await this.sessionManager.hasSession(data.providerId)
-    const active = this.sessionManager.isSessionActive(data.providerId)
+    const active = await this.sessionManager.isSessionActive(data.providerId)
     return { exists, active }
   }
 
