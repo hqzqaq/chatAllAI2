@@ -242,6 +242,11 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       }
     }
 
+    // yuanbao - 聊天导航不重要
+    if (hostname.includes('yuanbao.tencent.com')) {
+      return false
+    }
+
     // GLM - 聊天导航不重要
     if (hostname.includes('chatglm.cn')) {
       return false

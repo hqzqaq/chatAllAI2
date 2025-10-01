@@ -15,14 +15,14 @@
 function escapeJavaScriptString(str: string): string {
   // 使用更安全的转义方式，确保字符串在JavaScript中安全使用
   return str
-    .replace(/\\/g, '\\\\')  // 转义反斜杠
-    .replace(/\'/g, "\\'")     // 转义单引号
-    .replace(/"/g, '\\"')     // 转义双引号
-    .replace(/\n/g, '\\n')     // 转义换行符
-    .replace(/\r/g, '\\r')     // 转义回车符
-    .replace(/\t/g, '\\t')     // 转义制表符
-    .replace(/\f/g, '\\f')     // 转义换页符
-    .replace(/\v/g, '\\v');    // 转义垂直制表符
+    .replace(/\\/g, '\\\\') // 转义反斜杠
+    .replace(/\'/g, "\\'") // 转义单引号
+    .replace(/"/g, '\\"') // 转义双引号
+    .replace(/\n/g, '\\n') // 转义换行符
+    .replace(/\r/g, '\\r') // 转义回车符
+    .replace(/\t/g, '\\t') // 转义制表符
+    .replace(/\f/g, '\\f') // 转义换页符
+    .replace(/\v/g, '\\v') // 转义垂直制表符
 }
 
 /**
@@ -40,7 +40,8 @@ export function getSendMessageScript(providerId: string, message: string): strin
     doubao: getDouBaoScript(escapedMessage),
     qwen: getQwenScript(escapedMessage),
     copilot: getCopilotScript(escapedMessage),
-    glm: getGLMScript(escapedMessage)
+    glm: getGLMScript(escapedMessage),
+    yuanbao: getYuanBaoScript(escapedMessage)
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -88,6 +89,53 @@ function getKimiScript(escapedMessage: string): string {
         }, 500);
       }
       sendKimiMessage('${escapedMessage}');
+      return true;
+    })()
+  `
+}
+
+/**
+ * yuanbao发送脚本
+ */
+function getYuanBaoScript(escapedMessage: string): string {
+  return `
+    (function() {
+      function setYuanbaoInputValue(text = '${escapedMessage}') {
+        const input = document.querySelector('.ql-editor');
+    
+        if (input) {
+          input.focus();
+          document.execCommand('selectAll', false, null);
+          document.execCommand('delete', false, null);
+          const success = document.execCommand('insertText', false, text);
+          if (success) {
+            ['input', 'change', 'keydown', 'keyup', 'keypress', 'focus', 'blur'].forEach(eventType => {
+              const event = new Event(eventType, { bubbles: true });
+              input.dispatchEvent(event);
+            });
+            return '使用execCommand成功设置文本: ' + text;
+          }
+        } else {
+          return '未找到输入框';
+        }
+      }
+    
+      function sendYuanbaoMessage(text = '${escapedMessage}') {
+        const result = setYuanbaoInputValue(text);
+        console.log(result);
+        setTimeout(() => {
+          const sendButton = document.querySelector('#yuanbao-send-btn')
+    
+          if (sendButton && !sendButton.disabled) {
+            sendButton.click();
+            console.log('已点击发送按钮');
+          } else {
+            console.error('未找到可用的发送按钮或按钮被禁用');
+            console.log('找到的按钮:', sendButton);
+          }
+        }, 500);
+      }
+      sendYuanbaoMessage('${escapedMessage}');
       return true;
     })()
   `
@@ -433,7 +481,7 @@ function getGenericScript(escapedMessage: string): string {
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'gork', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm']
+  return ['kimi', 'gork', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao']
 }
 
 /**

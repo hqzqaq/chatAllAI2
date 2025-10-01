@@ -133,6 +133,24 @@ export const useChatStore = defineStore('chat', () => {
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0
+    },
+    {
+      id: 'yuanbao',
+      name: 'YuanBao',
+      url: 'https://yuanbao.tencent.com/chat',
+      icon: '/icons/yuanbao.svg',
+      isLoggedIn: false,
+      sessionData: {
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        isActive: false,
+        lastActiveTime: new Date()
+      },
+      webviewId: 'webview-yuanbao',
+      isEnabled: false,
+      loadingState: 'idle',
+      retryCount: 0
     }
   ])
 
