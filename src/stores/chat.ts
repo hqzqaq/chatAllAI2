@@ -30,7 +30,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'doubao',
       name: '豆包',
       url: 'https://www.doubao.com',
-      icon: '/icons/doubao.svg',
+      icon: '/icons/doubao.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -48,7 +48,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'qwen',
       name: 'Qwen',
       url: 'https://tongyi.com',
-      icon: '/icons/qwen.svg',
+      icon: '/icons/qwen.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
