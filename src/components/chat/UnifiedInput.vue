@@ -557,10 +557,28 @@ onUnmounted(() => {
 :deep(.el-textarea__inner) {
   resize: vertical;
   min-height: 80px;
+  /* 修复输入法问题：确保输入框有正确的布局和高度 */
+  height: auto !important;
+  min-height: 80px !important;
+  line-height: 1.5;
 }
 
 :deep(.el-textarea__inner:focus) {
   border-color: var(--el-color-primary);
+}
+
+/* 修复输入法兼容性问题 */
+:deep(.el-textarea) {
+  position: relative;
+}
+
+:deep(.el-textarea .el-textarea__inner) {
+  /* 确保输入框有正确的盒模型 */
+  box-sizing: border-box;
+  /* 修复输入法输入时的显示问题 */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
 @keyframes rotate {

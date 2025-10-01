@@ -285,8 +285,9 @@ const cardStyle = computed(() => {
   
   return {
     width: `${props.config.size.width}px`,
-    height: props.config.isMinimized ? 'auto' : '100%', // 使用100%自适应高度
-    minHeight: props.config.isMinimized ? '60px' : `${props.config.size.height}px`,
+    // 修复输入法问题：使用min-height而不是固定height，避免影响输入框
+    height: props.config.isMinimized ? 'auto' : `${props.config.size.height}px`,
+    minHeight: props.config.isMinimized ? 'auto' : '0',
     zIndex: props.config.zIndex,
     transition: 'all 0.3s ease',
     visibility: isHidden ? 'hidden' : 'visible',
@@ -308,7 +309,7 @@ const shouldShowWebView = computed(() =>
 
 const webviewWidth = computed(() => props.config?.size.width || 800)
 
-const webviewHeight = computed(() => (props.config?.size.height || 600) - 120 // 减去头部高度
+const webviewHeight = computed(() => (props.config?.size.height || 800) - 120 // 增加默认高度到800px，减去头部高度
 )
 
 /**
@@ -530,7 +531,7 @@ const startResize = (event: MouseEvent): void => {
     const deltaY = e.clientY - startY
 
     const newWidth = Math.max(startWidth + deltaX, 300)
-    const newHeight = Math.max(startHeight + deltaY, 200)
+    const newHeight = Math.max(startHeight + deltaY, 200) // 最小高度保持200px，但用户可以拖拽到更大高度
 
     layoutStore.updateCardSize(props.provider.id, {
       width: newWidth,
@@ -795,10 +796,11 @@ onMounted(() => {
 
 .webview-container {
   position: relative;
-  overflow: hidden;
+  overflow: auto; /* 改为auto以支持滚动 */
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 300px; /* 设置最小高度 */
 }
 
 .webview-placeholder {

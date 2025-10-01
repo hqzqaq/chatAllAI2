@@ -14,7 +14,7 @@ export const useLayoutStore = defineStore('layout', () => {
     columns: 3,
     gap: 16,
     minCardWidth: 300,
-    minCardHeight: 200 // 设置较小的最小高度，让卡片可以自适应
+    minCardHeight: 600 // 增加最小高度到400px，让卡片有更大的显示空间
   })
 
   // 窗口尺寸
@@ -32,7 +32,7 @@ export const useLayoutStore = defineStore('layout', () => {
 
   const cardWidth = computed(() => (availableWidth.value - gridSettings.value.gap * (gridSettings.value.columns - 1)) / gridSettings.value.columns)
 
-  const cardHeight = computed(() => gridSettings.value.minCardHeight)
+  const cardHeight = computed(() => Math.max(gridSettings.value.minCardHeight, 600)) // 确保卡片高度至少为400px
 
   /**
      * 初始化卡片配置
