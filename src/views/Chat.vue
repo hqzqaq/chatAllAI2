@@ -69,6 +69,9 @@ onMounted(() => {
   // 初始化聊天数据
   chatStore.initializeConversations()
 
+  // 立即更新窗口大小，确保初始布局计算正确
+  layoutStore.updateWindowSize(window.innerWidth, window.innerHeight)
+
   // 初始化布局配置 - 先加载保存的配置，再确保所有provider都有配置
   const providerIds = providers.value.map((p) => p.id)
   layoutStore.loadLayoutConfig()
@@ -78,6 +81,9 @@ onMounted(() => {
   if (missingProviders.length > 0) {
     layoutStore.initializeCardConfigs(missingProviders)
   }
+
+  // 再次重新计算布局，确保所有卡片正确显示
+  layoutStore.recalculateLayout()
 
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
@@ -122,6 +128,9 @@ onUnmounted(() => {
   max-width: 100%;
   min-width: 300px; /* 最小宽度 */
   height: 100%; /* 根据内容自适应高度 */
+  /* 确保卡片在网格中正确显示 */
+  grid-column: auto;
+  grid-row: auto;
 }
 
 /* 响应式布局 */

@@ -30,7 +30,10 @@ export const useLayoutStore = defineStore('layout', () => {
   const availableWidth = computed(() => windowSize.value.width - gridSettings.value.gap * 2)
   const availableHeight = computed(() => windowSize.value.height - gridSettings.value.gap * 2)
 
-  const cardWidth = computed(() => (availableWidth.value - gridSettings.value.gap * (gridSettings.value.columns - 1)) / gridSettings.value.columns)
+  const cardWidth = computed(() => {
+    const available = availableWidth.value - gridSettings.value.gap * 2 // 减去左右边距
+    return Math.max((available - gridSettings.value.gap * (gridSettings.value.columns - 1)) / gridSettings.value.columns, gridSettings.value.minCardWidth)
+  })
 
   const cardHeight = computed(() => Math.max(gridSettings.value.minCardHeight, 600)) // 确保卡片高度至少为400px
 
