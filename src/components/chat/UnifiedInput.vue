@@ -377,7 +377,7 @@ onUnmounted(() => {
 .provider-checkboxes {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 30px;
+  column-gap: 20px;
   row-gap: 8px;
   align-items: start;
 }
@@ -432,11 +432,11 @@ onUnmounted(() => {
 
 /* iOS风格选中状态 */
 :deep(.provider-checkbox.is-checked .provider-option) {
-  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
-  border-color: #007AFF;
+  background: linear-gradient(135deg, #4A90E2 0%, #7B68EE 100%);
+  border-color: #4A90E2;
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
 }
 
 /* iOS风格悬停效果 */
@@ -448,7 +448,7 @@ onUnmounted(() => {
 
 /* iOS风格选中状态下的图标和文字 */
 :deep(.provider-checkbox.is-checked .provider-option .provider-icon-small) {
-  filter: brightness(0) invert(1);
+  /* 移除图标变白效果，保持原色 */
 }
 
 :deep(.provider-checkbox.is-checked .provider-option .provider-name) {
