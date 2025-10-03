@@ -46,13 +46,14 @@ export function getLoginCheckScript(providerId: string): string {
     `,
      glm: `
       // 检查GLM的登录状态
-      !(document.querySelector("[class='login-btn']") && 
-      document.querySelector("[class='login-btn']").textContent != '登录')
-    `,
+      !((document.querySelector(".login-btn") && 
+      document.querySelector(".login-btn").textContent === '登录') ||
+      (document.querySelector(".submit-btn").textContent === '登录'))
+      `,
     yuanbao: `
       // 检查yuanbao的登录状态
       !(document.querySelector('.agent-dialogue__tool__login') && 
-      (document.querySelector('.agent-dialogue__tool__login').textContent != '登录'))
+      (document.querySelector('.agent-dialogue__tool__login').textContent === '登录'))
     `
   }
 

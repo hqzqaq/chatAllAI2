@@ -175,6 +175,7 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       if (/^\/c\/[a-f0-9-]+/.test(currentPath) && /^\/c\/[a-f0-9-]+/.test(nextPath)) {
         return false
       }
+      return false
     }
 
     // 豆包 - 聊天相关的导航不重要
@@ -191,6 +192,7 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       if (/\/chat\/[a-f0-9-]+/.test(currentPath) && /\/chat\/[a-f0-9-]+/.test(nextPath)) {
         return false
       }
+      return false
     }
 
     // Grok - 对话页面内导航不重要，但其他导航重要
@@ -258,11 +260,11 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       return false
     }
 
-    return true // 其他情况认为是重要导航
+    return false // 其他情况认为是重要导航
   } catch (error) {
     console.warn(`Failed to parse URLs for navigation check: ${error}`)
     // URL解析失败，保守起见认为是重要导航
-    return true
+    return false
   }
 }
 
