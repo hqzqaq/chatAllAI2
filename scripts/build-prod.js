@@ -31,7 +31,7 @@ viteBuild.on('close', (code) => {
   
   // 构建Electron应用
   console.log('🔧 构建Electron应用...')
-  const electronBuild = spawn('npx', ['electron-builder'], {
+  const electronBuild = spawn('npx', ['electron-builder', '--publish=never'], {
     stdio: 'inherit',
     shell: true,
     cwd: process.cwd()

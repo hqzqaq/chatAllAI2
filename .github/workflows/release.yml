@@ -27,6 +27,7 @@ jobs:
       run: npm run build:win
       env:
         NODE_ENV: production
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Upload Windows artifacts
       uses: actions/upload-artifact@v4
@@ -56,6 +57,7 @@ jobs:
       run: npm run build:mac
       env:
         NODE_ENV: production
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Upload macOS artifacts
       uses: actions/upload-artifact@v4
