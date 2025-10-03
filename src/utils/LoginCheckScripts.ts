@@ -28,10 +28,8 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     deepseek: `
       // 检查DeepSeek的登录状态
-      !!(document.querySelector('.user-avatar') ||
-         document.querySelector('.login-user') ||
-         document.querySelector('[class*="avatar"]') ||
-         document.querySelector('.ds-icon'))
+      !(document.querySelector('.ds-sign-up-form__register-button') && 
+      document.querySelector('.ds-sign-up-form__register-button').textContent.trim() === '登录')
     `,
     doubao: `
       // 检查豆包的登录状态
