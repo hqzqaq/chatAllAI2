@@ -100,6 +100,7 @@ export class IPCHandler extends EventEmitter {
     ipcMain.handle('maximize-window', this.handleMaximizeWindow.bind(this))
     ipcMain.handle('unmaximize-window', this.handleUnmaximizeWindow.bind(this))
     ipcMain.handle('is-maximized', this.handleIsMaximized.bind(this))
+    ipcMain.handle('toggle-fullscreen', this.handleToggleFullScreen.bind(this))
 
     // WebView管理
     ipcMain.handle('send-message-to-webview', (event, data) => this.handleSendMessageToWebView(data))
@@ -282,6 +283,13 @@ export class IPCHandler extends EventEmitter {
   private async handleIsMaximized(): Promise<boolean> {
     const window = this.windowManager.getMainWindow()
     return window ? window.isMaximized() : false
+  }
+
+  /**
+   * 切换全屏状态
+   */
+  private async handleToggleFullScreen(): Promise<void> {
+    this.windowManager.toggleFullScreen('main')
   }
 
   /**

@@ -5,6 +5,8 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "node scripts/dev.js",
+    "prod": "node scripts/prod.js",
+    "build:prod": "node scripts/build-prod.js",
     "dev:vite": "vite",
     "build": "vite build && electron-builder",
     "build:mac": "vite build && electron-builder --mac",
@@ -68,7 +70,8 @@
     "files": [
       "dist-electron/**/*",
       "dist/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "package.json"
     ],
     "mac": {
       "category": "public.app-category.productivity",
@@ -80,7 +83,8 @@
             "arm64"
           ]
         }
-      ]
+      ],
+      "icon": "public/icons/chatallai.png"
     },
     "win": {
       "target": [
@@ -90,7 +94,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "public/icons/chatallai.png"
     },
     "nsis": {
       "oneClick": false,

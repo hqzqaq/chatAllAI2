@@ -3,7 +3,7 @@
  * 负责管理应用的所有窗口实例
  */
 
-import { BrowserWindow, BrowserWindowConstructorOptions, screen } from 'electron'
+import { BrowserWindow, BrowserWindowConstructorOptions, screen, app } from 'electron'
 import { join } from 'path'
 import { isDev } from '../utils'
 import { EventEmitter } from 'events'
@@ -49,6 +49,8 @@ export class WindowManager extends EventEmitter {
    * 创建主窗口
    */
   async createMainWindow(): Promise<BrowserWindow> {
+    const isDev = process.env.NODE_ENV === 'development'
+    
     const config: WindowConfig = {
       id: 'main',
       width: 1400,
@@ -65,11 +67,21 @@ export class WindowManager extends EventEmitter {
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       show: false,
-      persistent: true
+      persistent: true,
+      icon: join(__dirname, '../../public/icons/chatallai.png'),
+      // 开发环境显示菜单栏，生产环境隐藏
+      autoHideMenuBar: !isDev,
+      // 开发环境显示窗口框架，生产环境隐藏窗口框架（无边框窗口）
+      frame: isDev
     }
 
     const window = await this.createWindow(config)
     this.mainWindowId = 'main'
+
+    // 开发环境下自动打开开发者工具
+    if (isDev) {
+      window.webContents.openDevTools()
+    }
 
     return window
   }
@@ -193,6 +205,23 @@ export class WindowManager extends EventEmitter {
     }
 
     this.emit('window-unmaximized', { id })
+    return true
+  }
+
+  /**
+   * 切换全屏状态
+   */
+  toggleFullScreen(id: string): boolean {
+    const window = this.getWindow(id)
+    if (!window) return false
+
+    if (window.isFullScreen()) {
+      window.setFullScreen(false)
+    } else {
+      window.setFullScreen(true)
+    }
+
+    this.emit('window-fullscreen-toggled', { id, isFullScreen: window.isFullScreen() })
     return true
   }
 
@@ -406,18 +435,24 @@ export class WindowManager extends EventEmitter {
         await window.loadURL(urlOrRoute)
       } else {
         // 如果是应用路由
-        const baseUrl = isDev ? 'http://localhost:5173' : `file://${join(__dirname, '../../dist/index.html')}`
+        const isDev = process.env.NODE_ENV === 'development'
+        // 动态获取输出目录
+        const outDir = process.env.VITE_OUT_DIR || 'dist'
+        const baseUrl = isDev ? 'http://localhost:5173' : `file://${join(app.getAppPath(), outDir, '/index.html')}`
         const fullUrl = urlOrRoute.startsWith('/') ? `${baseUrl}#${urlOrRoute}` : `${baseUrl}#/${urlOrRoute}`
         await window.loadURL(fullUrl)
       }
     } else {
       // 加载默认页面
+      const isDev = process.env.NODE_ENV === 'development'
       if (isDev) {
         await window.loadURL('http://localhost:5173')
-        // 开发环境下打开开发者工具
-        window.webContents.openDevTools()
       } else {
-        await window.loadFile(join(__dirname, '../../dist/index.html'))
+        // 动态获取输出目录
+        const outDir = process.env.VITE_OUT_DIR || 'dist'
+        // 生产环境下使用app.getAppPath()获取应用安装路径
+        const appPath = app.getAppPath()
+        await window.loadFile(join(appPath, outDir, '/index.html'))
       }
     }
   }

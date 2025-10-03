@@ -54,7 +54,12 @@ export class SessionManager extends EventEmitter {
 
   constructor() {
     super()
-    this.dataPath = join(app.getPath('userData'), 'sessions')
+    // 为开发环境和生产环境使用不同的会话存储路径
+    const isDev = process.env.NODE_ENV === 'development'
+    const basePath = isDev ? 
+      join(app.getPath('userData'), 'dev-sessions') : 
+      join(app.getPath('userData'), 'sessions')
+    this.dataPath = basePath
     this.encryptionKey = this.generateEncryptionKey()
     this.initializeDataDirectory()
   }
@@ -74,7 +79,10 @@ export class SessionManager extends EventEmitter {
    * 生成加密密钥
    */
   private generateEncryptionKey(): Buffer {
-    const keyPath = join(app.getPath('userData'), 'session.key')
+    // 为开发环境和生产环境使用不同的密钥文件
+    const isDev = process.env.NODE_ENV === 'development'
+    const keyFileName = isDev ? 'dev-session.key' : 'session.key'
+    const keyPath = join(app.getPath('userData'), keyFileName)
 
     try {
       // 尝试读取现有密钥

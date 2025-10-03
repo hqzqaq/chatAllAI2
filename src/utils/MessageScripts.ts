@@ -163,7 +163,7 @@ function getDeepSeekScript(escapedMessage: string): string {
     (function() {
       // --- Configuration ---
       const CHAT_INPUT_SELECTOR = 'textarea';
-      const INPUT_SEND_DELAY_MS = 200;
+      const INPUT_SEND_DELAY_MS = 500;
 
       // --- Input Handling ---
       function findChatInput() {

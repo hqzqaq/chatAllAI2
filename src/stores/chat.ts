@@ -12,7 +12,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'deepseek',
       name: 'DeepSeek',
       url: 'https://chat.deepseek.com',
-      icon: '/icons/deepseek.svg',
+      icon: './icons/deepseek.svg',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -30,7 +30,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'doubao',
       name: '豆包',
       url: 'https://www.doubao.com',
-      icon: '/icons/doubao.png',
+      icon: './icons/doubao.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -48,7 +48,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'qwen',
       name: 'Qwen',
       url: 'https://tongyi.com',
-      icon: '/icons/qwen.png',
+      icon: './icons/qwen.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -66,7 +66,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'kimi',
       name: 'kimi',
       url: 'https://www.kimi.com/',
-      icon: '/icons/kimi.png',
+      icon: './icons/kimi.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -84,7 +84,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'gork',
       name: 'gork',
       url: 'https://grok.com/',
-      icon: '/icons/gork.png',
+      icon: './icons/grok.png',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -102,7 +102,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'copilot',
       name: 'Copilot',
       url: 'https://copilot.microsoft.com',
-      icon: '/icons/copilot.svg',
+      icon: './icons/copilot.svg',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -120,7 +120,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'glm',
       name: 'GLM',
       url: 'https://chatglm.cn/main/alltoolsdetail?lang=zh',
-      icon: '/icons/glm.svg',
+      icon: './icons/glm.svg',
       isLoggedIn: false,
       sessionData: {
         cookies: [],
@@ -138,7 +138,7 @@ export const useChatStore = defineStore('chat', () => {
       id: 'yuanbao',
       name: 'YuanBao',
       url: 'https://yuanbao.tencent.com/chat',
-      icon: '/icons/yuanbao.svg',
+      icon: './icons/yuanbao.svg',
       isLoggedIn: false,
       sessionData: {
         cookies: [],

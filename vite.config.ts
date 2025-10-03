@@ -4,6 +4,9 @@ import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
 import { resolve } from 'path'
 
+// 动态输出目录
+const outDir = process.env.VITE_OUT_DIR || 'dist'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -60,7 +63,7 @@ export default defineConfig({
     host: true
   },
   build: {
-    outDir: 'dist',
+    outDir: outDir,
     assetsDir: 'assets',
     sourcemap: false,
     minify: false,

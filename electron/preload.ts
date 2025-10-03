@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
   unmaximizeWindow: () => ipcRenderer.invoke('unmaximize-window'),
   isMaximized: () => ipcRenderer.invoke('is-maximized'),
+  toggleFullScreen: () => ipcRenderer.invoke('toggle-fullscreen'),
 
   // WebView管理
   sendMessageToWebView: (webviewId: string, message: string) => ipcRenderer.invoke('send-message-to-webview', { webviewId, message }),
@@ -94,6 +95,7 @@ declare global {
       maximizeWindow: () => Promise<void>
       unmaximizeWindow: () => Promise<void>
       isMaximized: () => Promise<boolean>
+      toggleFullScreen: () => Promise<void>
 
       // WebView管理
       sendMessageToWebView: (webviewId: string, message: string) => Promise<void>

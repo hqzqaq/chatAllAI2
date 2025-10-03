@@ -66,6 +66,12 @@
           @click="minimizeWindow"
         />
         <el-button
+          :icon="FullScreen"
+          circle
+          size="small"
+          @click="toggleFullScreen"
+        />
+        <el-button
           :icon="Close"
           circle
           size="small"
@@ -88,7 +94,8 @@ import {
   Sunny,
   Moon,
   Minus,
-  Close
+  Close,
+  FullScreen
 } from '@element-plus/icons-vue'
 import { useAppStore, useChatStore } from '../../stores'
 
@@ -134,6 +141,15 @@ const minimizeWindow = (): void => {
 const closeWindow = (): void => {
   if (window.electronAPI) {
     window.electronAPI.closeWindow()
+  }
+}
+
+/**
+ * 切换全屏状态
+ */
+const toggleFullScreen = (): void => {
+  if (window.electronAPI) {
+    window.electronAPI.toggleFullScreen()
   }
 }
 </script>
