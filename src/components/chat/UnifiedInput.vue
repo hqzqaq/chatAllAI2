@@ -375,16 +375,35 @@ onUnmounted(() => {
 }
 
 .provider-checkboxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 30px;
+  row-gap: 8px;
   align-items: start;
 }
 
 .provider-checkbox {
   margin: 0;
-  width: 100%;
   min-height: 60px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.provider-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 2px solid #e5e5ea;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+  min-width: 140px;
+  max-width: 240px;
+  box-sizing: border-box;
 }
 
 /* iOS风格复选框样式 */
@@ -485,18 +504,20 @@ onUnmounted(() => {
 
 /* 响应式布局优化 */
 @media (max-width: 1200px) {
-  .provider-checkboxes {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  .provider-option {
+    min-width: 130px;
+    max-width: 200px;
   }
 }
 
 @media (max-width: 768px) {
   .provider-checkboxes {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 6px;
   }
   
   .provider-option {
+    min-width: 120px;
+    max-width: 180px;
     padding: 10px 12px;
     gap: 8px;
   }
@@ -518,11 +539,12 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .provider-checkboxes {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 4px;
   }
   
   .provider-option {
+    min-width: 110px;
+    max-width: 160px;
     padding: 8px 10px;
     gap: 6px;
   }
@@ -589,7 +611,7 @@ onUnmounted(() => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .provider-checkboxes {
-    grid-template-columns: 1fr;
+    justify-content: center;
   }
   
   .model-selector {
