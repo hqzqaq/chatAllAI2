@@ -48,7 +48,7 @@ export function getLoginCheckScript(providerId: string): string {
       // 检查GLM的登录状态
       !((document.querySelector(".login-btn") && 
       document.querySelector(".login-btn").textContent === '登录') ||
-      (document.querySelector(".submit-btn").textContent === '登录'))
+      (document.querySelector(".submit-btn") && document.querySelector(".submit-btn").textContent === '登录'))
       `,
     yuanbao: `
       // 检查yuanbao的登录状态
