@@ -214,6 +214,7 @@ const isSignificantNavigation = (newUrl: string): boolean => {
       if (currentPath.includes('/chat') && nextPath.includes('/chat')) {
         return false
       }
+      return false
     }
 
     // Qwen - 对话导航不重要

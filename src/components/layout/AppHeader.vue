@@ -163,15 +163,26 @@ const toggleFullScreen = (): void => {
   padding: 0 20px;
   background-color: var(--el-bg-color);
   border-bottom: 1px solid var(--el-border-color);
-  -webkit-app-region: drag;
 }
 
-.header-left,
-.header-center,
+.header-center {
+  display: flex;
+  align-items: center;
+  -webkit-app-region: drag; /* 禁止拖动 */
+  pointer-events: auto; /* ✅ 允许点击 */
+}
 .header-right {
   display: flex;
   align-items: center;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag; /* 禁止拖动 */
+  pointer-events: auto; /* ✅ 允许点击 */
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  -webkit-app-region: drag; /* 允许拖动 */
+  pointer-events: auto; /* ✅ 允许点击 */
 }
 
 .app-title {
