@@ -10,25 +10,34 @@
     </div>
 
     <div class="header-center">
-      <el-menu
-        :default-active="activeRoute"
-        mode="horizontal"
-        :ellipsis="false"
-        @select="handleMenuSelect"
-      >
-        <el-menu-item index="/">
-          <el-icon><House /></el-icon>
-          <span>首页</span>
-        </el-menu-item>
-        <el-menu-item index="/chat">
-          <el-icon><ChatDotRound /></el-icon>
-          <span>对话</span>
-        </el-menu-item>
-        <el-menu-item index="/settings">
-          <el-icon><Setting /></el-icon>
-          <span>设置</span>
-        </el-menu-item>
-      </el-menu>
+      <!-- 左侧空白区域 - 可拖动 -->
+      <div class="drag-area left-drag-area"></div>
+      
+      <!-- 菜单区域 - 不可拖动 -->
+      <div class="menu-container">
+        <el-menu
+          :default-active="activeRoute"
+          mode="horizontal"
+          :ellipsis="false"
+          @select="handleMenuSelect"
+        >
+          <el-menu-item index="/">
+            <el-icon><House /></el-icon>
+            <span>首页</span>
+          </el-menu-item>
+          <el-menu-item index="/chat">
+            <el-icon><ChatDotRound /></el-icon>
+            <span>对话</span>
+          </el-menu-item>
+          <el-menu-item index="/settings">
+            <el-icon><Setting /></el-icon>
+            <span>设置</span>
+          </el-menu-item>
+        </el-menu>
+      </div>
+      
+      <!-- 右侧空白区域 - 可拖动 -->
+      <div class="drag-area right-drag-area"></div>
     </div>
 
     <div class="header-right">
@@ -168,21 +177,42 @@ const toggleFullScreen = (): void => {
 .header-center {
   display: flex;
   align-items: center;
-  -webkit-app-region: drag; /* 禁止拖动 */
-  pointer-events: auto; /* ✅ 允许点击 */
+  flex: 1;
+  justify-content: center;
+  height: 100%;
 }
+
 .header-right {
   display: flex;
   align-items: center;
-  -webkit-app-region: no-drag; /* 禁止拖动 */
-  pointer-events: auto; /* ✅ 允许点击 */
+  gap: 12px;
+  -webkit-app-region: no-drag; /* 右侧区域禁止拖动，允许点击 */
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  -webkit-app-region: drag; /* 允许拖动 */
-  pointer-events: auto; /* ✅ 允许点击 */
+  -webkit-app-region: no-drag; /* 左侧区域禁止拖动，允许点击 */
+}
+
+/* 拖动区域样式 */
+.drag-area {
+  flex: 1;
+  height: 100%;
+  -webkit-app-region: drag; /* 允许拖动窗口 */
+}
+
+.left-drag-area {
+  margin-right: auto;
+}
+
+.right-drag-area {
+  margin-left: auto;
+}
+
+/* 菜单容器样式 */
+.menu-container {
+  -webkit-app-region: no-drag; /* 菜单区域禁止拖动 */
 }
 
 .app-title {
