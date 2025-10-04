@@ -19,8 +19,8 @@ export function getLoginCheckScript(providerId: string): string {
       !!(document.querySelector("[class='user-name']") && 
       document.querySelector("[class='user-name']").innerText != '登录')
     `,
-    gork: `
-      // 检查gork的登录状态
+    grok: `
+      // 检查grok的登录状态
       !!(document.querySelector('[data-ved]') ||
          document.querySelector('.gb_d') ||
          document.querySelector('[aria-label*="Account"]') ||

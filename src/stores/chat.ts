@@ -81,8 +81,8 @@ export const useChatStore = defineStore('chat', () => {
       retryCount: 0
     },
     {
-      id: 'gork',
-      name: 'gork',
+      id: 'grok',
+      name: 'grok',
       url: 'https://grok.com/',
       icon: './icons/grok.png',
       isLoggedIn: false,
@@ -93,7 +93,7 @@ export const useChatStore = defineStore('chat', () => {
         isActive: false,
         lastActiveTime: new Date()
       },
-      webviewId: 'webview-gork',
+      webviewId: 'webview-grok',
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0

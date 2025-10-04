@@ -35,7 +35,7 @@ export function getSendMessageScript(providerId: string, message: string): strin
   const escapedMessage = escapeJavaScriptString(message)
   const scripts: Record<string, string> = {
     kimi: getKimiScript(escapedMessage),
-    gork: getGorkScript(escapedMessage),
+    grok: getGrokScript(escapedMessage),
     deepseek: getDeepSeekScript(escapedMessage),
     doubao: getDouBaoScript(escapedMessage),
     qwen: getQwenScript(escapedMessage),
@@ -142,9 +142,9 @@ function getYuanBaoScript(escapedMessage: string): string {
 }
 
 /**
- * gork发送脚本
+ * grok发送脚本
  */
-function getGorkScript(escapedMessage: string): string {
+function getGrokScript(escapedMessage: string): string {
   return getDeepSeekScript(escapedMessage)
 }
 
@@ -481,7 +481,7 @@ function getGenericScript(escapedMessage: string): string {
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'gork', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao']
+  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao']
 }
 
 /**
