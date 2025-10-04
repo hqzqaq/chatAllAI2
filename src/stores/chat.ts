@@ -46,7 +46,7 @@ export const useChatStore = defineStore('chat', () => {
     },
     {
       id: 'qwen',
-      name: 'Qwen',
+      name: '通义千问',
       url: 'https://tongyi.com',
       icon: './icons/qwen.png',
       isLoggedIn: false,
@@ -64,7 +64,7 @@ export const useChatStore = defineStore('chat', () => {
     },
     {
       id: 'kimi',
-      name: 'kimi',
+      name: 'Kimi',
       url: 'https://www.kimi.com/',
       icon: './icons/kimi.png',
       isLoggedIn: false,
@@ -82,7 +82,7 @@ export const useChatStore = defineStore('chat', () => {
     },
     {
       id: 'grok',
-      name: 'grok',
+      name: 'Grok',
       url: 'https://grok.com/',
       icon: './icons/grok.png',
       isLoggedIn: false,
@@ -136,7 +136,7 @@ export const useChatStore = defineStore('chat', () => {
     },
     {
       id: 'yuanbao',
-      name: 'YuanBao',
+      name: '元宝',
       url: 'https://yuanbao.tencent.com/chat',
       icon: './icons/yuanbao.svg',
       isLoggedIn: false,
