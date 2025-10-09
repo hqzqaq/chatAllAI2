@@ -142,7 +142,26 @@ function getGrokNewChatScript(): string {
  * GLM新建对话脚本
  */
 function getGLMNewChatScript(): string {
-  return getDeepSeekNewChatScript()
+  return `
+    (function() {
+      try {
+        // 精准选择智谱清言的新建对话按钮
+        const newChatButton = document.querySelector('.create-text');
+        
+        if (newChatButton && newChatButton.offsetParent !== null) {
+          newChatButton.click();
+          console.log('已点击GLM新建对话按钮');
+          return true;
+        }
+        
+        console.log('未找到可见的新建对话按钮');
+        return false;
+      } catch (error) {
+        console.error('GLM新建对话失败:', error);
+        return false;
+      }
+    })()
+  `
 }
 
 /**
