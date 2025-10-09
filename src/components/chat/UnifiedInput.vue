@@ -100,6 +100,15 @@
 
           <div class="actions-right">
             <el-button
+              type="success"
+              :icon="Plus"
+              :disabled="loggedInCount === 0"
+              data-testid="new-chat-button"
+              @click="handleNewChat"
+            >
+              新建对话
+            </el-button>
+            <el-button
               type="primary"
               :icon="Position"
               :loading="hasSendingMessages"
@@ -119,12 +128,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
 import type { MessageSendResult } from '../../services/MessageDispatcher'
+import { getNewChatScript } from '../../utils/NewChatScripts'
 
 const chatStore = useChatStore()
 
@@ -279,6 +289,77 @@ const handleRefresh = async(): Promise<void> => {
  */
 const handleClear = (): void => {
   chatStore.clearCurrentMessage()
+}
+
+/**
+ * 新建对话
+ */
+const handleNewChat = async(): Promise<void> => {
+  if (loggedInCount.value === 0) {
+    ElMessage.warning('请先登录至少一个AI网站')
+    return
+  }
+
+  try {
+    // 获取已登录的提供商
+    const { loggedInProviders } = chatStore
+    
+    // 使用messageDispatcher发送新建对话脚本
+    const results = await messageDispatcher.sendNewChatScript(
+      loggedInProviders.map(provider => provider.id)
+    )
+    
+    // 检查发送结果
+    const successCount = results.filter(result => result.success).length
+    const errorCount = results.filter(result => !result.success).length
+    
+    if (errorCount === 0) {
+      ElMessage.success(`新建对话请求已发送到 ${successCount} 个AI模型`)
+    } else if (successCount > 0) {
+      ElMessage.warning(`新建对话请求已发送到 ${successCount} 个AI模型，${errorCount} 个失败`)
+    } else {
+      ElMessage.error('新建对话请求发送失败')
+    }
+  } catch (error) {
+    console.error('Failed to create new chat:', error)
+    ElMessage.error('新建对话失败')
+  }
+}
+
+/**
+ * 获取新建对话的JavaScript脚本
+ * 预留空白，后续补充具体脚本内容
+ */
+const getNewChatScript = (): string => {
+  // TODO: 根据MessageScripts.ts的实现方式，为不同AI提供商创建相应的新建对话脚本
+  // 目前返回一个通用的新建对话脚本模板
+  return `
+    (function() {
+      // 新建对话脚本模板
+      // 后续将根据具体AI网站的实现补充详细脚本
+      
+      // 尝试查找新建对话按钮
+      const newChatButtons = [
+        document.querySelector('[data-testid="new-chat-button"]'),
+        document.querySelector('[aria-label*="new chat"]'),
+        document.querySelector('[aria-label*="新建对话"]'),
+        document.querySelector('button:contains("New chat")'),
+        document.querySelector('button:contains("新建对话")'),
+        document.querySelector('.new-chat'),
+        document.querySelector('#new-chat')
+      ].filter(Boolean)
+      
+      if (newChatButtons.length > 0) {
+        newChatButtons[0].click()
+        console.log('已点击新建对话按钮')
+        return true
+      } else {
+        console.log('未找到新建对话按钮，尝试其他方式')
+        // 后续将添加针对不同AI网站的具体实现
+        return false
+      }
+    })()
+  `
 }
 
 /**

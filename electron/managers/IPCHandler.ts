@@ -570,11 +570,50 @@ export class IPCHandler extends EventEmitter {
    */
   private async handleWebViewExecuteScript(data: WebViewExecuteScriptRequest): Promise<WebViewExecuteScriptResponse> {
     try {
-      // 实现脚本执行逻辑
+      this.log(`Executing script in WebView ${data.webviewId}`)
+
+      const mainWindow = this.windowManager.getMainWindow()
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        throw new Error('Main window not available')
+      }
+
+      // 执行JavaScript代码
+      const script = `
+        (async function() {
+          try {
+            console.log('[IPC] Starting script execution process...');
+            
+            const webviewElement = document.querySelector('#webview-${data.webviewId}-element');
+            console.log('[IPC] WebView element:', webviewElement);
+            
+            if (!webviewElement) {
+              console.error('[IPC] WebView element not found:', '${data.webviewId}');
+              return false;
+            }
+            
+            console.log('[IPC] Executing script in WebView...');
+            
+            // 直接执行传入的脚本
+            const result = await webviewElement.executeJavaScript(${JSON.stringify(data.script)});
+            
+            console.log('[IPC] Script result:', result);
+            return result;
+          } catch (error) {
+            console.error('[IPC] Error in script execution:', error);
+            return false;
+          }
+        })()
+      `
+
+      // 执行脚本
+      const result = await mainWindow.webContents.executeJavaScript(script)
+      this.log(`Script executed for ${data.webviewId}, result:`, result)
+      
       return {
-        result: null
+        result: result
       }
     } catch (error) {
+      this.log(`Failed to execute script in WebView ${data.webviewId}:`, error)
       return {
         result: null,
         error: error instanceof Error ? error.message : 'Unknown error'

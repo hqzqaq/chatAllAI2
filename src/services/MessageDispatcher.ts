@@ -4,6 +4,7 @@
  */
 
 import type { AIProvider, Message } from '../types'
+import { getNewChatScript } from '../utils/NewChatScripts'
 
 /**
  * 浏览器兼容的事件发射器
@@ -96,6 +97,84 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
+   * 发送新建对话脚本到多个提供商
+   */
+  async sendNewChatScript(
+    targetProviders: string[],
+    messageId?: string
+  ): Promise<MessageSendResult[]> {
+    const finalMessageId = messageId || this.generateMessageId()
+    const results: MessageSendResult[] = []
+
+    const providers = targetProviders
+
+    // 检查是否有可用的提供商
+    if (providers.length === 0) {
+      this.log('No active providers available for new chat script')
+      return results
+    }
+
+    // 将消息加入队列
+    this.messageQueue.set(finalMessageId, {
+      messageId: finalMessageId,
+      providers,
+      status: 'queued'
+    })
+
+    this.log('Starting new chat script dispatch', { messageId: finalMessageId, providers })
+    this.emit('message-queued', { messageId: finalMessageId, providers })
+
+    try {
+      // 并发发送脚本到所有提供商
+      const sendPromises = providers.map(async(providerId) => {
+        try {
+          // 创建临时的provider对象
+          const provider: AIProvider = {
+            id: providerId,
+            webviewId: providerId, // 使用providerId作为webviewId
+            name: providerId,
+            type: 'webview',
+            status: 'active'
+          }
+
+          // 获取新建对话脚本
+          const script = getNewChatScript(providerId)
+          
+          // 发送脚本
+          const result = await this.sendScriptToProvider(provider, script)
+          results.push(result)
+
+          return result
+        } catch (error) {
+          const errorResult: MessageSendResult = {
+            providerId,
+            success: false,
+            messageId: finalMessageId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date()
+          }
+          results.push(errorResult)
+          return errorResult
+        }
+      })
+
+      await Promise.all(sendPromises)
+
+      // 清理队列
+      this.messageQueue.delete(finalMessageId)
+
+      this.log('New chat script dispatch completed', { messageId: finalMessageId, results })
+      this.emit('message-sent', { messageId: finalMessageId, results })
+
+      return results
+    } catch (error) {
+      this.log('New chat script dispatch failed', { messageId: finalMessageId, error })
+      this.messageQueue.delete(finalMessageId)
+      throw error
+    }
+  }
+
+  /**
      * 发送消息到指定提供商
      */
   async sendMessage(
@@ -153,6 +232,78 @@ export class MessageDispatcher extends BrowserEventEmitter {
       this.log('Message dispatch failed', { messageId: finalMessageId, error })
       this.messageQueue.delete(finalMessageId)
       throw error
+    }
+  }
+
+  /**
+     * 发送脚本到单个提供商
+     */
+  private async sendScriptToProvider(
+    provider: AIProvider,
+    script: string
+  ): Promise<MessageSendResult> {
+    const providerId = provider.id
+    const messageId = this.generateMessageId()
+
+    try {
+      // 设置发送状态
+      this.setSendingStatus(providerId, 'sending')
+      this.emit('status-changed', { providerId, status: 'sending', messageId })
+
+      this.log(`Sending script to provider ${providerId}`, { messageId, webviewId: provider.webviewId })
+
+      // 通过IPC发送脚本到WebView
+      if (window.electronAPI) {
+        await Promise.race([
+          window.electronAPI.executeScriptInWebView(provider.webviewId, script),
+          this.createTimeoutPromise(this.config.timeout)
+        ])
+
+        // 设置成功状态
+        this.setSendingStatus(providerId, 'sent')
+        this.emit('status-changed', { providerId, status: 'sent', messageId })
+
+        const result: MessageSendResult = {
+          providerId,
+          success: true,
+          messageId,
+          timestamp: new Date()
+        }
+
+        this.log(`Script sent successfully to provider ${providerId}`, result)
+        return result
+      }
+      throw new Error('Electron API not available')
+    } catch (error) {
+      this.log(`Failed to send script to provider ${providerId}`, { messageId, error })
+
+      // 设置错误状态
+      this.setSendingStatus(providerId, 'error')
+      this.emit('status-changed', {
+        providerId, status: 'error', messageId, error
+      })
+
+      // 检查是否需要重试
+      const currentRetryCount = this.retryCount.get(`${messageId}-${providerId}`) || 0
+      if (currentRetryCount < this.config.retryAttempts) {
+        this.retryCount.set(`${messageId}-${providerId}`, currentRetryCount + 1)
+
+        this.log(`Retrying script send to provider ${providerId} (attempt ${currentRetryCount + 1})`)
+
+        // 延迟后重试
+        await this.delay(this.config.retryDelay * (currentRetryCount + 1))
+        return this.sendScriptToProvider(provider, script)
+      }
+
+      const result: MessageSendResult = {
+        providerId,
+        success: false,
+        messageId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date()
+      }
+
+      return result
     }
   }
 
