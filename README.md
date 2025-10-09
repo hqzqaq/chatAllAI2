@@ -85,6 +85,12 @@ npm run prod
 npm run build
 ```
 
+`安装包下载地址：[https://github.com/hqzqaq/chatAllAI2/releases](https://github.com/hqzqaq/chatAllAI2/releases)
+，mac系统安装之后，需要执行如下命令才可运行应用：`
+```sh
+sudo xattr -d com.apple.quarantine /Applications/ChatAllAI.app
+```
+
 #### 2. 首次使用步骤
 1. **选择AI模型**：在左侧模型选择器中勾选需要使用的AI模型
 2. **登录账号**：首次使用需要登录各个AI网站账号
@@ -527,14 +533,14 @@ chat-all-ai/
 
 ### 短期目标（1-2个月）
 1. **功能扩展**
-   - 支持更多AI模型
-   - 添加插件系统
-   - 实现消息模板和快捷回复
+   - ❌ 支持更多AI模型
+   - ❌ 支持一键新建对话
+   - ❌ 支持AI对话状态监控
+   - ❌ 实现prompt管理
 
 2. **技术升级**
-   - 迁移到Electron最新版本
-   - 优化构建流程和打包大小
-   - 添加自动化测试覆盖
+   - ✅ Github自动化打包流程构建
+   - ❌ 优化构建流程和打包大小
 
 ## 技术实践建议
 
