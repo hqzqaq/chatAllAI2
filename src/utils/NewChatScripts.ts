@@ -107,26 +107,21 @@ function getKimiNewChatScript(): string {
 function getYuanBaoNewChatScript(): string {
   return `
     (function() {
-      // 尝试查找新建对话按钮
-      const newChatButtons = [
-        document.querySelector('[data-testid="new-chat-button"]'),
-        document.querySelector('[aria-label*="new chat"]'),
-        document.querySelector('[aria-label*="新建对话"]'),
-        document.querySelector('button:contains("New chat")'),
-        document.querySelector('button:contains("新建对话")'),
-        document.querySelector('.new-chat'),
-        document.querySelector('#new-chat')
-      ].filter(Boolean)
+      // 精准查找腾讯元宝新建对话按钮
+      const newChatButtons = document.querySelectorAll('.yb-common-nav__trigger');
       
-      if (newChatButtons.length > 0) {
-        newChatButtons[0].click()
-        console.log('已点击新建对话按钮')
-        return true
-      } else {
-        console.log('未找到新建对话按钮，尝试其他方式')
-        // 后续将添加针对yuanbao网站的具体实现
-        return false
+      for (let button of newChatButtons) {
+        // 验证是否包含新建对话图标
+        const hasNewChatIcon = button.querySelector('.yb-icon.icon-yb-ic_newchat_20');
+        if (hasNewChatIcon) {
+          button.click();
+          console.log('已点击新建对话按钮');
+          return true;
+        }
       }
+      
+      console.log('未找到新建对话按钮');
+      return false;
     })()
   `
 }
