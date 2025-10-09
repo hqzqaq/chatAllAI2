@@ -306,25 +306,21 @@ function getQwenNewChatScript(): string {
 function getCopilotNewChatScript(): string {
   return `
     (function() {
-      // 尝试查找新建对话按钮
-      const newChatButtons = [
-        document.querySelector('[data-testid="new-chat-button"]'),
-        document.querySelector('[aria-label*="new chat"]'),
-        document.querySelector('[aria-label*="新建对话"]'),
-        document.querySelector('button:contains("New chat")'),
-        document.querySelector('button:contains("新建对话")'),
-        document.querySelector('.new-chat'),
-        document.querySelector('#new-chat')
-      ].filter(Boolean)
-      
-      if (newChatButtons.length > 0) {
-        newChatButtons[0].click()
-        console.log('已点击新建对话按钮')
-        return true
-      } else {
-        console.log('未找到新建对话按钮，尝试其他方式')
-        // 后续将添加针对copilot网站的具体实现
-        return false
+      try {
+        // 精准选择Copilot的新建对话按钮
+        const newChatButton = document.querySelector('[aria-label="开始新聊天"]');
+        
+        if (newChatButton) {
+          newChatButton.click();
+          console.log('已点击Copilot新建对话按钮');
+          return true;
+        }
+        
+        console.log('未找到可见的新建对话按钮');
+        return false;
+      } catch (error) {
+        console.error('Copilot新建对话失败:', error);
+        return false;
       }
     })()
   `
