@@ -47,7 +47,7 @@
               />
               <span class="provider-name">{{ provider.name }}</span>
               <el-tag 
-                v-if="provider.isLoggedIn" 
+                v-if="provider.isLoggedIn && selectedProviders.includes(provider.id)" 
                 type="success" 
                 size="small"
                 class="status-tag"
