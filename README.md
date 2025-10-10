@@ -243,6 +243,7 @@ export interface WebViewInstance {
 2. 在 `src/utils/LoginCheckScripts.ts` 中实现登录检查脚本
 3. 在 `src/utils/MessageScripts.ts` 中实现消息发送脚本
 4. 添加图标资源文件
+5. 在 `src/utils/NewChatScripts.ts` 中实现新建对话的脚本
 
 ### 详细步骤说明
 
@@ -351,6 +352,65 @@ function getNewAIScript(escapedMessage: string): string {
 - 使用小写字母和连字符
 - 与provider的id保持一致
 - 例如：provider id为`new-ai`，图标文件名为`new-ai.png`
+
+#### 步骤5: 实现新建对话的脚本
+
+在 `src/utils/NewChatScripts.ts` 文件中添加新建对话的脚本：
+
+```typescript
+// 在getNewChatScript函数中添加新的提供商脚本
+function getNewChatScript(): string {
+  return `
+    (function() {
+      try {
+        // 检测平台并设置相应的快捷键
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        const key = 'j';
+        const ctrlKey = !isMac;
+        const metaKey = isMac;
+        
+        // 创建键盘事件
+        const keydownEvent = new KeyboardEvent('keydown', {
+          key: key,
+          code: 'KeyJ',
+          keyCode: 74,
+          which: 74,
+          ctrlKey: ctrlKey,
+          metaKey: metaKey,
+          altKey: false,
+          shiftKey: false,
+          bubbles: true,
+          cancelable: true
+        });
+        
+        const keyupEvent = new KeyboardEvent('keyup', {
+          key: key,
+          code: 'KeyJ',
+          keyCode: 74,
+          which: 74,
+          ctrlKey: ctrlKey,
+          metaKey: metaKey,
+          altKey: false,
+          shiftKey: false,
+          bubbles: true,
+          cancelable: true
+        });
+        
+        // 发送键盘事件
+        document.dispatchEvent(keydownEvent);
+        document.dispatchEvent(keyupEvent);
+        
+        console.log('已发送快捷键: ' + (isMac ? 'Command+J' : 'Ctrl+J'));
+        return true;
+      } catch (error) {
+        console.error('发送快捷键失败:', error);
+        return false;
+      }
+    })()
+  `
+}
+`
+```
 
 #### 技术实现细节
 
