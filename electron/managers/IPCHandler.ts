@@ -355,8 +355,44 @@ export class IPCHandler extends EventEmitter {
    * 刷新WebView
    */
   private async handleRefreshWebView(webviewId: string): Promise<void> {
-    // 这里应该实现实际的WebView刷新逻辑
-    this.log(`Refreshing WebView: ${webviewId}`)
+    try {
+      this.log(`Refreshing WebView: ${webviewId}`)
+
+      const mainWindow = this.windowManager.getMainWindow()
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        throw new Error('Main window not available')
+      }
+
+      // 执行JavaScript代码来刷新WebView
+      const script = `
+        (function() {
+          try {
+            const webviewElement = document.querySelector('#${webviewId}-element');
+            if (webviewElement && webviewElement.reload) {
+              webviewElement.reload();
+              console.log('WebView reloaded successfully: ${webviewId}');
+              return true;
+            } else {
+              console.error('WebView element not found or does not support reload: ${webviewId}');
+              return false;
+            }
+          } catch (error) {
+            console.error('Error reloading WebView:', error);
+            return false;
+          }
+        })()
+      `
+
+      const result = await mainWindow.webContents.executeJavaScript(script)
+      this.log(`WebView refresh result for ${webviewId}:`, result)
+
+      if (!result) {
+        throw new Error('Failed to refresh WebView - WebView may not be ready')
+      }
+    } catch (error) {
+      this.log(`Failed to refresh WebView ${webviewId}:`, error)
+      throw error
+    }
   }
 
   /**
