@@ -59,7 +59,13 @@ export enum IPCChannel {
   // 性能监控
   PERFORMANCE_GET_METRICS = 'performance:get-metrics',
   PERFORMANCE_START_MONITORING = 'performance:start-monitoring',
-  PERFORMANCE_STOP_MONITORING = 'performance:stop-monitoring'
+  PERFORMANCE_STOP_MONITORING = 'performance:stop-monitoring',
+
+  // AI状态监控
+  AI_STATUS_START_MONITORING = 'ai-status:start-monitoring',
+  AI_STATUS_STOP_MONITORING = 'ai-status:stop-monitoring',
+  AI_STATUS_GET_CURRENT = 'ai-status:get-current',
+  AI_STATUS_CHANGE = 'ai-status:change'
 }
 
 /**
@@ -270,6 +276,49 @@ export interface PerformanceMetricsResponse {
 }
 
 /**
+ * AI状态监控请求
+ */
+export interface AIStatusStartMonitoringRequest {
+  webviewId: string
+  providerId: string
+}
+
+/**
+ * AI状态监控响应
+ */
+export interface AIStatusStartMonitoringResponse {
+  success: boolean
+  error?: string
+}
+
+/**
+ * AI状态信息
+ */
+export interface AIStatusInfo {
+  providerId: string
+  status: 'waiting_input' | 'responding' | 'completed'
+  timestamp: number
+  details?: {
+    responseStartTime?: number
+    messageCount?: number
+  }
+}
+
+/**
+ * AI状态变化事件
+ */
+export interface AIStatusChangeEvent {
+  providerId: string
+  status: 'waiting_input' | 'responding' | 'completed'
+  previousStatus?: 'waiting_input' | 'responding' | 'completed'
+  timestamp: number
+  details?: {
+    responseStartTime?: number
+    messageCount?: number
+  }
+}
+
+/**
  * IPC处理器接口
  */
 export interface IPCHandler {
@@ -335,4 +384,9 @@ export interface IPCEventDataMap {
   [IPCChannel.PERFORMANCE_GET_METRICS]: {}
   [IPCChannel.PERFORMANCE_START_MONITORING]: { interval?: number }
   [IPCChannel.PERFORMANCE_STOP_MONITORING]: {}
+
+  [IPCChannel.AI_STATUS_START_MONITORING]: AIStatusStartMonitoringRequest
+  [IPCChannel.AI_STATUS_STOP_MONITORING]: { providerId: string }
+  [IPCChannel.AI_STATUS_GET_CURRENT]: { providerId: string }
+  [IPCChannel.AI_STATUS_CHANGE]: AIStatusChangeEvent
 }
