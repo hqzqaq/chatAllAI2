@@ -65,12 +65,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 性能监控
   getPerformanceMetrics: () => ipcRenderer.invoke(IPCChannel.PERFORMANCE_GET_METRICS),
 
+  // AI状态监控
+  startAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_START_MONITORING, data),
+  stopAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_STOP_MONITORING, data),
+
   // 事件监听
   onMessageReceived: (callback: (data: any) => void) => {
     ipcRenderer.on(IPCChannel.MESSAGE_RECEIVED, (event, data) => callback(data))
   },
   onMessageError: (callback: (data: any) => void) => {
     ipcRenderer.on(IPCChannel.MESSAGE_ERROR, (event, data) => callback(data))
+  },
+  onAIStatusChange: (callback: (data: any) => void) => {
+    ipcRenderer.on(IPCChannel.AI_STATUS_CHANGE, (event, data) => callback(data))
   },
 
   // 错误报告
@@ -146,9 +153,14 @@ declare global {
       // 性能监控
       getPerformanceMetrics: () => Promise<any>
 
+      // AI状态监控
+      startAIStatusMonitoring: (data: any) => Promise<any>
+      stopAIStatusMonitoring: (data: any) => Promise<any>
+
       // 事件监听
       onMessageReceived: (callback: (data: any) => void) => void
       onMessageError: (callback: (data: any) => void) => void
+      onAIStatusChange: (callback: (data: any) => void) => void
 
       // 错误报告
       reportError: (data: any) => void
