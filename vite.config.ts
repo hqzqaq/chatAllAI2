@@ -48,6 +48,20 @@ export default defineConfig({
             }
           }
         }
+      },
+      {
+        // 新的WebView预加载脚本
+        entry: 'electron/webview-preload.ts',
+        vite: {
+          build: {
+            sourcemap: false,
+            minify: false,
+            outDir: 'dist-electron',
+            rollupOptions: {
+              external: ['electron']
+            }
+          }
+        }
       }
     ]),
     // 使用 electron 渲染进程
