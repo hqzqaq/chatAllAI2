@@ -225,34 +225,6 @@ const updateAIStatus = (providerId: string, status: 'waiting_input' | 'respondin
   aiStatusMap.value[providerId] = status
 }
 
-/**
- * 启动AI状态监控
- * 此函数现在主要用于批量处理，单个提供商的监控通过startAIStatusMonitoringForProvider函数处理
- */
-const startAIStatusMonitoring = async (): Promise<void> => {
-  try {
-    if (!window.electronAPI) {
-      console.warn('electronAPI不可用，无法启动AI状态监控')
-      return
-    }
-
-    const { loggedInProviders } = chatStore
-
-    if (loggedInProviders.length === 0) {
-      console.log('没有已登录的提供商，跳过AI状态监控启动')
-      return
-    }
-
-    console.log(`为${loggedInProviders.length}个已登录提供商启动AI状态监控`)
-
-    for (const provider of loggedInProviders) {
-      await startAIStatusMonitoringForProvider(provider.id)
-    }
-  } catch (error) {
-    console.error('启动AI状态监控失败:', error)
-  }
-}
-
 const stopAIStatusMonitoring = async (): Promise<void> => {
   try {
     if (window.electronAPI) {
@@ -452,18 +424,20 @@ const handleMessageSent = (data: { messageId: string; results: MessageSendResult
   console.log('Message sent:', data)
 }
 
+let unsubscribeAIStatusChange: (() => void) | null = null
+
 /**
  * 组件挂载时设置事件监听
  */
 onMounted(() => {
   messageDispatcher.on('status-changed', handleStatusChanged)
   messageDispatcher.on('message-sent', handleMessageSent)
-  
+
   // 监听AI状态变化事件
   if (window.electronAPI && window.electronAPI.onAIStatusChange) {
-    window.electronAPI.onAIStatusChange(handleAIStatusChange)
+    unsubscribeAIStatusChange = window.electronAPI.onAIStatusChange(handleAIStatusChange)
   }
-  
+
   // 监听登录状态变化事件
   window.addEventListener('login-status-changed', handleLoginStatusChanged)
   
@@ -597,12 +571,12 @@ const stopAIStatusMonitoringForProvider = async (providerId: string): Promise<vo
 onUnmounted(() => {
   messageDispatcher.off('status-changed', handleStatusChanged)
   messageDispatcher.off('message-sent', handleMessageSent)
-  
+
   // 移除AI状态变化事件监听
-  if (window.electronAPI && window.electronAPI.removeAllListeners) {
-    window.electronAPI.removeAllListeners('ai-status:change')
+  if (unsubscribeAIStatusChange) {
+    unsubscribeAIStatusChange()
   }
-  
+
   // 停止AI状态监控
   stopAIStatusMonitoring()
 })
