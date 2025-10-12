@@ -15,7 +15,13 @@
 export function getStatusMonitorScript(providerId: string): string {
   const scripts: Record<string, (id: string) => string> = {
     doubao: getDouBaoStatusMonitorScript,
-    // ... (add other provider script functions here if they also need the id)
+    kimi: getKimiStatusMonitorScript,
+    grok: getGrokStatusMonitorScript,
+    deepseek: getDeepSeekStatusMonitorScript,
+    qwen: getQwenStatusMonitorScript,
+    copilot: getCopilotStatusMonitorScript,
+    glm: getGLMStatusMonitorScript,
+    yuanbao: getYuanBaoStatusMonitorScript
   }
 
   const scriptGenerator = scripts[providerId]
@@ -139,16 +145,82 @@ function getGrokStatusMonitorScript(): string {
 /**
  * DeepSeek状态监控脚本
  */
-function getDeepSeekStatusMonitorScript(): string {
+function getDeepSeekStatusMonitorScript(providerId: string): string {
   return `
     (function() {
-      console.log('DeepSeek状态监控脚本已加载');
-      // DeepSeek特定的状态监控逻辑
-      return {
-        message: 'DeepSeek状态监控器已启动',
-        status: 'waiting_input'
-      };
-    })()
+      let lastStatus = '';
+      let observer = null;
+      let lastMessageElement = null;
+      let completionTimeout = null;
+
+      function postStatus(status, details = {}) {
+        if (status === lastStatus) return;
+        lastStatus = status;
+        if (window.__WEBVIEW_API__ && window.__WEBVIEW_API__.sendToHost) {
+          window.__WEBVIEW_API__.sendToHost('webview-ai-status-change', {
+            providerId: '${providerId}',
+            status: status,
+            details: details
+          });
+        } else {
+          // Fallback or error for when preload API is not available
+          console.error('[DeepSeek Monitor] Preload API not available.');
+        }
+        console.log('[DeepSeek Monitor] Status changed:' + status);
+      }
+
+      function monitorMessage(element) {
+        if (observer) {
+          observer.disconnect();
+        }
+
+        observer = new MutationObserver(() => {
+          postStatus('ai_responding');
+          if (completionTimeout) {
+            clearTimeout(completionTimeout);
+          }
+          completionTimeout = setTimeout(() => {
+            postStatus('ai_completed');
+          }, 1000); // 1 second of inactivity to mark as complete
+        });
+
+        observer.observe(element, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+
+      function checkForAIResponse() {
+        const messageElements = document.querySelectorAll('.ds-markdown');
+        const currentLastMessage = messageElements.length > 0 ? messageElements[messageElements.length - 1] : null;
+
+        if (currentLastMessage) {
+          if (currentLastMessage !== lastMessageElement) {
+            lastMessageElement = currentLastMessage;
+            monitorMessage(lastMessageElement);
+            postStatus('ai_responding');
+            if (completionTimeout) clearTimeout(completionTimeout);
+            completionTimeout = setTimeout(() => {
+              postStatus('ai_completed');
+            }, 1000);
+          }
+        } else {
+          if (lastMessageElement) {
+            if (observer) observer.disconnect();
+            observer = null;
+            lastMessageElement = null;
+            if (completionTimeout) clearTimeout(completionTimeout);
+            postStatus('ai_completed');
+          }
+          postStatus('waiting_input');
+        }
+      }
+
+      setInterval(checkForAIResponse, 500);
+      console.log('[DeepSeek Monitor] Initialized.');
+      postStatus('waiting_input');
+    })();
   `
 }
 
