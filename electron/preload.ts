@@ -65,6 +65,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 性能监控
   getPerformanceMetrics: () => ipcRenderer.invoke(IPCChannel.PERFORMANCE_GET_METRICS),
 
+  // SSE监控
+  addSSEEventListener: (data: any) => ipcRenderer.invoke(IPCChannel.SSE_ADD_EVENT_LISTENER, data),
+  removeSSEEventListener: (data: any) => ipcRenderer.invoke(IPCChannel.SSE_REMOVE_EVENT_LISTENER, data),
+  onSSEEvent: (callback: (data: any) => void) => {
+    ipcRenderer.on(IPCChannel.SSE_EVENT, (event, data) => callback(data))
+  },
+
   // 事件监听
   onMessageReceived: (callback: (data: any) => void) => {
     ipcRenderer.on(IPCChannel.MESSAGE_RECEIVED, (event, data) => callback(data))
@@ -145,6 +152,11 @@ declare global {
 
       // 性能监控
       getPerformanceMetrics: () => Promise<any>
+
+      // SSE监控
+      addSSEEventListener: (data: any) => Promise<any>
+      removeSSEEventListener: (data: any) => Promise<any>
+      onSSEEvent: (callback: (data: any) => void) => void
 
       // 事件监听
       onMessageReceived: (callback: (data: any) => void) => void

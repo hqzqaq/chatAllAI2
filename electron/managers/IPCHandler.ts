@@ -148,6 +148,10 @@ export class IPCHandler extends EventEmitter {
 
     // 性能监控
     this.handleInvoke(IPCChannel.PERFORMANCE_GET_METRICS, this.handlePerformanceGetMetrics.bind(this))
+
+    // SSE监控
+    this.handleInvoke(IPCChannel.SSE_ADD_EVENT_LISTENER, this.handleSSEAddEventListener.bind(this))
+    this.handleInvoke(IPCChannel.SSE_REMOVE_EVENT_LISTENER, this.handleSSERemoveEventListener.bind(this))
   }
 
   /**
@@ -171,7 +175,7 @@ export class IPCHandler extends EventEmitter {
   ): void {
     this.invokeHandlers.set(channel, handler)
 
-    ipcMain.handle(channel, async(event: IpcMainInvokeEvent, data: T) => {
+    ipcMain.handle(channel, async (event: IpcMainInvokeEvent, data: T) => {
       try {
         this.log(`Handling invoke: ${channel}`, data)
         const result = await handler(data, event)
@@ -644,7 +648,7 @@ export class IPCHandler extends EventEmitter {
       // 执行脚本
       const result = await mainWindow.webContents.executeJavaScript(script)
       this.log(`Script executed for ${data.webviewId}, result:`, result)
-      
+
       return {
         result: result
       }
@@ -867,6 +871,47 @@ export class IPCHandler extends EventEmitter {
   }
 
   /**
+   * 处理SSE事件监听器添加
+   */
+  private async handleSSEAddEventListener(data: SSEAddEventListenerRequest): Promise<{ success: boolean; listenerId?: string }> {
+    try {
+      this.log(`Adding SSE event listener for provider: ${data.providerId}, listenerId: ${data.listenerId}`)
+      
+      // 调用SessionManager的SSE事件监听器管理方法
+      const listenerId = this.sessionManager.addSSEEventListener(data.providerId, (sseEventData) => {
+        // 当SSE事件发生时，发送到渲染进程
+        this.sendToRenderer(IPCChannel.SSE_EVENT, sseEventData)
+      })
+      
+      return { success: true, listenerId }
+    } catch (error) {
+      this.log(`Failed to add SSE event listener: ${error}`)
+      return {
+        success: false
+      }
+    }
+  }
+
+  /**
+   * 处理SSE事件监听器移除
+   */
+  private async handleSSERemoveEventListener(data: SSERemoveEventListenerRequest): Promise<{ success: boolean }> {
+    try {
+      this.log(`Removing SSE event listener: ${data.listenerId}`)
+      
+      // 调用SessionManager的SSE事件监听器管理方法
+      const success = this.sessionManager.removeSSEEventListener(data.listenerId)
+      
+      return { success }
+    } catch (error) {
+      this.log(`Failed to remove SSE event listener: ${error}`)
+      return {
+        success: false
+      }
+    }
+  }
+
+  /**
    * 处理WebView代理设置
    */
   private async handleWebViewSetProxy(data: {
@@ -876,11 +921,11 @@ export class IPCHandler extends EventEmitter {
   }): Promise<{ success: boolean; error?: string }> {
     try {
       this.log(`Setting proxy for webview ${data.webviewId}: ${data.proxyRules}`)
-      
+
       // 获取webview对应的session - 使用providerId而不是webviewId
       // 首先需要从webviewId映射到providerId
       const providerId = data.webviewId.replace('webview-', '')
-      
+
       // 检查会话是否存在，如果不存在则创建
       let session = this.sessionManager.getSession(providerId)
       if (!session) {

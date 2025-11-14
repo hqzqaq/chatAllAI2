@@ -54,6 +54,15 @@
               >
                 已登录
               </el-tag>
+              <!-- 添加回答状态显示 -->
+              <el-tag 
+                v-if="answerStatus[provider.id] && answerStatus[provider.id].status !== 'idle'" 
+                :type="getAnswerStatusType(answerStatus[provider.id].status)"
+                size="small"
+                class="answer-status-tag"
+              >
+                {{ getAnswerStatusText(answerStatus[provider.id].status) }}
+              </el-tag>
               <el-icon v-if="provider.loadingState === 'loading'" class="loading-icon">
                 <Loading />
               </el-icon>
@@ -126,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   EditPen, Position, Refresh, Delete, Select, Loading, Plus
 } from '@element-plus/icons-vue'
@@ -141,6 +150,13 @@ const chatStore = useChatStore()
 // 响应式数据
 const selectedProviders = ref<string[]>([])
 
+// 添加回答状态监控
+const answerStatus = ref<Record<string, {
+  status: 'idle' | 'sending' | 'sent' | 'error' | 'responding' | 'completed'
+  message: string
+  timestamp: Date
+}>>({})
+
 // 计算属性
 const currentMessage = computed({
   get: () => chatStore.currentMessage,
@@ -150,6 +166,47 @@ const currentMessage = computed({
 })
 
 const availableProviders = computed(() => chatStore.providers)
+
+// 监听chatStore中sendingStatus的变化，同步更新answerStatus
+watch(() => chatStore.sendingStatus, (newStatus, oldStatus) => {
+  // 遍历所有提供商的状态变化
+  Object.entries(newStatus).forEach(([providerId, status]) => {
+    const oldStatusValue = oldStatus?.[providerId] || 'idle'
+    const newStatusValue = status || 'idle'
+    
+    // 只有当状态发生变化时才更新
+    if (oldStatusValue !== newStatusValue) {
+      console.log(`[${providerId}] 状态变化: ${oldStatusValue} -> ${newStatusValue}`)
+      
+      // 更新answerStatus
+      answerStatus.value[providerId] = {
+        status: newStatusValue,
+        message: getStatusMessage(newStatusValue),
+        timestamp: new Date()
+      }
+    }
+  })
+}, { deep: true, immediate: true })
+
+/**
+ * 获取状态对应的消息文本
+ */
+const getStatusMessage = (status: string): string => {
+  switch (status) {
+    case 'sending':
+      return '消息发送中...'
+    case 'sent':
+      return '消息已发送'
+    case 'responding':
+      return 'AI正在回复...'
+    case 'completed':
+      return '回复已完成'
+    case 'error':
+      return '发送失败'
+    default:
+      return '空闲'
+  }
+}
 
 // 从本地存储加载选中的提供商
 const loadSelectedProviders = (): void => {
@@ -394,6 +451,66 @@ onUnmounted(() => {
   messageDispatcher.off('status-changed', handleStatusChanged)
   messageDispatcher.off('message-sent', handleMessageSent)
 })
+
+/**
+ * 处理SSE回答状态变化
+ */
+const handleResponseStatusChanged = (statusData: {
+  providerId: string
+  status: 'idle' | 'sending' | 'sent' | 'error' | 'responding' | 'completed'
+  message: string
+  timestamp: Date
+}): void => {
+  console.log(`[${statusData.providerId}] 回答状态监控:`, statusData)
+  
+  // 更新回答状态
+  answerStatus.value[statusData.providerId] = {
+    status: statusData.status,
+    message: statusData.message,
+    timestamp: statusData.timestamp
+  }
+  
+  // 同时更新聊天存储中的发送状态
+  chatStore.setSendingStatus(statusData.providerId, statusData.status)
+}
+
+/**
+ * 获取回答状态对应的标签类型
+ */
+const getAnswerStatusType = (status: string): string => {
+  switch (status) {
+    case 'sending':
+    case 'responding':
+      return 'warning'
+    case 'sent':
+    case 'completed':
+      return 'success'
+    case 'error':
+      return 'danger'
+    default:
+      return 'info'
+  }
+}
+
+/**
+ * 获取回答状态对应的文本
+ */
+const getAnswerStatusText = (status: string): string => {
+  switch (status) {
+    case 'sending':
+      return '发送中'
+    case 'sent':
+      return '已发送'
+    case 'responding':
+      return '回复中'
+    case 'completed':
+      return '已完成'
+    case 'error':
+      return '错误'
+    default:
+      return '空闲'
+  }
+}
 </script>
 
 <style scoped>

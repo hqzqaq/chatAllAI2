@@ -3,7 +3,7 @@
  * 负责管理AI网站的登录状态和会话数据
  */
 
-import { session, Session, Cookie } from 'electron'
+import { session, Session, Cookie, webContents } from 'electron'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
@@ -23,6 +23,26 @@ export interface SessionData {
   isActive: boolean
   userId?: string
   sessionId?: string
+}
+
+/**
+ * SSE事件数据接口
+ */
+export interface SSEEventData {
+  providerId: string
+  eventType: string
+  data: any
+  timestamp: Date
+  url: string
+}
+
+/**
+ * SSE监控配置接口
+ */
+export interface SSEMonitorConfig {
+  enabled: boolean
+  interceptUrls: string[]
+  eventTypes: string[]
 }
 
 /**
@@ -52,6 +72,9 @@ export class SessionManager extends EventEmitter {
     ivLength: 16
   }
 
+  private sseMonitors: Map<string, SSEMonitorConfig> = new Map()
+  private sseEventListeners: Map<string, Function> = new Map()
+
   constructor() {
     super()
     // 为开发环境和生产环境使用不同的会话存储路径
@@ -62,6 +85,53 @@ export class SessionManager extends EventEmitter {
     this.dataPath = basePath
     this.encryptionKey = this.generateEncryptionKey()
     this.initializeDataDirectory()
+    this.initializeSSEMonitoring()
+  }
+
+  /**
+   * 初始化SSE监控
+   */
+  private initializeSSEMonitoring(): void {
+    // 为常见的AI聊天服务配置SSE监控
+    const sseConfigs: Record<string, SSEMonitorConfig> = {
+      kimi: {
+        enabled: true,
+        interceptUrls: ['*.moonshot.cn', '*.kimi.com'],
+        eventTypes: ['message', 'error', 'complete']
+      },
+      grok: {
+        enabled: true,
+        interceptUrls: ['*.grok.com', '*.x.ai'],
+        eventTypes: ['message', 'error', 'complete']
+      },
+      deepseek: {
+        enabled: true,
+        interceptUrls: ['*.deepseek.com'],
+        eventTypes: ['message', 'error', 'complete']
+      },
+      doubao: {
+        enabled: true,
+        interceptUrls: ['*.doubao.com'],
+        eventTypes: ['message', 'error', 'complete']
+      },
+      qwen: {
+        enabled: true,
+        interceptUrls: ['*.tongyi.aliyun.com'],
+        eventTypes: ['message', 'error', 'complete']
+      },
+      copilot: {
+        enabled: true,
+        interceptUrls: ['*.copilot.microsoft.com'],
+        eventTypes: ['message', 'error', 'complete']
+      }
+    }
+
+    // 将配置存储到Map中
+    Object.entries(sseConfigs).forEach(([providerId, config]) => {
+      this.sseMonitors.set(providerId, config)
+    })
+
+    console.log('SSE monitoring initialized for AI providers')
   }
 
   /**
@@ -179,8 +249,114 @@ export class SessionManager extends EventEmitter {
       callback(0) // 0 表示信任证书
     })
 
+    // 设置SSE请求拦截
+    await this.setupSSEInterception(electronSession, providerId)
+
     // 设置代理（如果需要）
     // await electronSession.setProxy({ proxyRules: 'direct://' })
+  }
+
+  /**
+   * 设置SSE请求拦截
+   */
+  private async setupSSEInterception(electronSession: Session, providerId: string): Promise<void> {
+    const sseConfig = this.sseMonitors.get(providerId)
+    if (!sseConfig || !sseConfig.enabled) {
+      return
+    }
+
+    try {
+      // 拦截SSE请求
+      electronSession.webRequest.onBeforeRequest(
+        { urls: sseConfig.interceptUrls },
+        (details, callback) => {
+          // 检查是否是SSE请求
+          if (this.isSSERequest(details)) {
+            console.log(`SSE request intercepted for ${providerId}:`, details.url)
+            this.handleSSERequest(details, providerId)
+          }
+          callback({ cancel: false })
+        }
+      )
+
+      // 拦截SSE响应
+      electronSession.webRequest.onHeadersReceived(
+        { urls: sseConfig.interceptUrls },
+        (details, callback) => {
+          if (this.isSSEResponse(details)) {
+            console.log(`SSE response intercepted for ${providerId}:`, details.url)
+            this.handleSSEResponse(details, providerId)
+          }
+          callback({ cancel: false })
+        }
+      )
+
+      console.log(`SSE interception setup for ${providerId}`)
+    } catch (error) {
+      console.error(`Failed to setup SSE interception for ${providerId}:`, error)
+    }
+  }
+
+  /**
+   * 检查是否是SSE请求
+   */
+  private isSSERequest(details: any): boolean {
+    const acceptHeader = details.requestHeaders?.accept
+    const contentType = details.requestHeaders?.['content-type']
+    
+    return (
+      acceptHeader?.includes('text/event-stream') ||
+      contentType?.includes('text/event-stream') ||
+      details.url.includes('events') ||
+      details.url.includes('stream') ||
+      details.url.includes('sse')
+    )
+  }
+
+  /**
+   * 检查是否是SSE响应
+   */
+  private isSSEResponse(details: any): boolean {
+    const contentType = details.responseHeaders?.['content-type']
+    return contentType?.includes('text/event-stream')
+  }
+
+  /**
+   * 处理SSE请求
+   */
+  private handleSSERequest(details: any, providerId: string): void {
+    const sseEvent: SSEEventData = {
+      providerId,
+      eventType: 'request_started',
+      data: {
+        url: details.url,
+        method: details.method,
+        timestamp: new Date(details.timestamp)
+      },
+      timestamp: new Date(),
+      url: details.url
+    }
+
+    this.emit('sse-event', sseEvent)
+  }
+
+  /**
+   * 处理SSE响应
+   */
+  private handleSSEResponse(details: any, providerId: string): void {
+    const sseEvent: SSEEventData = {
+      providerId,
+      eventType: 'response_received',
+      data: {
+        url: details.url,
+        statusCode: details.statusCode,
+        timestamp: new Date(details.timestamp)
+      },
+      timestamp: new Date(),
+      url: details.url
+    }
+
+    this.emit('sse-event', sseEvent)
   }
 
   /**
@@ -522,6 +698,86 @@ export class SessionManager extends EventEmitter {
   }
 
   /**
+   * 添加SSE事件监听器
+   */
+  addSSEEventListener(providerId: string, listener: (event: SSEEventData) => void): string {
+    const listenerId = `${providerId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // 监听SSE事件并转发给特定的监听器
+    const eventHandler = (event: SSEEventData) => {
+      if (event.providerId === providerId) {
+        listener(event)
+      }
+    }
+    
+    this.on('sse-event', eventHandler)
+    
+    // 存储事件处理器以便后续移除
+    this.sseEventListeners.set(listenerId, eventHandler)
+    
+    return listenerId
+  }
+
+  /**
+   * 移除SSE事件监听器
+   */
+  removeSSEEventListener(listenerId: string): void {
+    const listener = this.sseEventListeners.get(listenerId)
+    if (listener) {
+      this.off('sse-event', listener)
+      this.sseEventListeners.delete(listenerId)
+    }
+  }
+
+  /**
+   * 解析SSE消息
+   */
+  parseSSEMessage(message: string): { eventType: string; data: any } | null {
+    try {
+      const lines = message.split('\n')
+      let eventType = 'message'
+      let data: any = null
+
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          eventType = line.substring(6).trim()
+        } else if (line.startsWith('data:')) {
+          const dataStr = line.substring(5).trim()
+          if (dataStr) {
+            try {
+              data = JSON.parse(dataStr)
+            } catch {
+              data = dataStr
+            }
+          }
+        }
+      }
+
+      return data !== null ? { eventType, data } : null
+    } catch (error) {
+      console.error('Failed to parse SSE message:', error)
+      return null
+    }
+  }
+
+  /**
+   * 获取SSE监控配置
+   */
+  getSSEMonitorConfig(providerId: string): SSEMonitorConfig | null {
+    return this.sseMonitors.get(providerId) || null
+  }
+
+  /**
+   * 更新SSE监控配置
+   */
+  updateSSEMonitorConfig(providerId: string, config: Partial<SSEMonitorConfig>): void {
+    const existingConfig = this.sseMonitors.get(providerId)
+    if (existingConfig) {
+      this.sseMonitors.set(providerId, { ...existingConfig, ...config })
+    }
+  }
+
+  /**
    * 销毁会话管理器
    */
   async destroy(): Promise<void> {
@@ -533,6 +789,8 @@ export class SessionManager extends EventEmitter {
     // 清理内存
     this.sessions.clear()
     this.electronSessions.clear()
+    this.sseMonitors.clear()
+    this.sseEventListeners.clear()
 
     // 移除所有监听器
     this.removeAllListeners()

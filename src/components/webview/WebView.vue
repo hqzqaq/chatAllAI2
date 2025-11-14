@@ -75,6 +75,7 @@ interface Emits {
   (e: 'login-status-changed', isLoggedIn: boolean): void
   (e: 'title-changed', title: string): void
   (e: 'url-changed', url: string): void
+  (e: 'sse-event', event: { providerId: string; eventType: string; data: any; timestamp: number; url: string }): void
 }
 
 const emit = defineEmits<Emits>()
@@ -91,6 +92,7 @@ const loginCheckTimer = ref<NodeJS.Timeout | null>(null)
 const sessionLoaded = ref(false)
 const isInitialLoad = ref(true)
 const currentUrl = ref('')
+const sseEventListenerId = ref<string | null>(null)
 
 // 计算属性
 const webviewId = computed(() => `webview-${props.provider.id}`)
@@ -137,6 +139,11 @@ const createWebView = (): void => {
 
   // 绑定事件
   bindWebViewEvents(webview)
+
+  // 设置SSE事件监听器（异步，不阻塞WebView创建）
+  setupSSEEventListener().catch(error => {
+    console.warn(`Failed to set up SSE event listener: ${error}`)
+  })
 }
 
 /**
@@ -503,6 +510,264 @@ const sendMessage = async(message: string): Promise<void> => {
 }
 
 /**
+ * 设置SSE事件监听器
+ */
+const setupSSEEventListener = async (): Promise<void> => {
+  if (!window.electronAPI || sseEventListenerId.value) return
+
+  try {
+    // 通过electronAPI设置SSE事件监听器
+    const result = await window.electronAPI.addSSEEventListener({
+      providerId: props.provider.id,
+      listenerId: `${props.provider.id}_${Date.now()}`
+    })
+
+    if (result.success) {
+      // 设置SSE事件监听
+      window.electronAPI.onSSEEvent((event) => {
+        // 只处理当前provider的SSE事件
+        if (event.providerId === props.provider.id) {
+          // 转发SSE事件到父组件
+          emit('sse-event', event)
+          
+          // 根据SSE事件类型处理不同的逻辑
+          handleSSEEvent(event)
+        }
+      })
+      
+      sseEventListenerId.value = result.listenerId || `${props.provider.id}_${Date.now()}`
+      console.log(`SSE event listener set up for ${props.provider.name}`)
+    } else {
+      console.warn(`Failed to set up SSE event listener for ${props.provider.name}`)
+    }
+  } catch (error) {
+    console.warn(`Failed to set up SSE event listener for ${props.provider.name}:`, error)
+  }
+}
+
+/**
+ * 移除SSE事件监听器
+ */
+const removeSSEEventListener = (): void => {
+  if (!window.electronAPI || !sseEventListenerId.value) return
+
+  try {
+    window.electronAPI.removeSSEEventListener({
+      listenerId: sseEventListenerId.value
+    })
+    sseEventListenerId.value = null
+    console.log(`SSE event listener removed for ${props.provider.name}`)
+  } catch (error) {
+    console.warn(`Failed to remove SSE event listener for ${props.provider.name}:`, error)
+  }
+}
+
+/**
+ * 处理SSE事件
+ */
+const handleSSEEvent = (event: { providerId: string; eventType: string; data: any; timestamp: number; url: string }): void => {
+  console.log(`SSE Event [${props.provider.name}]:`, event)
+
+  // 根据SSE事件类型更新回答状态
+  updateResponseStatus(event)
+
+  // 根据不同的AI提供商和事件类型进行特定处理
+  switch (props.provider.id) {
+    case 'kimi':
+      handleKimiSSEEvent(event)
+      break
+    case 'grok':
+      handleGrokSSEEvent(event)
+      break
+    case 'deepseek':
+      handleDeepSeekSSEEvent(event)
+      break
+    case 'doubao':
+      handleDoubaoSSEEvent(event)
+      break
+    case 'qwen':
+      handleQwenSSEEvent(event)
+      break
+    case 'copilot':
+      handleCopilotSSEEvent(event)
+      break
+    default:
+      console.log(`No specific handler for ${props.provider.id} SSE events`)
+  }
+}
+
+/**
+ * 根据SSE事件更新回答状态
+ */
+const updateResponseStatus = (event: { providerId: string; eventType: string; data: any; timestamp: number; url: string }): void => {
+  // 根据事件类型确定回答状态
+  let responseStatus = 'idle'
+  let statusMessage = ''
+
+  switch (event.eventType) {
+    case 'request_sent':
+      responseStatus = 'sending'
+      statusMessage = 'AI正在思考中...'
+      break
+    case 'response_received':
+      responseStatus = 'sent'
+      statusMessage = 'AI已回复'
+      break
+    case 'error':
+      responseStatus = 'error'
+      statusMessage = 'AI回复失败'
+      break
+    case 'complete':
+      responseStatus = 'completed'
+      statusMessage = 'AI回复完成'
+      break
+    default:
+      // 对于message事件，检查是否有实际内容
+      if (event.eventType === 'message' && event.data) {
+        responseStatus = 'responding'
+        statusMessage = 'AI正在回复中...'
+      }
+      break
+  }
+
+  // 只有当状态发生变化时才更新
+  if (responseStatus !== 'idle') {
+    // 通过事件总线发送状态更新
+    emit('response-status-changed', {
+      providerId: props.provider.id,
+      status: responseStatus,
+      message: statusMessage,
+      timestamp: new Date(),
+      eventType: event.eventType,
+      data: event.data
+    })
+
+    console.log(`[${props.provider.name}] 回答状态更新: ${responseStatus} - ${statusMessage}`)
+  }
+}
+
+/**
+ * 处理Kimi SSE事件
+ */
+const handleKimiSSEEvent = (event: { eventType: string; data: any }): void => {
+  // Kimi的SSE事件处理逻辑
+  if (event.eventType === 'message' && event.data) {
+    // 处理消息事件
+    console.log('Kimi message event:', event.data)
+    
+    // 解析Kimi的SSE消息内容
+    if (typeof event.data === 'string') {
+      try {
+        const messageData = JSON.parse(event.data)
+        console.log('Kimi parsed message:', messageData)
+      } catch (e) {
+        console.log('Kimi raw message:', event.data)
+      }
+    }
+  }
+}
+
+/**
+ * 处理Grok SSE事件
+ */
+const handleGrokSSEEvent = (event: { eventType: string; data: any }): void => {
+  // Grok的SSE事件处理逻辑
+  if (event.eventType === 'message' && event.data) {
+    console.log('Grok message event:', event.data)
+    
+    // 解析Grok的SSE消息内容
+    if (typeof event.data === 'string') {
+      try {
+        const messageData = JSON.parse(event.data)
+        console.log('Grok parsed message:', messageData)
+      } catch (e) {
+        console.log('Grok raw message:', event.data)
+      }
+    }
+  }
+}
+
+/**
+ * 处理DeepSeek SSE事件
+ */
+const handleDeepSeekSSEEvent = (event: { eventType: string; data: any }): void => {
+  // DeepSeek的SSE事件处理逻辑
+  if (event.eventType === 'message' && event.data) {
+    console.log('DeepSeek message event:', event.data)
+    
+    // 解析DeepSeek的SSE消息内容
+    if (typeof event.data === 'string') {
+      try {
+        const messageData = JSON.parse(event.data)
+        console.log('DeepSeek parsed message:', messageData)
+      } catch (e) {
+        console.log('DeepSeek raw message:', event.data)
+      }
+    }
+  }
+}
+
+/**
+ * 处理豆包 SSE事件
+ */
+const handleDoubaoSSEEvent = (event: { eventType: string; data: any }): void => {
+  // 豆包的SSE事件处理逻辑
+  if (event.eventType === 'message' && event.data) {
+    console.log('Doubao message event:', event.data)
+    
+    // 解析豆包的SSE消息内容
+    if (typeof event.data === 'string') {
+      try {
+        const messageData = JSON.parse(event.data)
+        console.log('Doubao parsed message:', messageData)
+      } catch (e) {
+        console.log('Doubao raw message:', event.data)
+      }
+    }
+  }
+}
+
+/**
+ * 处理Qwen SSE事件
+ */
+const handleQwenSSEEvent = (event: { eventType: string; data: any }): void => {
+  // Qwen的SSE事件处理逻辑
+  if (event.eventType === 'message' && event.data) {
+    console.log('Qwen message event:', event.data)
+    
+    // 解析Qwen的SSE消息内容
+    if (typeof event.data === 'string') {
+      try {
+        const messageData = JSON.parse(event.data)
+        console.log('Qwen parsed message:', messageData)
+      } catch (e) {
+        console.log('Qwen raw message:', event.data)
+      }
+    }
+  }
+}
+
+/**
+ * 处理Copilot SSE事件
+ */
+const handleCopilotSSEEvent = (event: { eventType: string; data: any }): void => {
+  // Copilot的SSE事件处理逻辑
+  if (event.eventType === 'message' && event.data) {
+    console.log('Copilot message event:', event.data)
+    
+    // 解析Copilot的SSE消息内容
+    if (typeof event.data === 'string') {
+      try {
+        const messageData = JSON.parse(event.data)
+        console.log('Copilot parsed message:', messageData)
+      } catch (e) {
+        console.log('Copilot raw message:', event.data)
+      }
+    }
+  }
+}
+
+/**
  * 销毁WebView
  */
 const destroy = (): void => {
@@ -516,6 +781,9 @@ const destroy = (): void => {
     clearInterval(loginCheckTimer.value)
     loginCheckTimer.value = null
   }
+
+  // 移除SSE事件监听器
+  removeSSEEventListener()
 
   if (webviewElement.value) {
     const container = document.getElementById(webviewId.value)

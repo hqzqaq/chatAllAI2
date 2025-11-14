@@ -59,7 +59,12 @@ export enum IPCChannel {
   // 性能监控
   PERFORMANCE_GET_METRICS = 'performance:get-metrics',
   PERFORMANCE_START_MONITORING = 'performance:start-monitoring',
-  PERFORMANCE_STOP_MONITORING = 'performance:stop-monitoring'
+  PERFORMANCE_STOP_MONITORING = 'performance:stop-monitoring',
+
+  // SSE监控
+  SSE_ADD_EVENT_LISTENER = 'sse:add-event-listener',
+  SSE_REMOVE_EVENT_LISTENER = 'sse:remove-event-listener',
+  SSE_EVENT = 'sse:event'
 }
 
 /**
@@ -270,6 +275,32 @@ export interface PerformanceMetricsResponse {
 }
 
 /**
+ * SSE事件监听器请求
+ */
+export interface SSEAddEventListenerRequest {
+  providerId: string
+  listenerId: string
+}
+
+/**
+ * SSE事件监听器移除请求
+ */
+export interface SSERemoveEventListenerRequest {
+  listenerId: string
+}
+
+/**
+ * SSE事件数据
+ */
+export interface SSEEventData {
+  providerId: string
+  eventType: string
+  data: any
+  timestamp: Date
+  url: string
+}
+
+/**
  * IPC处理器接口
  */
 export interface IPCHandler {
@@ -334,5 +365,10 @@ export interface IPCEventDataMap {
 
   [IPCChannel.PERFORMANCE_GET_METRICS]: {}
   [IPCChannel.PERFORMANCE_START_MONITORING]: { interval?: number }
-  [IPCChannel.PERFORMANCE_STOP_MONITORING]: {}
+  [IPCChannel.PERFORMANCE_STOP_MONITORING]: {},
+
+  // SSE监控
+  [IPCChannel.SSE_ADD_EVENT_LISTENER]: SSEAddEventListenerRequest
+  [IPCChannel.SSE_REMOVE_EVENT_LISTENER]: SSERemoveEventListenerRequest
+  [IPCChannel.SSE_EVENT]: SSEEventData
 }

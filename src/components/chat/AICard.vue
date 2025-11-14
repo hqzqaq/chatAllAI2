@@ -91,6 +91,7 @@
         @login-status-changed="handleLoginStatusChanged"
         @title-changed="handleTitleChanged"
         @url-changed="handleUrlChanged"
+        @response-status-changed="handleResponseStatusChanged"
       />
 
       <div
@@ -503,195 +504,50 @@ const handleTitleChanged = (title: string): void => {
  * URL变化处理
  */
 const handleUrlChanged = (url: string): void => {
-  // 可以在这里处理URL变化逻辑
   console.log(`${props.provider.name} URL changed:`, url)
 }
 
 /**
- * 处理图标加载错误
+ * 回答状态变化处理
  */
-const handleIconError = (event: Event): void => {
-  const img = event.target as HTMLImageElement
-  img.src = '/icons/default.svg' // 使用默认图标
-}
-
-/**
- * 开始调整大小
- */
-const startResize = (event: MouseEvent): void => {
-  event.preventDefault()
-
-  const startX = event.clientX
-  const startY = event.clientY
-  const startWidth = props.config?.size.width || 300
-  const startHeight = props.config?.size.height || 400
-
-  const handleMouseMove = (e: MouseEvent): void => {
-    const deltaX = e.clientX - startX
-    const deltaY = e.clientY - startY
-
-    const newWidth = Math.max(startWidth + deltaX, 300)
-    const newHeight = Math.max(startHeight + deltaY, 200) // 最小高度保持200px，但用户可以拖拽到更大高度
-
-    layoutStore.updateCardSize(props.provider.id, {
-      width: newWidth,
-      height: newHeight
-    })
-  }
-
-  const handleMouseUp = (): void => {
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-    // 调整大小完成后重新计算布局
-    layoutStore.recalculateLayout()
-  }
-
-  document.addEventListener('mousemove', handleMouseMove)
-  document.addEventListener('mouseup', handleMouseUp)
-}
-
-/**
- * 打开代理配置对话框
- */
-const openProxyDialog = (): void => {
-  // 从存储中加载代理配置
-  loadProxyConfig()
-  proxyDialogVisible.value = true
-}
-
-/**
- * 处理代理开关切换
- */
-const handleProxyToggle = (enabled: boolean): void => {
-  if (!enabled) {
-    // 禁用代理时重置为默认值
-    proxyConfig.value = {
-      enabled: false,
-      protocol: 'http',
-      address: '127.0.0.1',
-      port: '7897'
-    }
-  }
-}
-
-/**
- * 保存代理配置
- */
-const saveProxyConfig = async(): Promise<void> => {
-  try {
-    // 验证配置
-    if (proxyConfig.value.enabled) {
-      if (!proxyConfig.value.address || !proxyConfig.value.port) {
-        ElMessage.error('请填写完整的代理配置信息')
-        return
-      }
-      
-      // 验证端口号
-      const port = parseInt(proxyConfig.value.port)
-      if (port < 1 || port > 65535) {
-        ElMessage.error('端口号必须在1-65535之间')
-        return
-      }
-    }
-
-    // 保存配置到本地存储
-    saveProxyConfigToStorage()
-    
-    // 应用代理配置到webview
-    await applyProxyConfig()
-    
-    ElMessage.success('代理配置已保存并应用')
-    proxyDialogVisible.value = false
-  } catch (error) {
-    console.error('保存代理配置失败:', error)
-    ElMessage.error('保存代理配置失败')
-  }
-}
-
-/**
- * 从存储中加载代理配置
- */
-const loadProxyConfig = (): void => {
-  try {
-    const storedConfig = localStorage.getItem(`proxy-config-${props.provider.id}`)
-    if (storedConfig) {
-      const config = JSON.parse(storedConfig)
-      proxyConfig.value = { ...proxyConfig.value, ...config }
-    }
-  } catch (error) {
-    console.error('加载代理配置失败:', error)
-  }
-}
-
-/**
- * 保存代理配置到存储
- */
-const saveProxyConfigToStorage = (): void => {
-  try {
-    localStorage.setItem(`proxy-config-${props.provider.id}`, JSON.stringify(proxyConfig.value))
-  } catch (error) {
-    console.error('保存代理配置到存储失败:', error)
-  }
-}
-
-/**
- * 应用代理配置到webview
- */
-const applyProxyConfig = async(): Promise<void> => {
-  if (!window.electronAPI) {
-    console.warn('Electron API不可用，无法设置代理')
-    return
-  }
-
-  try {
-    if (proxyConfig.value.enabled) {
-      const proxyUrl = `${proxyConfig.value.protocol}://${proxyConfig.value.address}:${proxyConfig.value.port}`
-      
-      // 通过IPC通知主进程设置代理
-      await window.electronAPI.setProxy({
-        webviewId: props.provider.webviewId,
-        proxyRules: proxyUrl,
-        enabled: true
-      })
-      
-      console.log(`已为 ${props.provider.name} 设置代理: ${proxyUrl}`)
-    } else {
-      // 禁用代理
-      await window.electronAPI.setProxy({
-        webviewId: props.provider.webviewId,
-        proxyRules: 'direct://',
-        enabled: false
-      })
-      
-      console.log(`已为 ${props.provider.name} 禁用代理`)
-    }
-    
-    // 重新加载webview使代理配置生效
-    if (webViewRef.value) {
-      setTimeout(() => {
-        webViewRef.value?.refresh()
-      }, 500)
-    }
-  } catch (error) {
-    console.error('应用代理配置失败:', error)
-    throw error
+const handleResponseStatusChanged = (statusData: {
+  status: 'sending' | 'sent' | 'error' | 'responding' | 'completed'
+  message: string
+}): void => {
+  console.log(`[${props.provider.name}] 回答状态变化:`, statusData)
+  
+  // 更新聊天存储中的发送状态
+  chatStore.setSendingStatus(props.provider.id, statusData.status)
+  
+  // 根据状态显示相应的消息
+  switch (statusData.status) {
+    case 'sending':
+      ElMessage.info(`${props.provider.name}: ${statusData.message}`)
+      break
+    case 'sent':
+      ElMessage.success(`${props.provider.name}: ${statusData.message}`)
+      break
+    case 'error':
+      ElMessage.error(`${props.provider.name}: ${statusData.message}`)
+      break
+    case 'responding':
+      // 正在回复中，不显示消息，但更新状态指示器
+      break
+    case 'completed':
+      ElMessage.success(`${props.provider.name}: ${statusData.message}`)
+      break
   }
 }
 
 /**
  * 发送消息到WebView
  */
-const sendMessage = async(message: string): Promise<boolean> => {
-  if (!webViewRef.value) {
-    return false
-  }
-
-  try {
-    await webViewRef.value.sendMessage(message)
-    return true
-  } catch (error) {
-    console.error(`Failed to send message to ${props.provider.name}:`, error)
-    return false
+const sendMessage = (message: string): void => {
+  if (webViewRef.value) {
+    webViewRef.value.sendMessage(message)
+  } else {
+    console.error(`WebView ref not found for ${props.provider.name}`)
+    ElMessage.error(`${props.provider.name}: WebView未就绪，无法发送消息`)
   }
 }
 
