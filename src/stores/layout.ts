@@ -12,6 +12,7 @@ export const useLayoutStore = defineStore('layout', () => {
   // 网格布局设置
   const gridSettings = ref({
     columns: 3,
+    rows: 2,
     gap: 16,
     minCardWidth: 300,
     minCardHeight: 600 // 增加最小高度到400px，让卡片有更大的显示空间
@@ -124,15 +125,15 @@ export const useLayoutStore = defineStore('layout', () => {
   const maximizeCard = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
       const config = cardConfigs.value[providerId]
-      
+
       // 保存原始状态
       config.originalSize = { ...config.size }
       config.originalPosition = { ...config.position }
-      
+
       // 设置最大化状态
       config.isMaximized = true
       config.isMinimized = false
-      
+
       // 设置最大化尺寸和位置
       config.size = {
         width: windowSize.value.width - 32, // 减去边距
@@ -143,14 +144,14 @@ export const useLayoutStore = defineStore('layout', () => {
         y: 16  // 上边距
       }
       config.zIndex = 1000 // 设置最高z-index
-      
+
       // 设置其他卡片为隐藏状态（但不销毁WebView）
       Object.keys(cardConfigs.value).forEach((id) => {
         if (id !== providerId) {
           cardConfigs.value[id].isHidden = true // 使用isHidden而不是isVisible
         }
       })
-      
+
       saveLayoutConfig()
     }
   }
@@ -161,23 +162,23 @@ export const useLayoutStore = defineStore('layout', () => {
   const restoreCardFromMaximized = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
       const config = cardConfigs.value[providerId]
-      
+
       if (config.isMaximized && config.originalSize && config.originalPosition) {
         // 恢复原始状态
         config.size = { ...config.originalSize }
         config.position = { ...config.originalPosition }
         config.isMaximized = false
         config.zIndex = 1
-        
+
         // 删除保存的原始状态
         delete config.originalSize
         delete config.originalPosition
-        
+
         // 显示所有卡片（清除隐藏状态）
         Object.keys(cardConfigs.value).forEach((id) => {
           cardConfigs.value[id].isHidden = false
         })
-        
+
         // 重新计算布局
         recalculateLayout()
         saveLayoutConfig()
@@ -204,13 +205,11 @@ export const useLayoutStore = defineStore('layout', () => {
   const updateWindowSize = (width: number, height: number): void => {
     windowSize.value = { width, height }
 
-    // 根据窗口大小自动调整网格列数
+    // 根据窗口大小自动调整网格列数，但不覆盖用户手动设置
     if (width < 800) {
-      gridSettings.value.columns = 1
+      gridSettings.value.columns = Math.min(gridSettings.value.columns, 1)
     } else if (width < 1200) {
-      gridSettings.value.columns = 2
-    } else {
-      gridSettings.value.columns = 3
+      gridSettings.value.columns = Math.min(gridSettings.value.columns, 2)
     }
 
     // 重新计算卡片布局
@@ -226,6 +225,16 @@ export const useLayoutStore = defineStore('layout', () => {
     visibleCards.forEach((config, index) => {
       const col = index % gridSettings.value.columns
       const row = Math.floor(index / gridSettings.value.columns)
+
+      // 检查是否超过最大行数
+      if (row >= gridSettings.value.rows) {
+        // 超过行数限制的卡片暂时隐藏
+        config.isHidden = true
+        return
+      }
+
+      // 确保卡片可见
+      config.isHidden = false
 
       config.position = {
         x: col * (cardWidth.value + gridSettings.value.gap) + gridSettings.value.gap,
@@ -249,11 +258,31 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 更新网格设置并重新计算布局
-     */
+   * 更新网格设置并重新计算布局
+   */
   const updateGridSettings = (newSettings: Partial<typeof gridSettings.value>): void => {
+    const oldSettings = { ...gridSettings.value }
     gridSettings.value = { ...gridSettings.value, ...newSettings }
-    recalculateLayout()
+
+    // 如果行数或列数发生变化，重新计算布局
+    if (newSettings.rows !== undefined || newSettings.columns !== undefined) {
+      // 确保当前显示的卡片不超过新的网格容量
+      const maxVisibleCards = gridSettings.value.columns * gridSettings.value.rows
+      const visibleConfigs = Object.values(cardConfigs.value).filter(config => config.isVisible && !config.isMaximized)
+
+      visibleConfigs.forEach((config, index) => {
+        if (index >= maxVisibleCards) {
+          // 隐藏超出容量的卡片
+          config.isHidden = true
+        } else {
+          // 确保卡片可见
+          config.isHidden = false
+        }
+      })
+
+      recalculateLayout()
+    }
+    saveLayoutConfig()
   }
 
   /**
@@ -333,6 +362,7 @@ export const useLayoutStore = defineStore('layout', () => {
     restoreCardFromMaximized,
     toggleCardMaximized,
     updateWindowSize,
+    updateGridSettings,
     recalculateLayout,
     resetLayout,
     saveLayoutConfig,

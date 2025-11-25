@@ -35,11 +35,19 @@ const layoutStore = useLayoutStore()
 // 计算属性
 const providers = computed(() => chatStore.providers)
 
-const visibleProviders = computed(() => providers.value.filter((provider) => {
-  const config = getCardConfig(provider.id)
-  // 只有当模型被选中且可见时才显示卡片
-  return provider.isEnabled && config?.isVisible !== false
-}))
+const visibleProviders = computed(() => {
+  const enabledProviders = providers.value.filter((provider) => {
+    const config = getCardConfig(provider.id)
+    // 只有当模型被选中且可见时才显示卡片
+    return provider.isEnabled && config?.isVisible !== false
+  })
+
+  // 根据网格设置限制显示的provider数量
+  const { columns, rows } = layoutStore.gridSettings
+  const maxVisibleCount = columns * rows
+
+  return enabledProviders.slice(0, maxVisibleCount)
+})
 
 const gridStyle = computed(() => {
   const { columns } = layoutStore.gridSettings

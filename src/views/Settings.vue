@@ -267,7 +267,7 @@ const handleNotificationsChange = (value: boolean): void => {
  * 处理网格设置变化
  */
 const handleGridChange = (): void => {
-  layoutStore.recalculateLayout()
+  layoutStore.updateGridSettings(gridSettings.value)
   ElMessage.success('布局设置已更新')
 }
 
