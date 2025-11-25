@@ -188,6 +188,81 @@ watch(() => chatStore.sendingStatus, (newStatus, oldStatus) => {
   })
 }, { deep: true, immediate: true })
 
+// 添加豆包SSE事件监听处理
+const handleDoubaoSSEEvent = (event: any): void => {
+  console.log('[UnifiedInput] 接收豆包SSE事件:', event)
+  
+  const providerId = 'doubao'
+  
+  // 根据SSE事件类型更新状态
+  let status = 'idle'
+  let message = '空闲'
+  
+  switch (event.eventType) {
+    case 'connected':
+      status = 'responding'
+      message = '豆包SSE连接建立'
+      break
+    case 'message':
+      if (event.parsedData) {
+        status = 'responding'
+        message = `豆包正在回复: ${getMessagePreview(event.parsedData)}`
+      }
+      break
+    case 'complete':
+      status = 'completed'
+      message = '豆包回复完成'
+      break
+    case 'error':
+      status = 'error'
+      message = `豆包SSE错误: ${event.error || '未知错误'}`
+      break
+    default:
+      console.log('[UnifiedInput] 未处理的豆包SSE事件类型:', event.eventType)
+  }
+  
+  // 更新豆包的状态信息
+  answerStatus.value[providerId] = {
+    status,
+    message,
+    timestamp: new Date(),
+    // 保存详细的SSE事件信息
+    sseDetails: {
+      eventType: event.eventType,
+      originalUrl: event.originalUrl,
+      monitoringTarget: event.monitoringTarget,
+      parsedData: event.parsedData,
+      analysisResult: event.analysisResult,
+      messageInfo: event.messageInfo
+    }
+  }
+  
+  console.log(`[豆包] SSE状态更新: ${status} - ${message}`)
+}
+
+/**
+ * 从SSE数据中提取消息预览
+ */
+const getMessagePreview = (data: any): string => {
+  try {
+    if (data.content) {
+      // 提取content字段
+      const content = typeof data.content === 'string' ? data.content : JSON.stringify(data.content)
+      return content.length > 30 ? content.substring(0, 30) + '...' : content
+    } else if (data.choices && data.choices[0]) {
+      // 提取choices结构
+      const choice = data.choices[0]
+      const content = choice.message?.content || choice.delta?.content || ''
+      return content.length > 30 ? content.substring(0, 30) + '...' : content
+    } else if (typeof data === 'string') {
+      return data.length > 30 ? data.substring(0, 30) + '...' : data
+    }
+    return '未知内容'
+  } catch (error) {
+    return '解析错误'
+  }
+}
+
 /**
  * 获取状态对应的消息文本
  */

@@ -92,6 +92,7 @@
         @title-changed="handleTitleChanged"
         @url-changed="handleUrlChanged"
         @response-status-changed="handleResponseStatusChanged"
+        @doubao-sse-event="handleDoubaoSSEEvent"
       />
 
       <div
@@ -537,6 +538,16 @@ const handleResponseStatusChanged = (statusData: {
       ElMessage.success(`${props.provider.name}: ${statusData.message}`)
       break
   }
+}
+
+/**
+ * 处理豆包SSE事件
+ */
+const handleDoubaoSSEEvent = (event: any) => {
+  console.log(`[AICard] 接收豆包SSE事件:`, event)
+  
+  // 将事件转发给父组件(Chat.vue)
+  emit('doubao-sse-event', event)
 }
 
 /**

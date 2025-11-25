@@ -17,6 +17,8 @@
           :provider="provider"
           :config="getCardConfig(provider.id)"
           class="card-item"
+          @doubao-sse-event="handleDoubaoSSEEvent"
+          ref="providerCardRefs"
         />
       </div>
     </div>
@@ -24,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useChatStore, useLayoutStore } from '../stores'
 import UnifiedInput from '../components/chat/UnifiedInput.vue'
 import AICard from '../components/chat/AICard.vue'
@@ -59,9 +61,51 @@ const gridStyle = computed(() => {
  */
 const getCardConfig = (providerId: string) => layoutStore.getCardConfig(providerId)
 
+// 处理豆包SSE事件
+const handleDoubaoSSEEvent = (event: any) => {
+  // 发送豆包SSE事件到全局事件总线
+  if (window.electronAPI) {
+    // 使用electronAPI发送事件到所有监听器
+    console.log('[Chat] 转发豆包SSE事件:', event)
+    
+    // 通过自定义事件将事件传递给UnifiedInput
+    window.dispatchEvent(new CustomEvent('doubao-sse-event', { 
+      detail: event 
+    }))
+  }
+}
+
+// 获取可见的豆包提供商
+const doubaoProvider = computed(() => {
+  return providers.value.find(provider => provider.id === 'doubao' && provider.isEnabled)
+})
+
+// 豆包WebView组件引用
+const doubaoWebViewRef = ref<any>(null)
+
 // 响应式布局处理
 const handleResize = () => {
   layoutStore.updateWindowSize(window.innerWidth, window.innerHeight)
+}
+
+// 提供商卡片引用
+const providerCardRefs = ref<any[]>([])
+
+// 获取豆包提供商卡片
+const getDoubaoCard = () => {
+  return providerCardRefs.value.find(ref => {
+    return ref?.provider?.id === 'doubao' && ref?.provider?.isEnabled
+  })
+}
+
+// 监听豆包WebView的SSE事件
+const setupDoubaoSSEListener = () => {
+  const doubaoCard = getDoubaoCard()
+  if (doubaoCard?.webViewRef?.value?.onSSEEvent) {
+    // 直接监听豆包WebView的SSE事件
+    doubaoCard.webViewRef.value.onSSEEvent = handleDoubaoSSEEvent
+    console.log('[Chat] 已设置豆包WebView SSE事件监听器')
+  }
 }
 
 // 生命周期

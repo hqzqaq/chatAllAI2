@@ -97,54 +97,7 @@ const sseEventListenerId = ref<string | null>(null)
 // 计算属性
 const webviewId = computed(() => `webview-${props.provider.id}`)
 
-/**
- * 创建WebView元素
- */
-const createWebView = (): void => {
-  console.log(`Creating WebView for ${props.provider.name}`)
 
-  const container = document.getElementById(webviewId.value)
-  if (!container) {
-    console.error(`WebView container not found: ${webviewId.value}`)
-    return
-  }
-
-  // 清空容器
-  container.innerHTML = ''
-
-  // 创建webview元素
-  const webview = document.createElement('webview') as Electron.WebviewTag
-  webview.id = `${webviewId.value}-element`
-  webview.src = props.provider.url
-  webview.style.width = '100%'
-  webview.style.height = '100%'
-  webview.style.border = 'none'
-
-  // 初始化URL状态
-  currentUrl.value = props.provider.url
-  isInitialLoad.value = true
-
-  // 设置webview属性
-  webview.setAttribute('nodeintegration', 'false')
-  webview.setAttribute('websecurity', 'true')
-  webview.setAttribute('allowpopups', 'true')
-  webview.setAttribute('useragent', getUserAgent())
-  webview.setAttribute('partition', `persist:${props.provider.id}`)
-
-  console.log(`WebView created for ${props.provider.name}, URL: ${props.provider.url}`)
-
-  // 添加到容器
-  container.appendChild(webview)
-  webviewElement.value = webview
-
-  // 绑定事件
-  bindWebViewEvents(webview)
-
-  // 设置SSE事件监听器（异步，不阻塞WebView创建）
-  setupSSEEventListener().catch(error => {
-    console.warn(`Failed to set up SSE event listener: ${error}`)
-  })
-}
 
 /**
  * 获取用户代理字符串
@@ -710,21 +663,160 @@ const handleDeepSeekSSEEvent = (event: { eventType: string; data: any }): void =
 /**
  * 处理豆包 SSE事件
  */
-const handleDoubaoSSEEvent = (event: { eventType: string; data: any }): void => {
+const handleDoubaoSSEEvent = (event: { eventType: string; data: any; url?: string }): void => {
   // 豆包的SSE事件处理逻辑
+  console.log('[豆包] SSE事件详情:', {
+    eventType: event.eventType,
+    url: event.url || 'unknown',
+    data: event.data,
+    timestamp: new Date().toISOString()
+  })
+
+  // 专门监控豆包的SSE聊天接口
   if (event.eventType === 'message' && event.data) {
-    console.log('Doubao message event:', event.data)
+    // 检查是否是来自豆包聊天接口的SSE响应
+    const dataStr = typeof event.data === 'string' ? event.data : JSON.stringify(event.data)
     
-    // 解析豆包的SSE消息内容
-    if (typeof event.data === 'string') {
-      try {
-        const messageData = JSON.parse(event.data)
-        console.log('Doubao parsed message:', messageData)
-      } catch (e) {
-        console.log('Doubao raw message:', event.data)
+    // 解析SSE消息内容
+    let parsedData = null
+    try {
+      parsedData = JSON.parse(dataStr)
+      console.log('[豆包] 解析后的SSE消息:', parsedData)
+      
+      // 提取关键信息进行状态分析
+      const messageInfo = extractDoubaoMessageInfo(parsedData)
+      if (messageInfo) {
+        console.log('[豆包] 提取的消息信息:', messageInfo)
+        
+        // 发送详细的状态信息到父组件
+        emit('doubao-sse-event', {
+          ...event,
+          parsedData,
+          messageInfo,
+          originalUrl: event.url,
+          monitoringTarget: 'https://www.doubao.com/samantha/chat/completion',
+          analysisResult: analyzeDoubaoResponse(parsedData)
+        })
       }
+      
+    } catch (e) {
+      console.log('[豆包] 原始SSE消息:', dataStr)
+      
+      // 对于无法解析的原始消息，也发送原始数据
+      emit('doubao-sse-event', {
+        ...event,
+        rawData: dataStr,
+        isParsable: false,
+        originalUrl: event.url,
+        monitoringTarget: 'https://www.doubao.com/samantha/chat/completion'
+      })
     }
   }
+
+  // 处理连接和错误事件
+  if (event.eventType === 'connected') {
+    console.log('[豆包] SSE连接建立')
+    emit('doubao-sse-event', {
+      ...event,
+      status: 'connected',
+      message: '豆包SSE连接已建立',
+      originalUrl: event.url
+    })
+  } else if (event.eventType === 'error') {
+    console.error('[豆包] SSE连接错误:', event.data)
+    emit('doubao-sse-event', {
+      ...event,
+      status: 'error',
+      error: event.data,
+      message: '豆包SSE连接失败',
+      originalUrl: event.url
+    })
+  } else if (event.eventType === 'complete') {
+    console.log('[豆包] SSE连接完成')
+    emit('doubao-sse-event', {
+      ...event,
+      status: 'completed',
+      message: '豆包SSE响应已完成',
+      originalUrl: event.url
+    })
+  }
+}
+
+/**
+ * 从豆包响应中提取关键消息信息
+ */
+const extractDoubaoMessageInfo = (data: any): any | null => {
+  try {
+    if (data && typeof data === 'object') {
+      return {
+        // 提取消息内容
+        content: data.content || data.message || data.text || '',
+        // 提取增量内容（对于流式响应）
+        delta: data.delta || data.choices?.[0]?.delta || null,
+        // 提取角色信息
+        role: data.role || data.choices?.[0]?.role || 'assistant',
+        // 提取消息ID
+        id: data.id || data.message_id || null,
+        // 提取流式标记
+        finished: data.finished || data.done || false,
+        // 提取时间戳
+        timestamp: data.timestamp || Date.now(),
+        // 提取token信息
+        tokens: data.usage || data.tokens || null
+      }
+    }
+    return null
+  } catch (error) {
+    console.warn('[豆包] 提取消息信息失败:', error)
+    return null
+  }
+}
+
+/**
+ * 分析豆包响应内容
+ */
+const analyzeDoubaoResponse = (data: any): any => {
+  const analysis = {
+    messageType: 'unknown',
+    isStream: false,
+    hasContent: false,
+    isComplete: false,
+    quality: 'unknown'
+  }
+
+  try {
+    // 判断消息类型
+    if (data.choices && Array.isArray(data.choices)) {
+      analysis.messageType = 'chat_completion'
+      analysis.hasContent = true
+      analysis.isStream = !data.choices[0]?.finish_reason
+      analysis.isComplete = !!data.choices[0]?.finish_reason
+    } else if (data.content) {
+      analysis.messageType = 'direct_content'
+      analysis.hasContent = true
+      analysis.isComplete = true
+    }
+
+    // 评估质量
+    if (analysis.hasContent) {
+      const content = typeof data.content === 'string' ? data.content : 
+                    data.choices?.[0]?.message?.content || 
+                    data.choices?.[0]?.delta?.content || ''
+      
+      if (content && content.length > 10) {
+        analysis.quality = 'good'
+      } else if (content && content.length > 0) {
+        analysis.quality = 'poor'
+      } else {
+        analysis.quality = 'empty'
+      }
+    }
+
+  } catch (error) {
+    console.warn('[豆包] 响应分析失败:', error)
+  }
+
+  return analysis
 }
 
 /**
@@ -792,6 +884,62 @@ const destroy = (): void => {
     }
     webviewElement.value = null
   }
+}
+
+/**
+ * 创建WebView元素
+ */
+const createWebView = (): void => {
+  if (webviewElement.value) {
+    console.log(`WebView already exists for ${props.provider.name}`)
+    return
+  }
+
+  const container = document.getElementById(webviewId.value)
+  if (!container) {
+    console.error(`Container not found: ${webviewId.value}`)
+    return
+  }
+
+  // 创建webview元素
+  const webview = document.createElement('webview') as Electron.WebviewTag
+  webview.id = `webview-${props.provider.id}`
+  webview.style.width = '100%'
+  webview.style.height = '100%'
+  webview.style.border = 'none'
+
+  // 设置基本属性
+  webview.src = props.provider.url || props.provider.homepage || ''
+  webview.partition = `persist:${props.provider.id}`
+  webview.allowpopups = false
+  webview.webpreferences = 'contextIsolation=yes, nodeIntegration=no, sandbox=yes'
+
+  // 为豆包提供商添加preload脚本（针对SSE监控）
+  if (props.provider.id === 'doubao') {
+    try {
+      // 添加豆包专用的preload脚本，实现SSE监控功能
+      // 使用file://协议，确保与Electron WebView兼容
+      const preloadScriptPath = '../../../electron/preload/doubao-preload.js'
+      const fileUrl = `file://${require('path').resolve(__dirname, preloadScriptPath)}`
+      webview.preload = fileUrl
+      console.log(`[豆包] Preload script added for SSE monitoring: ${preloadScriptPath}`)
+    } catch (error) {
+      console.warn(`[豆包] Failed to set preload script:`, error)
+    }
+  }
+
+  webviewElement.value = webview
+
+  // 绑定事件
+  bindWebViewEvents(webview)
+
+  // 添加到容器
+  container.appendChild(webview)
+
+  // 设置SSE事件监听器
+  setupSSEEventListener()
+
+  console.log(`WebView created for ${props.provider.name} at ${webview.src}`)
 }
 
 /**
