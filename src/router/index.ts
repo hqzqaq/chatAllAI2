@@ -1,12 +1,11 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import Home from '../views/Home.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    name: 'Home',
-    component: Home,
+    redirect: '/chat',
+    name: 'Root',
     meta: {
       title: 'ChatAllAI - 多AI模型对话比较工具'
     }

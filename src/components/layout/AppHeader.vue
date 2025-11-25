@@ -21,10 +21,6 @@
           :ellipsis="false"
           @select="handleMenuSelect"
         >
-          <el-menu-item index="/">
-            <el-icon><House /></el-icon>
-            <span>首页</span>
-          </el-menu-item>
           <el-menu-item index="/chat">
             <el-icon><ChatDotRound /></el-icon>
             <span>对话</span>
