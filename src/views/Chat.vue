@@ -36,18 +36,15 @@ const layoutStore = useLayoutStore()
 const providers = computed(() => chatStore.providers)
 
 const visibleProviders = computed(() => {
-  const enabledProviders = providers.value.filter((provider) => {
-    const config = getCardConfig(provider.id)
-    // 只有当模型被选中且可见时才显示卡片
-    return provider.isEnabled && config?.isVisible !== false
+    const enabledProviders = providers.value.filter((provider) => {
+      const config = getCardConfig(provider.id)
+      // 只有当模型被选中且可见时才显示卡片
+      return provider.isEnabled && config?.isVisible !== false
+    })
+
+    // 移除行数限制，显示所有启用的provider
+    return enabledProviders
   })
-
-  // 根据网格设置限制显示的provider数量
-  const { columns, rows } = layoutStore.gridSettings
-  const maxVisibleCount = columns * rows
-
-  return enabledProviders.slice(0, maxVisibleCount)
-})
 
 const gridStyle = computed(() => {
   const { columns } = layoutStore.gridSettings
@@ -89,12 +86,14 @@ onMounted(() => {
     layoutStore.loadLayoutConfig()
     console.log('布局配置加载完成，当前网格设置:', layoutStore.gridSettings)
     
-    // 检查是否所有provider都有卡片配置，如果没有则初始化
-    const missingProviders = providerIds.filter(id => !layoutStore.getCardConfig(id))
-    if (missingProviders.length > 0) {
-      console.log('初始化缺失的卡片配置:', missingProviders)
-      layoutStore.initializeCardConfigs(missingProviders)
-    }
+    // 清空现有卡片配置，强制重新初始化所有provider的配置
+    console.log('清空现有卡片配置')
+    // @ts-ignore - 直接访问cardConfigs以清空它
+    layoutStore.cardConfigs = {}
+    
+    // 重新初始化所有卡片配置
+    console.log('重新初始化所有卡片配置:', providerIds)
+    layoutStore.initializeCardConfigs(providerIds)
 
     // 重新计算布局，确保所有卡片正确显示
     layoutStore.recalculateLayout()

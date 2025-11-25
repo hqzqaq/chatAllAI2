@@ -704,12 +704,13 @@ defineExpose({
 
 // 生命周期
 onMounted(() => {
-  // 初始化WebView状态
-  if (props.provider.isLoggedIn && !props.provider.isEnabled) {
-    const provider = chatStore.getProvider(props.provider.id)
-    if (provider) {
-      provider.isEnabled = true
-    }
+  // 初始化WebView状态，确保provider被启用
+  const provider = chatStore.getProvider(props.provider.id)
+  if (provider && !provider.isEnabled) {
+    provider.isEnabled = true
+    provider.loadingState = 'loading'
+    // 启用WebView
+    enableWebView()
   }
 })
 </script>
