@@ -103,15 +103,6 @@
                   />
                 </el-form-item>
 
-                <el-form-item label="行数">
-                  <el-input-number
-                    v-model="gridSettings.rows"
-                    :min="1"
-                    :max="4"
-                    @change="handleGridChange"
-                  />
-                </el-form-item>
-
                 <el-form-item label="间距">
                   <el-input-number
                     v-model="gridSettings.gap"

@@ -9,13 +9,12 @@ export const useLayoutStore = defineStore('layout', () => {
   // 卡片配置
   const cardConfigs = ref<Record<string, CardConfig>>({})
 
-  // 网格布局设置
+  // 网格布局设置 - 移除行数限制
   const gridSettings = ref({
     columns: 3,
-    rows: 2,
     gap: 16,
     minCardWidth: 300,
-    minCardHeight: 600 // 增加最小高度到400px，让卡片有更大的显示空间
+    minCardHeight: 600 // 最小高度600px，提供更大显示空间
   })
 
   // 窗口尺寸
@@ -141,7 +140,7 @@ export const useLayoutStore = defineStore('layout', () => {
       }
       config.position = {
         x: 16, // 左边距
-        y: 16  // 上边距
+        y: 16 // 上边距
       }
       config.zIndex = 1000 // 设置最高z-index
 
@@ -217,7 +216,7 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-   * 重新计算布局
+   * 重新计算布局 - 支持自动扩展行数，无行数限制
    */
   const recalculateLayout = (): void => {
     const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible && !config.isMaximized)
@@ -226,60 +225,46 @@ export const useLayoutStore = defineStore('layout', () => {
       const col = index % gridSettings.value.columns
       const row = Math.floor(index / gridSettings.value.columns)
 
-      // 检查是否超过最大行数
-      if (row >= gridSettings.value.rows) {
-        // 超过行数限制的卡片暂时隐藏
-        config.isHidden = true
-        return
+      // 移除行数限制，所有卡片都可见
+      const newConfig = {
+        ...config,
+        isHidden: false,
+        position: {
+          x: col * (cardWidth.value + gridSettings.value.gap) + gridSettings.value.gap,
+          y: row * (cardHeight.value + gridSettings.value.gap) + gridSettings.value.gap
+        }
       }
 
-      // 确保卡片可见
-      config.isHidden = false
-
-      config.position = {
-        x: col * (cardWidth.value + gridSettings.value.gap) + gridSettings.value.gap,
-        y: row * (cardHeight.value + gridSettings.value.gap) + gridSettings.value.gap
-      }
+      // 更新卡片配置
+      Object.assign(config, newConfig)
 
       if (!config.isMinimized) {
-        config.size = {
+        // 更新卡片大小
+        Object.assign(config.size, {
           width: cardWidth.value,
           height: cardHeight.value
-        }
+        })
       } else {
         // 最小化状态下，保持宽度但设置较小的高度
-        config.size = {
+        Object.assign(config.size, {
           width: cardWidth.value,
           height: 60 // 最小化后的高度
-        }
+        })
       }
     })
     saveLayoutConfig()
   }
 
   /**
-   * 更新网格设置并重新计算布局
+   * 更新网格设置并重新计算布局 - 移除行数相关逻辑
    */
   const updateGridSettings = (newSettings: Partial<typeof gridSettings.value>): void => {
     const oldSettings = { ...gridSettings.value }
     gridSettings.value = { ...gridSettings.value, ...newSettings }
 
-    // 如果行数或列数发生变化，重新计算布局
-    if (newSettings.rows !== undefined || newSettings.columns !== undefined) {
-      // 确保当前显示的卡片不超过新的网格容量
-      const maxVisibleCards = gridSettings.value.columns * gridSettings.value.rows
-      const visibleConfigs = Object.values(cardConfigs.value).filter(config => config.isVisible && !config.isMaximized)
-
-      visibleConfigs.forEach((config, index) => {
-        if (index >= maxVisibleCards) {
-          // 隐藏超出容量的卡片
-          config.isHidden = true
-        } else {
-          // 确保卡片可见
-          config.isHidden = false
-        }
-      })
-
+    // 如果列数发生变化，重新计算布局
+    if (newSettings.columns !== undefined) {
+      // 重新计算所有卡片布局，支持无限制行数
       recalculateLayout()
     }
     saveLayoutConfig()
