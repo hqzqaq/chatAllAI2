@@ -80,18 +80,29 @@ onMounted(() => {
   // 立即更新窗口大小，确保初始布局计算正确
   layoutStore.updateWindowSize(window.innerWidth, window.innerHeight)
 
-  // 初始化布局配置 - 先加载保存的配置，再确保所有provider都有配置
-  const providerIds = providers.value.map((p) => p.id)
-  layoutStore.loadLayoutConfig()
-  
-  // 检查是否所有provider都有卡片配置，如果没有则初始化
-  const missingProviders = providerIds.filter(id => !layoutStore.getCardConfig(id))
-  if (missingProviders.length > 0) {
-    layoutStore.initializeCardConfigs(missingProviders)
+  // 立即加载布局配置，不要等待
+  const initializeLayout = () => {
+    console.log('开始初始化布局...')
+    const providerIds = providers.value.map((p) => p.id)
+    
+    // 先加载保存的布局配置
+    layoutStore.loadLayoutConfig()
+    console.log('布局配置加载完成，当前网格设置:', layoutStore.gridSettings)
+    
+    // 检查是否所有provider都有卡片配置，如果没有则初始化
+    const missingProviders = providerIds.filter(id => !layoutStore.getCardConfig(id))
+    if (missingProviders.length > 0) {
+      console.log('初始化缺失的卡片配置:', missingProviders)
+      layoutStore.initializeCardConfigs(missingProviders)
+    }
+
+    // 重新计算布局，确保所有卡片正确显示
+    layoutStore.recalculateLayout()
+    console.log('布局重新计算完成')
   }
 
-  // 再次重新计算布局，确保所有卡片正确显示
-  layoutStore.recalculateLayout()
+  // 立即执行布局初始化
+  initializeLayout()
 
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)

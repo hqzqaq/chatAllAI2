@@ -9,13 +9,16 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import AppLayout from './components/layout/AppLayout.vue'
-import { useAppStore } from './stores'
+import { useAppStore, useLayoutStore } from './stores'
 
 const appStore = useAppStore()
+const layoutStore = useLayoutStore()
 
 // 应用初始化
 onMounted(async() => {
   await appStore.initializeApp()
+  // 加载布局配置，确保列数等设置在应用启动时被正确恢复
+  layoutStore.loadLayoutConfig()
 })
 </script>
 

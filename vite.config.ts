@@ -87,6 +87,11 @@ export default defineConfig({
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
+          // 添加对 assetInfo.names 的检查
+          if (!assetInfo.names || assetInfo.names.length === 0) {
+            // 如果 names 不存在或为空，返回默认路径
+            return `assets/[name]-[hash].[ext]`
+          }
           const info = assetInfo.names
           const extType = info[info.length - 1]
           for (const key in assetInfo.names){

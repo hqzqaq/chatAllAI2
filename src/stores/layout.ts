@@ -303,7 +303,7 @@ export const useLayoutStore = defineStore('layout', () => {
         cardConfigs: cardConfigs.value,
         gridSettings: gridSettings.value
       }
-      localStorage.setItem('layoutConfig', JSON.stringify(config))
+      localStorage.setItem('chatallai_layout_config', JSON.stringify(config))
     } catch (error) {
       console.error('Failed to save layout config:', error)
     }
@@ -314,7 +314,7 @@ export const useLayoutStore = defineStore('layout', () => {
      */
   const loadLayoutConfig = (): void => {
     try {
-      const saved = localStorage.getItem('layoutConfig')
+      const saved = localStorage.getItem('chatallai_layout_config')
       if (saved) {
         const config = JSON.parse(saved)
         if (config.cardConfigs) {
@@ -323,6 +323,9 @@ export const useLayoutStore = defineStore('layout', () => {
         if (config.gridSettings) {
           gridSettings.value = { ...gridSettings.value, ...config.gridSettings }
         }
+        console.log('成功加载布局配置:', config.gridSettings)
+      } else {
+        console.log('未找到保存的布局配置，使用默认设置')
       }
     } catch (error) {
       console.error('Failed to load layout config:', error)
