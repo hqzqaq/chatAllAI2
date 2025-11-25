@@ -20,6 +20,7 @@ export default defineConfig({
             options.startup()
           }
         },
+        args: ['--remote-debugging-port=9222'],
         vite: {
           build: {
             sourcemap: false,

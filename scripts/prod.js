@@ -33,7 +33,7 @@ viteBuild.on('close', (code) => {
   
   // 启动Electron应用
   console.log('🔧 启动Electron应用...')
-  const electronProcess = spawn('npx', ['electron', '.'], {
+  const electronProcess = spawn('npx', ['electron', '.', '--remote-debugging-port=9222'], {
     stdio: 'inherit',
     shell: true,
     cwd: process.cwd(),

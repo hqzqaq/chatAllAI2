@@ -166,6 +166,15 @@ export const useChatStore = defineStore('chat', () => {
   // 消息发送状态
   const sendingStatus = ref<Record<string, 'idle' | 'sending' | 'sent' | 'error'>>({})
 
+  // AI回答状态
+  const answerStatus = ref<Record<string, {
+    status: 'idle' | 'sending' | 'sent' | 'responding' | 'completed' | 'error'
+    message: string
+    timestamp: Date
+    eventType?: string
+    data?: any
+  }>>({})
+
   // 计算属性
   const loggedInProviders = computed(() => providers.value.filter((provider) => provider.isLoggedIn))
 
@@ -321,12 +330,63 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  /**
+     * 设置AI回答状态
+     */
+  const setAnswerStatus = (
+    providerId: string,
+    status: 'idle' | 'sending' | 'sent' | 'responding' | 'completed' | 'error',
+    message: string,
+    eventType?: string,
+    data?: any
+  ): void => {
+    answerStatus.value[providerId] = {
+      status,
+      message,
+      timestamp: new Date(),
+      eventType,
+      data
+    }
+  }
+
+  /**
+     * 获取AI回答状态
+     */
+  const getAnswerStatus = (providerId: string): {
+    status: 'idle' | 'sending' | 'sent' | 'responding' | 'completed' | 'error'
+    message: string
+    timestamp: Date
+    eventType?: string
+    data?: any
+  } => {
+    return answerStatus.value[providerId] || {
+      status: 'idle',
+      message: '',
+      timestamp: new Date()
+    }
+  }
+
+  /**
+     * 清除AI回答状态
+     */
+  const clearAnswerStatus = (providerId: string): void => {
+    delete answerStatus.value[providerId]
+  }
+
+  /**
+     * 清除所有AI回答状态
+     */
+  const clearAllAnswerStatuses = (): void => {
+    answerStatus.value = {}
+  }
+
   return {
     providers,
     currentMessage,
     conversations,
     sessions,
     sendingStatus,
+    answerStatus,
     loggedInProviders,
     totalProviders,
     loggedInCount,
@@ -344,6 +404,10 @@ export const useChatStore = defineStore('chat', () => {
     updateProviderError,
     toggleProvider,
     resetProviderState,
-    updateProviderActiveTime
+    updateProviderActiveTime,
+    setAnswerStatus,
+    getAnswerStatus,
+    clearAnswerStatus,
+    clearAllAnswerStatuses
   }
 })

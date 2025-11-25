@@ -871,6 +871,19 @@ export class IPCHandler extends EventEmitter {
   }
 
   /**
+   * 处理SSE事件
+   */
+  private handleSSEEvent(data: SSEEventData): void {
+    this.log(`SSE event received:`, data)
+    
+    // 将SSE事件转发给SessionManager处理
+    this.sessionManager.handleSSEEvent(data)
+    
+    // 通知渲染进程
+    this.sendToRenderer(IPCChannel.SSE_EVENT, data)
+  }
+
+  /**
    * 处理SSE事件监听器添加
    */
   private async handleSSEAddEventListener(data: SSEAddEventListenerRequest): Promise<{ success: boolean; listenerId?: string }> {

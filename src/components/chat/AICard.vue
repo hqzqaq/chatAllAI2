@@ -25,6 +25,16 @@
         >
           {{ props.provider.isLoggedIn ? '已登录' : '未登录' }}
         </el-tag>
+        
+        <!-- 回答状态显示 -->
+        <el-tag 
+          v-if="answerStatus && answerStatus.status !== 'idle'" 
+          :type="getAnswerStatusType(answerStatus.status)"
+          size="small"
+          class="answer-status-tag"
+        >
+          {{ getAnswerStatusText(answerStatus.status) }}
+        </el-tag>
       </div>
 
       <div class="header-right">
@@ -279,6 +289,8 @@ const proxyConfig = ref({
 // 计算属性
 const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] || 'idle')
 
+const answerStatus = computed(() => chatStore.getAnswerStatus(props.provider.id))
+
 const cardStyle = computed(() => {
   if (!props.config) return {}
 
@@ -341,6 +353,46 @@ const getStatusText = (): string => {
       return '已发送'
     case 'error':
       return '发送失败'
+    default:
+      return ''
+  }
+}
+
+/**
+ * 获取回答状态类型
+ */
+const getAnswerStatusType = (status: string): string => {
+  switch (status) {
+    case 'sending':
+      return 'info'
+    case 'sent':
+      return 'success'
+    case 'responding':
+      return 'warning'
+    case 'completed':
+      return 'success'
+    case 'error':
+      return 'danger'
+    default:
+      return 'info'
+  }
+}
+
+/**
+ * 获取回答状态文本
+ */
+const getAnswerStatusText = (status: string): string => {
+  switch (status) {
+    case 'sending':
+      return 'AI思考中...'
+    case 'sent':
+      return '已发送'
+    case 'responding':
+      return 'AI回答中...'
+    case 'completed':
+      return '回答完成'
+    case 'error':
+      return '回答失败'
     default:
       return ''
   }
@@ -512,14 +564,24 @@ const handleUrlChanged = (url: string): void => {
  * 回答状态变化处理
  */
 const handleResponseStatusChanged = (statusData: {
+  providerId: string
   status: 'sending' | 'sent' | 'error' | 'responding' | 'completed'
   message: string
+  timestamp?: Date
+  eventType?: string
+  data?: any
 }): void => {
   console.log(`[${props.provider.name}] 回答状态变化:`, statusData)
-  
-  // 更新聊天存储中的发送状态
-  chatStore.setSendingStatus(props.provider.id, statusData.status)
-  
+
+  // 更新聊天存储中的回答状态（不是发送状态）
+  chatStore.setAnswerStatus(
+    props.provider.id,
+    statusData.status,
+    statusData.message,
+    statusData.eventType,
+    statusData.data
+  )
+
   // 根据状态显示相应的消息
   switch (statusData.status) {
     case 'sending':

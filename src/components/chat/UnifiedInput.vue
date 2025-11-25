@@ -459,42 +459,6 @@ const handleNewChat = async(): Promise<void> => {
 }
 
 /**
- * 获取新建对话的JavaScript脚本
- * 预留空白，后续补充具体脚本内容
- */
-const getNewChatScript = (): string => {
-  // TODO: 根据MessageScripts.ts的实现方式，为不同AI提供商创建相应的新建对话脚本
-  // 目前返回一个通用的新建对话脚本模板
-  return `
-    (function() {
-      // 新建对话脚本模板
-      // 后续将根据具体AI网站的实现补充详细脚本
-      
-      // 尝试查找新建对话按钮
-      const newChatButtons = [
-        document.querySelector('[data-testid="new-chat-button"]'),
-        document.querySelector('[aria-label*="new chat"]'),
-        document.querySelector('[aria-label*="新建对话"]'),
-        document.querySelector('button:contains("New chat")'),
-        document.querySelector('button:contains("新建对话")'),
-        document.querySelector('.new-chat'),
-        document.querySelector('#new-chat')
-      ].filter(Boolean)
-      
-      if (newChatButtons.length > 0) {
-        newChatButtons[0].click()
-        console.log('已点击新建对话按钮')
-        return true
-      } else {
-        console.log('未找到新建对话按钮，尝试其他方式')
-        // 后续将添加针对不同AI网站的具体实现
-        return false
-      }
-    })()
-  `
-}
-
-/**
  * 处理消息分发器状态变化
  */
 const handleStatusChanged = (data: { providerId: string; status: string; messageId: string; error?: any }) => {

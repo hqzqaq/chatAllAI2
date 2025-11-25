@@ -291,9 +291,50 @@ export class SessionManager extends EventEmitter {
         }
       )
 
+      // 拦截响应数据以捕获SSE消息
+      electronSession.webRequest.onResponseStarted(
+        { urls: sseConfig.interceptUrls },
+        (details) => {
+          if (this.isSSEResponse(details)) {
+            console.log(`SSE response started for ${providerId}:`, details.url)
+            this.setupSSEStreamMonitoring(details, providerId, electronSession)
+          }
+        }
+      )
+
       console.log(`SSE interception setup for ${providerId}`)
     } catch (error) {
       console.error(`Failed to setup SSE interception for ${providerId}:`, error)
+    }
+  }
+
+  /**
+   * 设置SSE流监控
+   */
+  private setupSSEStreamMonitoring(details: any, providerId: string, electronSession: Session): void {
+    try {
+      // 使用webContents来监控网络请求
+      const { webContents } = require('electron')
+      const allContents = webContents.getAllWebContents()
+      
+      // 找到对应的webContents
+      const targetContents = allContents.find((wc: any) => {
+        const url = wc.getURL()
+        return url.includes(providerId) || wc.session === electronSession
+      })
+
+      if (targetContents) {
+        console.log(`Setting up stream monitoring for ${providerId}`)
+        
+        // 监听新的网络请求
+        targetContents.on('did-start-navigation', (event: any, url: string) => {
+          if (url.includes('completion') || url.includes('chat')) {
+            console.log(`Navigation to chat endpoint: ${url}`)
+          }
+        })
+      }
+    } catch (error) {
+      console.error(`Failed to setup stream monitoring for ${providerId}:`, error)
     }
   }
 
