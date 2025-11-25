@@ -70,8 +70,49 @@
     "files": [
       "dist-electron/**/*",
       "dist/**/*",
-      "node_modules/**/*",
+      "!node_modules/**/*",
+      "!tests/**/*",
+      "!docs/**/*",
+      "!examples/**/*",
+      "!.*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/@element-plus/icons-vue/dist/**/*",
+        "to": "extra-resources/@element-plus/icons-vue",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/element-plus/dist/**/*",
+        "to": "extra-resources/element-plus",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/pinia/dist/**/*",
+        "to": "extra-resources/pinia",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/vue/dist/**/*",
+        "to": "extra-resources/vue",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/vue-router/dist/**/*",
+        "to": "extra-resources/vue-router",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "mac": {
       "category": "public.app-category.productivity",
@@ -82,9 +123,22 @@
             "x64",
             "arm64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
-      "icon": "public/icons/chatallai.png"
+      "icon": "public/icons/chatallai.png",
+      "gatekeeperAssess": false,
+      "type": "distribution",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false
     },
     "win": {
       "target": [
@@ -100,6 +154,11 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "compression": "maximum",
+    "removePackageScripts": true,
+    "asar": {
+      "smartUnpack": false
     }
   }
 }

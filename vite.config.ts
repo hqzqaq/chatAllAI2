@@ -66,14 +66,44 @@ export default defineConfig({
     outDir: outDir,
     assetsDir: 'assets',
     sourcemap: false,
-    minify: false,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug']
+      }
+    },
     rollupOptions: {
       output: {
         manualChunks: {
+          // Vue生态系统
           vue: ['vue', 'vue-router', 'pinia'],
-          elementPlus: ['element-plus', '@element-plus/icons-vue']
+          // Element Plus UI库
+          elementPlus: ['element-plus', '@element-plus/icons-vue'],
+          // 其他第三方库
+          vendor: []
+        },
+        chunkFileNames: 'js/[name]-[hash].js',
+        entryFileNames: 'js/[name]-[hash].js',
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.names
+          const extType = info[info.length - 1]
+          for (const key in assetInfo.names){
+            if (/\.(png|jpe?g|gif|svg)(\?.*)?$/.test(key)) {
+              return `images/[name]-[hash].${extType}`
+            }
+            if (/\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(key)) {
+              return `fonts/[name]-[hash].${extType}`
+            }
+          }
+          return `assets/[name]-[hash].${extType}`
         }
-      }
-    }
+      },
+      external: ['electron']
+    },
+    target: 'es2015',
+    reportCompressedSize: true,
+    chunkSizeWarningLimit: 1000
   }
 })
