@@ -262,11 +262,14 @@ export interface PerformanceMetricsResponse {
     percentage: number
     timestamp: Date
   }
-  webviews: Record<string, {
-    loadTime: number
-    memoryUsage: number
-    cpuUsage: number
-  }>
+  webviews: Record<
+    string,
+    {
+      loadTime: number
+      memoryUsage: number
+      cpuUsage: number
+    }
+  >
 }
 
 /**
@@ -278,17 +281,11 @@ export interface IPCHandler {
     handler: (request: TRequest) => Promise<TResponse> | TResponse
   ): void
 
-  invoke<TRequest = any, TResponse = any>(
-    channel: IPCChannel,
-    data?: TRequest
-  ): Promise<TResponse>
+  invoke<TRequest = any, TResponse = any>(channel: IPCChannel, data?: TRequest): Promise<TResponse>
 
   send<T = any>(channel: IPCChannel, data?: T): void
 
-  on<T = any>(
-    channel: IPCChannel,
-    listener: (data: T) => void
-  ): void
+  on<T = any>(channel: IPCChannel, listener: (data: T) => void): void
 
   off(channel: IPCChannel, listener?: Function): void
 }

@@ -16,7 +16,7 @@ class BrowserEventEmitter {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, [])
     }
-        this.listeners.get(event)!.push(listener)
+    this.listeners.get(event)!.push(listener)
   }
 
   off(event: string, listener: Function): void {
@@ -32,7 +32,7 @@ class BrowserEventEmitter {
   emit(event: string, ...args: any[]): void {
     const eventListeners = this.listeners.get(event)
     if (eventListeners) {
-      eventListeners.forEach((listener) => {
+      eventListeners.forEach(listener => {
         try {
           listener(...args)
         } catch (error) {
@@ -56,21 +56,21 @@ export type MessageSendStatus = 'idle' | 'sending' | 'sent' | 'error'
  * 消息发送结果
  */
 export interface MessageSendResult {
-    providerId: string
-    success: boolean
-    messageId: string
-    error?: string
-    timestamp: Date
+  providerId: string
+  success: boolean
+  messageId: string
+  error?: string
+  timestamp: Date
 }
 
 /**
  * 消息分发配置
  */
 export interface MessageDispatcherConfig {
-    timeout: number
-    retryAttempts: number
-    retryDelay: number
-    enableLogging: boolean
+  timeout: number
+  retryAttempts: number
+  retryDelay: number
+  enableLogging: boolean
 }
 
 /**
@@ -99,10 +99,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
   /**
    * 发送新建对话脚本到多个提供商
    */
-  async sendNewChatScript(
-    targetProviders: string[],
-    messageId?: string
-  ): Promise<MessageSendResult[]> {
+  async sendNewChatScript(targetProviders: string[], messageId?: string): Promise<MessageSendResult[]> {
     const finalMessageId = messageId || this.generateMessageId()
     const results: MessageSendResult[] = []
 
@@ -126,7 +123,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
 
     try {
       // 并发发送脚本到所有提供商
-      const sendPromises = providers.map(async(providerId) => {
+      const sendPromises = providers.map(async providerId => {
         try {
           // 创建临时的provider对象
           const provider: AIProvider = {
@@ -139,7 +136,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
 
           // 获取新建对话脚本
           const script = getNewChatScript(providerId)
-          
+
           // 发送脚本
           const result = await this.sendScriptToProvider(provider, script)
           results.push(result)
@@ -175,13 +172,9 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 发送消息到指定提供商
-     */
-  async sendMessage(
-    content: string,
-    providers: AIProvider[],
-    messageId?: string
-  ): Promise<MessageSendResult[]> {
+   * 发送消息到指定提供商
+   */
+  async sendMessage(content: string, providers: AIProvider[], messageId?: string): Promise<MessageSendResult[]> {
     const finalMessageId = messageId || this.generateMessageId()
     const results: MessageSendResult[] = []
 
@@ -201,7 +194,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
     this.messageQueue.set(finalMessageId, message)
 
     // 并发发送到所有提供商
-    const sendPromises = providers.map((provider) => this.sendToProvider(provider, message))
+    const sendPromises = providers.map(provider => this.sendToProvider(provider, message))
 
     try {
       const settledResults = await Promise.allSettled(sendPromises)
@@ -236,12 +229,9 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 发送脚本到单个提供商
-     */
-  private async sendScriptToProvider(
-    provider: AIProvider,
-    script: string
-  ): Promise<MessageSendResult> {
+   * 发送脚本到单个提供商
+   */
+  private async sendScriptToProvider(provider: AIProvider, script: string): Promise<MessageSendResult> {
     const providerId = provider.id
     const messageId = this.generateMessageId()
 
@@ -280,7 +270,10 @@ export class MessageDispatcher extends BrowserEventEmitter {
       // 设置错误状态
       this.setSendingStatus(providerId, 'error')
       this.emit('status-changed', {
-        providerId, status: 'error', messageId, error
+        providerId,
+        status: 'error',
+        messageId,
+        error
       })
 
       // 检查是否需要重试
@@ -308,12 +301,9 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 发送消息到单个提供商
-     */
-  private async sendToProvider(
-    provider: AIProvider,
-    message: Message
-  ): Promise<MessageSendResult> {
+   * 发送消息到单个提供商
+   */
+  private async sendToProvider(provider: AIProvider, message: Message): Promise<MessageSendResult> {
     const providerId = provider.id
     const messageId = message.id
 
@@ -352,7 +342,10 @@ export class MessageDispatcher extends BrowserEventEmitter {
       // 设置错误状态
       this.setSendingStatus(providerId, 'error')
       this.emit('status-changed', {
-        providerId, status: 'error', messageId, error
+        providerId,
+        status: 'error',
+        messageId,
+        error
       })
 
       // 检查是否需要重试
@@ -380,22 +373,22 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 获取提供商的发送状态
-     */
+   * 获取提供商的发送状态
+   */
   getSendingStatus(providerId: string): MessageSendStatus {
     return this.sendingStatus.get(providerId) || 'idle'
   }
 
   /**
-     * 设置提供商的发送状态
-     */
+   * 设置提供商的发送状态
+   */
   private setSendingStatus(providerId: string, status: MessageSendStatus): void {
     this.sendingStatus.set(providerId, status)
   }
 
   /**
-     * 获取所有提供商的发送状态
-     */
+   * 获取所有提供商的发送状态
+   */
   getAllSendingStatus(): Record<string, MessageSendStatus> {
     const status: Record<string, MessageSendStatus> = {}
     this.sendingStatus.forEach((value, key) => {
@@ -405,18 +398,18 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 重置提供商状态
-     */
+   * 重置提供商状态
+   */
   resetProviderStatus(providerId: string): void {
     this.sendingStatus.set(providerId, 'idle')
     // 清理重试计数
-    const keysToDelete = Array.from(this.retryCount.keys()).filter((key) => key.endsWith(`-${providerId}`))
-    keysToDelete.forEach((key) => this.retryCount.delete(key))
+    const keysToDelete = Array.from(this.retryCount.keys()).filter(key => key.endsWith(`-${providerId}`))
+    keysToDelete.forEach(key => this.retryCount.delete(key))
   }
 
   /**
-     * 重置所有状态
-     */
+   * 重置所有状态
+   */
   resetAllStatus(): void {
     this.sendingStatus.clear()
     this.retryCount.clear()
@@ -424,22 +417,22 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 检查是否有正在发送的消息
-     */
+   * 检查是否有正在发送的消息
+   */
   hasSendingMessages(): boolean {
-    return Array.from(this.sendingStatus.values()).some((status) => status === 'sending')
+    return Array.from(this.sendingStatus.values()).some(status => status === 'sending')
   }
 
   /**
-     * 获取队列中的消息数量
-     */
+   * 获取队列中的消息数量
+   */
   getQueueSize(): number {
     return this.messageQueue.size
   }
 
   /**
-     * 取消消息发送
-     */
+   * 取消消息发送
+   */
   cancelMessage(messageId: string): void {
     this.messageQueue.delete(messageId)
     this.emit('message-cancelled', { messageId })
@@ -447,8 +440,8 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 创建超时Promise
-     */
+   * 创建超时Promise
+   */
   private createTimeoutPromise(timeout: number): Promise<never> {
     return new Promise((_, reject) => {
       setTimeout(() => {
@@ -458,22 +451,22 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 延迟函数
-     */
+   * 延迟函数
+   */
   private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms))
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   /**
-     * 生成消息ID
-     */
+   * 生成消息ID
+   */
   private generateMessageId(): string {
     return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
   /**
-     * 日志记录
-     */
+   * 日志记录
+   */
   private log(message: string, data?: any): void {
     if (this.config.enableLogging) {
       console.log(`[MessageDispatcher] ${message}`, data || '')
@@ -481,8 +474,8 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-     * 销毁分发器
-     */
+   * 销毁分发器
+   */
   destroy(): void {
     this.resetAllStatus()
     this.removeAllListeners()

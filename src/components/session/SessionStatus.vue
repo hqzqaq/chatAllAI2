@@ -2,13 +2,7 @@
   <div class="session-status">
     <div class="session-header">
       <h3>登录状态</h3>
-      <el-button
-        size="small"
-        :loading="isRefreshing"
-        @click="refreshAllSessions"
-      >
-        刷新状态
-      </el-button>
+      <el-button size="small" :loading="isRefreshing" @click="refreshAllSessions">刷新状态</el-button>
     </div>
 
     <div class="session-list">
@@ -19,29 +13,17 @@
         :class="{ 'logged-in': sessionStates[provider.id] }"
       >
         <div class="provider-info">
-          <img
-            :src="provider.icon"
-            :alt="provider.name"
-            class="provider-icon"
-          >
+          <img :src="provider.icon" :alt="provider.name" class="provider-icon" />
           <span class="provider-name">{{ provider.name }}</span>
         </div>
 
         <div class="session-actions">
-          <el-tag
-            :type="sessionStates[provider.id] ? 'success' : 'info'"
-            size="small"
-          >
+          <el-tag :type="sessionStates[provider.id] ? 'success' : 'info'" size="small">
             {{ sessionStates[provider.id] ? '已登录' : '未登录' }}
           </el-tag>
 
           <el-button-group size="small">
-            <el-button
-              :loading="loadingStates[provider.id]"
-              @click="checkSession(provider.id)"
-            >
-              检查
-            </el-button>
+            <el-button :loading="loadingStates[provider.id]" @click="checkSession(provider.id)">检查</el-button>
 
             <el-button
               v-if="sessionStates[provider.id]"
@@ -51,11 +33,7 @@
               保存
             </el-button>
 
-            <el-button
-              type="danger"
-              :loading="clearingStates[provider.id]"
-              @click="clearSession(provider.id)"
-            >
+            <el-button type="danger" :loading="clearingStates[provider.id]" @click="clearSession(provider.id)">
               清除
             </el-button>
           </el-button-group>
@@ -64,12 +42,7 @@
     </div>
 
     <div class="session-summary">
-      <el-statistic
-        title="已登录网站"
-        :value="loggedInCount"
-        :total="totalCount"
-        suffix="/ 6"
-      />
+      <el-statistic title="已登录网站" :value="loggedInCount" :total="totalCount" suffix="/ 6" />
     </div>
   </div>
 </template>
@@ -99,16 +72,14 @@ const clearingStates = ref<Record<string, boolean>>({})
 const sessionStates = ref<Record<string, boolean>>({})
 
 // 计算属性
-const loggedInCount = computed(() => {
-  return Object.values(sessionStates.value).filter(state => state).length
-})
+const loggedInCount = computed(() => Object.values(sessionStates.value).filter(state => state).length)
 
 const totalCount = computed(() => props.providers.length)
 
 /**
  * 检查单个会话状态
  */
-const checkSession = async(providerId: string): Promise<void> => {
+const checkSession = async (providerId: string): Promise<void> => {
   if (!window.electronAPI) return
 
   loadingStates.value[providerId] = true
@@ -138,7 +109,7 @@ const checkSession = async(providerId: string): Promise<void> => {
 /**
  * 保存单个会话
  */
-const saveSession = async(providerId: string): Promise<void> => {
+const saveSession = async (providerId: string): Promise<void> => {
   if (!window.electronAPI) return
 
   savingStates.value[providerId] = true
@@ -162,7 +133,7 @@ const saveSession = async(providerId: string): Promise<void> => {
 /**
  * 清除单个会话
  */
-const clearSession = async(providerId: string): Promise<void> => {
+const clearSession = async (providerId: string): Promise<void> => {
   if (!window.electronAPI) return
 
   clearingStates.value[providerId] = true
@@ -188,11 +159,11 @@ const clearSession = async(providerId: string): Promise<void> => {
 /**
  * 刷新所有会话状态
  */
-const refreshAllSessions = async(): Promise<void> => {
+const refreshAllSessions = async (): Promise<void> => {
   isRefreshing.value = true
 
   try {
-    const checkPromises = props.providers.map((provider) => checkSession(provider.id))
+    const checkPromises = props.providers.map(provider => checkSession(provider.id))
 
     await Promise.allSettled(checkPromises)
     ElMessage.success('所有会话状态已刷新')
@@ -208,7 +179,7 @@ const refreshAllSessions = async(): Promise<void> => {
  * 获取提供商名称
  */
 const getProviderName = (providerId: string): string => {
-  const provider = props.providers.find((p) => p.id === providerId)
+  const provider = props.providers.find(p => p.id === providerId)
   return provider?.name || providerId
 }
 
@@ -216,7 +187,7 @@ const getProviderName = (providerId: string): string => {
  * 初始化加载状态
  */
 const initializeStates = (): void => {
-  props.providers.forEach((provider) => {
+  props.providers.forEach(provider => {
     loadingStates.value[provider.id] = false
     savingStates.value[provider.id] = false
     clearingStates.value[provider.id] = false

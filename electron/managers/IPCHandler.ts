@@ -644,9 +644,9 @@ export class IPCHandler extends EventEmitter {
       // 执行脚本
       const result = await mainWindow.webContents.executeJavaScript(script)
       this.log(`Script executed for ${data.webviewId}, result:`, result)
-      
+
       return {
-        result: result
+        result
       }
     } catch (error) {
       this.log(`Failed to execute script in WebView ${data.webviewId}:`, error)
@@ -876,11 +876,11 @@ export class IPCHandler extends EventEmitter {
   }): Promise<{ success: boolean; error?: string }> {
     try {
       this.log(`Setting proxy for webview ${data.webviewId}: ${data.proxyRules}`)
-      
+
       // 获取webview对应的session - 使用providerId而不是webviewId
       // 首先需要从webviewId映射到providerId
       const providerId = data.webviewId.replace('webview-', '')
-      
+
       // 检查会话是否存在，如果不存在则创建
       let session = this.sessionManager.getSession(providerId)
       if (!session) {

@@ -167,17 +167,17 @@ export const useChatStore = defineStore('chat', () => {
   const sendingStatus = ref<Record<string, 'idle' | 'sending' | 'sent' | 'error'>>({})
 
   // 计算属性
-  const loggedInProviders = computed(() => providers.value.filter((provider) => provider.isLoggedIn))
+  const loggedInProviders = computed(() => providers.value.filter(provider => provider.isLoggedIn))
 
   const totalProviders = computed(() => providers.value.length)
 
   const loggedInCount = computed(() => loggedInProviders.value.length)
 
   /**
-     * 初始化对话历史
-     */
+   * 初始化对话历史
+   */
   const initializeConversations = (): void => {
-    providers.value.forEach((provider) => {
+    providers.value.forEach(provider => {
       if (!conversations.value[provider.id]) {
         conversations.value[provider.id] = []
       }
@@ -195,8 +195,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-     * 添加消息到对话历史
-     */
+   * 添加消息到对话历史
+   */
   const addMessage = (providerId: string, message: Message): void => {
     if (!conversations.value[providerId]) {
       conversations.value[providerId] = []
@@ -205,18 +205,18 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-     * 更新提供商登录状态
-     */
+   * 更新提供商登录状态
+   */
   const updateProviderLoginStatus = (providerId: string, isLoggedIn: boolean): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providers.value.find(p => p.id === providerId)
     if (provider) {
       provider.isLoggedIn = isLoggedIn
     }
   }
 
   /**
-     * 更新会话数据
-     */
+   * 更新会话数据
+   */
   const updateSession = (providerId: string, sessionData: Partial<Session>): void => {
     if (sessions.value[providerId]) {
       sessions.value[providerId] = { ...sessions.value[providerId], ...sessionData }
@@ -224,44 +224,45 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-     * 设置消息发送状态
-     */
+   * 设置消息发送状态
+   */
   const setSendingStatus = (providerId: string, status: 'idle' | 'sending' | 'sent' | 'error'): void => {
     sendingStatus.value[providerId] = status
   }
 
   /**
-     * 获取消息发送状态
-     */
-  const getSendingStatus = (providerId: string): 'idle' | 'sending' | 'sent' | 'error' => sendingStatus.value[providerId] || 'idle'
+   * 获取消息发送状态
+   */
+  const getSendingStatus = (providerId: string): 'idle' | 'sending' | 'sent' | 'error' =>
+    sendingStatus.value[providerId] || 'idle'
 
   /**
-     * 检查是否有正在发送的消息
-     */
-  const hasSendingMessages = (): boolean => Object.values(sendingStatus.value).some((status) => status === 'sending')
+   * 检查是否有正在发送的消息
+   */
+  const hasSendingMessages = (): boolean => Object.values(sendingStatus.value).some(status => status === 'sending')
 
   /**
-     * 清空当前消息
-     */
+   * 清空当前消息
+   */
   const clearCurrentMessage = (): void => {
     currentMessage.value = ''
   }
 
   /**
-     * 获取提供商信息
-     */
-  const getProvider = (providerId: string): AIProvider | undefined => providers.value.find((p) => p.id === providerId)
+   * 获取提供商信息
+   */
+  const getProvider = (providerId: string): AIProvider | undefined => providers.value.find(p => p.id === providerId)
 
   /**
-     * 获取对话历史
-     */
+   * 获取对话历史
+   */
   const getConversation = (providerId: string): Message[] => conversations.value[providerId] || []
 
   /**
-     * 更新提供商加载状态
-     */
+   * 更新提供商加载状态
+   */
   const updateProviderLoadingState = (providerId: string, state: 'idle' | 'loading' | 'loaded' | 'error'): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providers.value.find(p => p.id === providerId)
     if (provider) {
       provider.loadingState = state
       if (state === 'loaded') {
@@ -272,10 +273,10 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-     * 更新提供商错误信息
-     */
+   * 更新提供商错误信息
+   */
   const updateProviderError = (providerId: string, error: string): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providers.value.find(p => p.id === providerId)
     if (provider) {
       provider.loadingState = 'error'
       provider.lastError = error
@@ -284,10 +285,10 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-     * 启用/禁用提供商
-     */
+   * 启用/禁用提供商
+   */
   const toggleProvider = (providerId: string, enabled: boolean): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providers.value.find(p => p.id === providerId)
     if (provider) {
       provider.isEnabled = enabled
       if (enabled) {
@@ -299,10 +300,10 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-     * 重置提供商状态
-     */
+   * 重置提供商状态
+   */
   const resetProviderState = (providerId: string): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providers.value.find(p => p.id === providerId)
     if (provider) {
       provider.loadingState = 'idle'
       provider.lastError = undefined
@@ -311,10 +312,10 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-     * 更新提供商最后活跃时间
-     */
+   * 更新提供商最后活跃时间
+   */
   const updateProviderActiveTime = (providerId: string): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providers.value.find(p => p.id === providerId)
     if (provider) {
       provider.lastActiveTime = new Date()
       provider.sessionData.lastActiveTime = new Date()

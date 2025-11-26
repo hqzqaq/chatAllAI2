@@ -98,7 +98,7 @@ function getKimiNewChatScript(): string {
         return false;
       }
     })()
-  `;
+  `
 }
 
 /**

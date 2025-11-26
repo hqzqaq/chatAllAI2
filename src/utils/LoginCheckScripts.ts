@@ -44,7 +44,7 @@ export function getLoginCheckScript(providerId: string): string {
       // 检查Copilot的登录状态
       !(document.querySelector('[alt="Profile image"]'))
     `,
-     glm: `
+    glm: `
       // 检查GLM的登录状态
       !((document.querySelector(".login-btn") && 
       document.querySelector(".login-btn").textContent === '登录') ||

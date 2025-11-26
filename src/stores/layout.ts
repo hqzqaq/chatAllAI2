@@ -32,14 +32,17 @@ export const useLayoutStore = defineStore('layout', () => {
 
   const cardWidth = computed(() => {
     const available = availableWidth.value - gridSettings.value.gap * 2 // 减去左右边距
-    return Math.max((available - gridSettings.value.gap * (gridSettings.value.columns - 1)) / gridSettings.value.columns, gridSettings.value.minCardWidth)
+    return Math.max(
+      (available - gridSettings.value.gap * (gridSettings.value.columns - 1)) / gridSettings.value.columns,
+      gridSettings.value.minCardWidth
+    )
   })
 
   const cardHeight = computed(() => Math.max(gridSettings.value.minCardHeight, 600)) // 确保卡片高度至少为400px
 
   /**
-     * 初始化卡片配置
-     */
+   * 初始化卡片配置
+   */
   const initializeCardConfigs = (providerIds: string[]): void => {
     providerIds.forEach((providerId, index) => {
       if (!cardConfigs.value[providerId]) {
@@ -68,8 +71,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 更新卡片位置
-     */
+   * 更新卡片位置
+   */
   const updateCardPosition = (providerId: string, position: { x: number; y: number }): void => {
     if (cardConfigs.value[providerId]) {
       cardConfigs.value[providerId].position = position
@@ -78,8 +81,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 更新卡片尺寸
-     */
+   * 更新卡片尺寸
+   */
   const updateCardSize = (providerId: string, size: { width: number; height: number }): void => {
     if (cardConfigs.value[providerId]) {
       // 确保最小尺寸
@@ -93,8 +96,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 切换卡片可见性
-     */
+   * 切换卡片可见性
+   */
   const toggleCardVisibility = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
       cardConfigs.value[providerId].isVisible = !cardConfigs.value[providerId].isVisible
@@ -103,8 +106,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 最小化/恢复卡片
-     */
+   * 最小化/恢复卡片
+   */
   const toggleCardMinimized = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
       // 如果卡片已经最大化，先恢复再最小化
@@ -119,8 +122,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 最大化卡片
-     */
+   * 最大化卡片
+   */
   const maximizeCard = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
       const config = cardConfigs.value[providerId]
@@ -145,7 +148,7 @@ export const useLayoutStore = defineStore('layout', () => {
       config.zIndex = 1000 // 设置最高z-index
 
       // 设置其他卡片为隐藏状态（但不销毁WebView）
-      Object.keys(cardConfigs.value).forEach((id) => {
+      Object.keys(cardConfigs.value).forEach(id => {
         if (id !== providerId) {
           cardConfigs.value[id].isHidden = true // 使用isHidden而不是isVisible
         }
@@ -156,8 +159,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 恢复卡片从最大化状态
-     */
+   * 恢复卡片从最大化状态
+   */
   const restoreCardFromMaximized = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
       const config = cardConfigs.value[providerId]
@@ -174,7 +177,7 @@ export const useLayoutStore = defineStore('layout', () => {
         delete config.originalPosition
 
         // 显示所有卡片（清除隐藏状态）
-        Object.keys(cardConfigs.value).forEach((id) => {
+        Object.keys(cardConfigs.value).forEach(id => {
           cardConfigs.value[id].isHidden = false
         })
 
@@ -186,8 +189,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 切换卡片最大化状态
-     */
+   * 切换卡片最大化状态
+   */
   const toggleCardMaximized = (providerId: string): void => {
     if (cardConfigs.value[providerId]) {
       if (cardConfigs.value[providerId].isMaximized) {
@@ -199,8 +202,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 更新窗口尺寸
-     */
+   * 更新窗口尺寸
+   */
   const updateWindowSize = (width: number, height: number): void => {
     windowSize.value = { width, height }
 
@@ -219,7 +222,7 @@ export const useLayoutStore = defineStore('layout', () => {
    * 重新计算布局 - 支持自动扩展行数，无行数限制
    */
   const recalculateLayout = (): void => {
-    const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible && !config.isMaximized)
+    const visibleCards = Object.values(cardConfigs.value).filter(config => config.isVisible && !config.isMaximized)
 
     visibleCards.forEach((config, index) => {
       const col = index % gridSettings.value.columns
@@ -271,8 +274,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 重置布局
-     */
+   * 重置布局
+   */
   const resetLayout = (): void => {
     const providerIds = Object.keys(cardConfigs.value)
     cardConfigs.value = {}
@@ -280,8 +283,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 保存布局配置
-     */
+   * 保存布局配置
+   */
   const saveLayoutConfig = (): void => {
     try {
       const config = {
@@ -295,8 +298,8 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 加载布局配置
-     */
+   * 加载布局配置
+   */
   const loadLayoutConfig = (): void => {
     try {
       const saved = localStorage.getItem('chatallai_layout_config')
@@ -318,13 +321,13 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   /**
-     * 获取卡片配置
-     */
+   * 获取卡片配置
+   */
   const getCardConfig = (providerId: string): CardConfig | undefined => cardConfigs.value[providerId]
 
   /**
-     * 更新卡片标题
-     */
+   * 更新卡片标题
+   */
   const updateCardTitle = (providerId: string, title: string): void => {
     if (cardConfigs.value[providerId]) {
       cardConfigs.value[providerId].title = title

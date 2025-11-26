@@ -63,7 +63,7 @@ export default defineConfig({
     host: true
   },
   build: {
-    outDir: outDir,
+    outDir,
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'terser',
@@ -90,11 +90,11 @@ export default defineConfig({
           // 添加对 assetInfo.names 的检查
           if (!assetInfo.names || assetInfo.names.length === 0) {
             // 如果 names 不存在或为空，返回默认路径
-            return `assets/[name]-[hash].[ext]`
+            return 'assets/[name]-[hash].[ext]'
           }
           const info = assetInfo.names
           const extType = info[info.length - 1]
-          for (const key in assetInfo.names){
+          for (const key in assetInfo.names) {
             if (/\.(png|jpe?g|gif|svg)(\?.*)?$/.test(key)) {
               return `images/[name]-[hash].${extType}`
             }

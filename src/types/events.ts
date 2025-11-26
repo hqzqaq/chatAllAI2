@@ -90,8 +90,13 @@ export interface MessageEvent extends BaseEvent {
  * WebView事件接口
  */
 export interface WebViewEvent extends BaseEvent {
-  type: EventType.WEBVIEW_READY | EventType.WEBVIEW_LOADING | EventType.WEBVIEW_LOADED |
-        EventType.WEBVIEW_ERROR | EventType.WEBVIEW_CRASHED | EventType.WEBVIEW_NAVIGATION
+  type:
+    | EventType.WEBVIEW_READY
+    | EventType.WEBVIEW_LOADING
+    | EventType.WEBVIEW_LOADED
+    | EventType.WEBVIEW_ERROR
+    | EventType.WEBVIEW_CRASHED
+    | EventType.WEBVIEW_NAVIGATION
   webviewId: string
   providerId: string
   url?: string
@@ -113,8 +118,12 @@ export interface SessionEvent extends BaseEvent {
  * 布局事件接口
  */
 export interface LayoutEvent extends BaseEvent {
-  type: EventType.LAYOUT_CHANGED | EventType.CARD_RESIZED | EventType.CARD_MOVED |
-        EventType.CARD_MINIMIZED | EventType.CARD_MAXIMIZED
+  type:
+    | EventType.LAYOUT_CHANGED
+    | EventType.CARD_RESIZED
+    | EventType.CARD_MOVED
+    | EventType.CARD_MINIMIZED
+    | EventType.CARD_MAXIMIZED
   cardId?: string
   position?: { x: number; y: number }
   size?: { width: number; height: number }
@@ -125,8 +134,12 @@ export interface LayoutEvent extends BaseEvent {
  * 插件事件接口
  */
 export interface PluginEvent extends BaseEvent {
-  type: EventType.PLUGIN_LOADED | EventType.PLUGIN_UNLOADED | EventType.PLUGIN_ERROR |
-        EventType.PLUGIN_ENABLED | EventType.PLUGIN_DISABLED
+  type:
+    | EventType.PLUGIN_LOADED
+    | EventType.PLUGIN_UNLOADED
+    | EventType.PLUGIN_ERROR
+    | EventType.PLUGIN_ENABLED
+    | EventType.PLUGIN_DISABLED
   pluginId: string
   pluginName: string
   version?: string

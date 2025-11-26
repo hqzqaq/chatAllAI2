@@ -56,9 +56,9 @@ export class SessionManager extends EventEmitter {
     super()
     // 为开发环境和生产环境使用不同的会话存储路径
     const isDev = process.env.NODE_ENV === 'development'
-    const basePath = isDev ? 
-      join(app.getPath('userData'), 'dev-sessions') : 
-      join(app.getPath('userData'), 'sessions')
+    const basePath = isDev
+      ? join(app.getPath('userData'), 'dev-sessions')
+      : join(app.getPath('userData'), 'sessions')
     this.dataPath = basePath
     this.encryptionKey = this.generateEncryptionKey()
     this.initializeDataDirectory()
@@ -117,7 +117,7 @@ export class SessionManager extends EventEmitter {
     // 检查是否已有会话文件存在
     const hasExistingSession = await this.hasSession(providerId)
     let sessionData: SessionData
-    
+
     if (hasExistingSession) {
       // 加载现有会话数据
       const loadedSession = await this.loadSession(providerId)
@@ -206,7 +206,7 @@ export class SessionManager extends EventEmitter {
     try {
       console.log(`Starting to save session for ${providerId}`)
       let electronSession = this.electronSessions.get(providerId)
-      
+
       // 如果会话不存在，尝试创建会话
       if (!electronSession) {
         console.log(`Creating new session for ${providerId}`)
@@ -272,7 +272,7 @@ export class SessionManager extends EventEmitter {
       // 读取并解密数据
       const encryptedData = await fs.readFile(filePath)
       console.log(`Read encrypted data for ${providerId}, size: ${encryptedData.length} bytes`)
-      
+
       try {
         const sessionData = this.decryptData(encryptedData) as SessionData
         console.log(`Successfully decrypted session data for ${providerId}`)
@@ -385,18 +385,18 @@ export class SessionManager extends EventEmitter {
    */
   async isSessionActive(providerId: string): Promise<boolean> {
     const sessionData = this.sessions.get(providerId)
-    
+
     // 如果内存中有活跃状态，直接返回
     if (sessionData?.isActive) {
       return true
     }
-    
+
     // 检查会话文件是否存在
     const hasSessionFile = await this.hasSession(providerId)
     if (!hasSessionFile) {
       return false
     }
-    
+
     // 如果会话文件存在但内存中没有数据，尝试加载会话
     if (!sessionData) {
       const loadedSession = await this.loadSession(providerId)
@@ -406,7 +406,7 @@ export class SessionManager extends EventEmitter {
       }
       return false
     }
-    
+
     // 检查会话是否过期
     return !this.isSessionExpired(providerId)
   }

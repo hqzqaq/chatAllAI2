@@ -9,10 +9,7 @@
           <span class="input-title">统一输入</span>
         </div>
         <div class="header-right">
-          <el-tag
-            :type="loggedInCount > 0 ? 'success' : 'info'"
-            size="small"
-          >
+          <el-tag :type="loggedInCount > 0 ? 'success' : 'info'" size="small">
             {{ loggedInCount }}/{{ totalProviders }} 已连接
           </el-tag>
         </div>
@@ -26,29 +23,20 @@
           </el-icon>
           <span class="selector-title">选择AI模型</span>
         </div>
-        <el-checkbox-group 
-          v-model="selectedProviders" 
-          class="provider-checkboxes"
-          @change="handleProviderSelection"
-        >
-          <el-checkbox 
-            v-for="provider in availableProviders" 
-            :key="provider.id" 
+        <el-checkbox-group v-model="selectedProviders" class="provider-checkboxes" @change="handleProviderSelection">
+          <el-checkbox
+            v-for="provider in availableProviders"
+            :key="provider.id"
             :label="provider.id"
             :disabled="provider.loadingState === 'loading'"
             class="provider-checkbox"
           >
             <div class="provider-option">
-              <img 
-                :src="provider.icon" 
-                :alt="provider.name" 
-                class="provider-icon-small"
-                @error="handleIconError"
-              />
+              <img :src="provider.icon" :alt="provider.name" class="provider-icon-small" @error="handleIconError" />
               <span class="provider-name">{{ provider.name }}</span>
-              <el-tag 
-                v-if="provider.isLoggedIn && selectedProviders.includes(provider.id)" 
-                type="success" 
+              <el-tag
+                v-if="provider.isLoggedIn && selectedProviders.includes(provider.id)"
+                type="success"
                 size="small"
                 class="status-tag"
               >
@@ -127,9 +115,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus
-} from '@element-plus/icons-vue'
+import { EditPen, Position, Refresh, Delete, Select, Loading, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
@@ -211,7 +197,7 @@ const inputPlaceholder = computed(() => {
 /**
  * 发送消息
  */
-const handleSend = async(): Promise<void> => {
+const handleSend = async (): Promise<void> => {
   if (loggedInCount.value === 0) {
     ElMessage.warning('请先登录至少一个AI网站')
     return
@@ -234,18 +220,18 @@ const handleSend = async(): Promise<void> => {
     const results = await messageDispatcher.sendMessage(messageContent, loggedInProviders)
 
     // 处理发送结果
-    const successCount = results.filter((result) => result.success).length
+    const successCount = results.filter(result => result.success).length
     const errorCount = results.length - successCount
 
     // 将消息添加到对话历史
-    results.forEach((result) => {
+    results.forEach(result => {
       const message = {
         id: result.messageId,
         content: messageContent,
         timestamp: result.timestamp,
         sender: 'user' as const,
         providerId: result.providerId,
-        status: result.success ? 'sent' as const : 'error' as const,
+        status: result.success ? ('sent' as const) : ('error' as const),
         errorMessage: result.error
       }
       chatStore.addMessage(result.providerId, message)
@@ -268,7 +254,7 @@ const handleSend = async(): Promise<void> => {
 /**
  * 刷新连接
  */
-const handleRefresh = async(): Promise<void> => {
+const handleRefresh = async (): Promise<void> => {
   try {
     // 重置消息分发器状态
     messageDispatcher.resetAllStatus()
@@ -294,7 +280,7 @@ const handleClear = (): void => {
 /**
  * 新建对话
  */
-const handleNewChat = async(): Promise<void> => {
+const handleNewChat = async (): Promise<void> => {
   if (loggedInCount.value === 0) {
     ElMessage.warning('请先登录至少一个AI网站')
     return
@@ -303,16 +289,14 @@ const handleNewChat = async(): Promise<void> => {
   try {
     // 获取已登录的提供商
     const { loggedInProviders } = chatStore
-    
+
     // 使用messageDispatcher发送新建对话脚本
-    const results = await messageDispatcher.sendNewChatScript(
-      loggedInProviders.map(provider => provider.id)
-    )
-    
+    const results = await messageDispatcher.sendNewChatScript(loggedInProviders.map(provider => provider.id))
+
     // 检查发送结果
     const successCount = results.filter(result => result.success).length
     const errorCount = results.filter(result => !result.success).length
-    
+
     if (errorCount === 0) {
       ElMessage.success(`新建对话请求已发送到 ${successCount} 个AI模型`)
     } else if (successCount > 0) {
@@ -330,10 +314,10 @@ const handleNewChat = async(): Promise<void> => {
  * 获取新建对话的JavaScript脚本
  * 预留空白，后续补充具体脚本内容
  */
-const getNewChatScript = (): string => {
+const getNewChatScript = (): string =>
   // TODO: 根据MessageScripts.ts的实现方式，为不同AI提供商创建相应的新建对话脚本
   // 目前返回一个通用的新建对话脚本模板
-  return `
+  `
     (function() {
       // 新建对话脚本模板
       // 后续将根据具体AI网站的实现补充详细脚本
@@ -360,7 +344,6 @@ const getNewChatScript = (): string => {
       }
     })()
   `
-}
 
 /**
  * 处理消息分发器状态变化
@@ -445,7 +428,7 @@ onUnmounted(() => {
 }
 
 .selector-icon {
-  color: #007AFF;
+  color: #007aff;
   font-size: 16px;
 }
 
@@ -513,8 +496,8 @@ onUnmounted(() => {
 
 /* iOS风格选中状态 */
 :deep(.provider-checkbox.is-checked .provider-option) {
-  background: linear-gradient(135deg, #4A90E2 0%, #7B68EE 100%);
-  border-color: #4A90E2;
+  background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
+  border-color: #4a90e2;
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
@@ -522,7 +505,7 @@ onUnmounted(() => {
 
 /* iOS风格悬停效果 */
 .provider-option:hover {
-  border-color: #007AFF;
+  border-color: #007aff;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
 }
@@ -595,23 +578,23 @@ onUnmounted(() => {
   .provider-checkboxes {
     gap: 6px;
   }
-  
+
   .provider-option {
     min-width: 120px;
     max-width: 180px;
     padding: 10px 12px;
     gap: 8px;
   }
-  
+
   .provider-icon-small {
     width: 20px;
     height: 20px;
   }
-  
+
   .provider-name {
     font-size: 12px;
   }
-  
+
   .status-tag {
     font-size: 10px;
     padding: 1px 4px;
@@ -622,14 +605,14 @@ onUnmounted(() => {
   .provider-checkboxes {
     gap: 4px;
   }
-  
+
   .provider-option {
     min-width: 110px;
     max-width: 160px;
     padding: 8px 10px;
     gap: 6px;
   }
-  
+
   .provider-name {
     font-size: 11px;
   }
@@ -685,8 +668,12 @@ onUnmounted(() => {
 }
 
 @keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 响应式设计 */
@@ -694,11 +681,11 @@ onUnmounted(() => {
   .provider-checkboxes {
     justify-content: center;
   }
-  
+
   .model-selector {
     padding: 12px;
   }
-  
+
   .provider-option {
     padding: 10px 12px;
   }

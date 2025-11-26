@@ -28,9 +28,9 @@ viteBuild.on('close', (code) => {
     console.error('❌ 前端构建失败')
     process.exit(code)
   }
-  
+
   console.log('✅ 前端构建完成')
-  
+
   // 启动Electron应用
   console.log('🔧 启动Electron应用...')
   const electronProcess = spawn('npx', ['electron', '.'], {
@@ -39,14 +39,14 @@ viteBuild.on('close', (code) => {
     cwd: process.cwd(),
     env: { ...process.env, VITE_OUT_DIR: 'dist-prod' }
   })
-  
+
   // 处理进程退出
   process.on('SIGINT', () => {
     console.log('\n🛑 正在停止应用...')
     electronProcess.kill('SIGINT')
     process.exit(0)
   })
-  
+
   electronProcess.on('close', (code) => {
     console.log(`\n✅ 应用已停止 (退出码: ${code})`)
     process.exit(code)

@@ -15,7 +15,7 @@ const appStore = useAppStore()
 const layoutStore = useLayoutStore()
 
 // 应用初始化
-onMounted(async() => {
+onMounted(async () => {
   await appStore.initializeApp()
   // 加载布局配置，确保列数等设置在应用启动时被正确恢复
   layoutStore.loadLayoutConfig()
@@ -45,7 +45,7 @@ body {
 
 /* Element Plus 主题变量覆盖 */
 :root {
-  --el-color-primary: #409EFF;
+  --el-color-primary: #409eff;
   --el-color-primary-light-3: #79bbff;
   --el-color-primary-light-5: #a0cfff;
   --el-color-primary-light-7: #c6e2ff;
@@ -82,7 +82,8 @@ body {
   --el-box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.36), 0px 8px 20px rgba(0, 0, 0, 0.72);
   --el-box-shadow-light: 0px 0px 12px rgba(0, 0, 0, 0.72);
   --el-box-shadow-lighter: 0px 0px 6px rgba(0, 0, 0, 0.72);
-  --el-box-shadow-dark: 0px 16px 48px 16px rgba(0, 0, 0, 0.72), 0px 12px 32px rgba(0, 0, 0, 0.72), 0px 8px 16px -8px rgba(0, 0, 0, 0.72);
+  --el-box-shadow-dark:
+    0px 16px 48px 16px rgba(0, 0, 0, 0.72), 0px 12px 32px rgba(0, 0, 0, 0.72), 0px 8px 16px -8px rgba(0, 0, 0, 0.72);
 }
 
 /* 自定义滚动条 */

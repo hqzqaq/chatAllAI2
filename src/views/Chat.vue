@@ -7,10 +7,7 @@
       </div>
 
       <!-- AI卡片网格 -->
-      <div
-        class="cards-grid"
-        :style="gridStyle"
-      >
+      <div class="cards-grid" :style="gridStyle">
         <AICard
           v-for="provider in visibleProviders"
           :key="provider.id"
@@ -36,15 +33,15 @@ const layoutStore = useLayoutStore()
 const providers = computed(() => chatStore.providers)
 
 const visibleProviders = computed(() => {
-    const enabledProviders = providers.value.filter((provider) => {
-      const config = getCardConfig(provider.id)
-      // 只有当模型被选中且可见时才显示卡片
-      return provider.isEnabled && config?.isVisible !== false
-    })
-
-    // 移除行数限制，显示所有启用的provider
-    return enabledProviders
+  const enabledProviders = providers.value.filter(provider => {
+    const config = getCardConfig(provider.id)
+    // 只有当模型被选中且可见时才显示卡片
+    return provider.isEnabled && config?.isVisible !== false
   })
+
+  // 移除行数限制，显示所有启用的provider
+  return enabledProviders
+})
 
 const gridStyle = computed(() => {
   const { columns } = layoutStore.gridSettings
@@ -69,6 +66,30 @@ const handleResize = () => {
   layoutStore.updateWindowSize(window.innerWidth, window.innerHeight)
 }
 
+// 键盘事件处理
+const handleKeyDown = (event: KeyboardEvent) => {
+  // 检查是否按下了Ctrl或Cmd键
+  const isModifierKey = event.ctrlKey || event.metaKey
+
+  // 检查是否按下了数字键1-9
+  if (isModifierKey && event.key >= '1' && event.key <= '9') {
+    // 阻止默认行为，避免与浏览器快捷键冲突
+    event.preventDefault()
+
+    // 获取数字键对应的索引（从0开始）
+    const index = parseInt(event.key, 10) - 1
+
+    // 检查索引是否在可见卡片范围内
+    if (index < visibleProviders.value.length) {
+      // 获取对应的卡片provider
+      const provider = visibleProviders.value[index]
+
+      // 切换卡片最大化状态
+      layoutStore.toggleCardMaximized(provider.id)
+    }
+  }
+}
+
 // 生命周期
 onMounted(() => {
   // 初始化聊天数据
@@ -80,17 +101,17 @@ onMounted(() => {
   // 立即加载布局配置，不要等待
   const initializeLayout = () => {
     console.log('开始初始化布局...')
-    const providerIds = providers.value.map((p) => p.id)
-    
+    const providerIds = providers.value.map(p => p.id)
+
     // 先加载保存的布局配置
     layoutStore.loadLayoutConfig()
     console.log('布局配置加载完成，当前网格设置:', layoutStore.gridSettings)
-    
+
     // 清空现有卡片配置，强制重新初始化所有provider的配置
     console.log('清空现有卡片配置')
     // @ts-ignore - 直接访问cardConfigs以清空它
     layoutStore.cardConfigs = {}
-    
+
     // 重新初始化所有卡片配置
     console.log('重新初始化所有卡片配置:', providerIds)
     layoutStore.initializeCardConfigs(providerIds)
@@ -105,11 +126,17 @@ onMounted(() => {
 
   // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
+
+  // 添加键盘事件监听
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   // 移除窗口大小变化监听器
   window.removeEventListener('resize', handleResize)
+
+  // 移除键盘事件监听
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 

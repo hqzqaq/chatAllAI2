@@ -10,10 +10,7 @@
 
     <div class="footer-center">
       <!-- 消息发送状态 -->
-      <div
-        v-if="hasSendingMessages"
-        class="sending-status"
-      >
+      <div v-if="hasSendingMessages" class="sending-status">
         <el-icon class="loading-icon">
           <Loading />
         </el-icon>
@@ -29,10 +26,7 @@
       </div>
 
       <!-- 网络状态 -->
-      <div
-        class="network-status"
-        :class="{ 'online': isOnline }"
-      >
+      <div class="network-status" :class="{ online: isOnline }">
         <el-icon>
           <component :is="isOnline ? 'Connection' : 'Disconnect'" />
         </el-icon>
@@ -43,12 +37,8 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed, ref, onMounted, onUnmounted
-} from 'vue'
-import {
-  Loading, Monitor, Connection, Disconnect
-} from '@element-plus/icons-vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { Loading, Monitor, Connection, Disconnect } from '@element-plus/icons-vue'
 import { useAppStore, useChatStore } from '../../stores'
 
 const appStore = useAppStore()
@@ -62,14 +52,14 @@ const isOnline = ref<boolean>(navigator.onLine)
 const appVersion = computed(() => appStore.appVersion)
 const isInitialized = computed(() => appStore.isInitialized)
 
-const hasSendingMessages = computed(() => Object.values(chatStore.sendingStatus).some((status) => status === 'sending'))
+const hasSendingMessages = computed(() => Object.values(chatStore.sendingStatus).some(status => status === 'sending'))
 
 /**
  * 更新内存使用情况
  */
 const updateMemoryUsage = (): void => {
   if ('memory' in performance) {
-    const { memory } = (performance as any)
+    const { memory } = performance as any
     memoryUsage.value = Math.round(memory.usedJSHeapSize / 1024 / 1024)
   }
 }

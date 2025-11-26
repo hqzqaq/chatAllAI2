@@ -11,16 +11,11 @@
 
     <div class="header-center">
       <!-- 左侧空白区域 - 可拖动 -->
-      <div class="drag-area left-drag-area"></div>
-      
+      <div class="drag-area left-drag-area" />
+
       <!-- 菜单区域 - 不可拖动 -->
       <div class="menu-container">
-        <el-menu
-          :default-active="activeRoute"
-          mode="horizontal"
-          :ellipsis="false"
-          @select="handleMenuSelect"
-        >
+        <el-menu :default-active="activeRoute" mode="horizontal" :ellipsis="false" @select="handleMenuSelect">
           <el-menu-item index="/chat">
             <el-icon><ChatDotRound /></el-icon>
             <span>对话</span>
@@ -31,23 +26,16 @@
           </el-menu-item>
         </el-menu>
       </div>
-      
+
       <!-- 右侧空白区域 - 可拖动 -->
-      <div class="drag-area right-drag-area"></div>
+      <div class="drag-area right-drag-area" />
     </div>
 
     <div class="header-right">
       <!-- 登录状态指示器 -->
       <div class="login-status">
-        <el-badge
-          :value="loggedInCount"
-          :max="99"
-          class="status-badge"
-        >
-          <el-icon
-            class="status-icon"
-            :class="{ 'online': loggedInCount > 0 }"
-          >
+        <el-badge :value="loggedInCount" :max="99" class="status-badge">
+          <el-icon class="status-icon" :class="{ online: loggedInCount > 0 }">
             <Connection />
           </el-icon>
         </el-badge>
@@ -55,34 +43,13 @@
       </div>
 
       <!-- 主题切换 -->
-      <el-button
-        :icon="isDarkMode ? Sunny : Moon"
-        circle
-        class="theme-toggle"
-        @click="toggleTheme"
-      />
+      <el-button :icon="isDarkMode ? Sunny : Moon" circle class="theme-toggle" @click="toggleTheme" />
 
       <!-- 窗口控制按钮 -->
       <div class="window-controls">
-        <el-button
-          :icon="Minus"
-          circle
-          size="small"
-          @click="minimizeWindow"
-        />
-        <el-button
-          :icon="FullScreen"
-          circle
-          size="small"
-          @click="toggleFullScreen"
-        />
-        <el-button
-          :icon="Close"
-          circle
-          size="small"
-          type="danger"
-          @click="closeWindow"
-        />
+        <el-button :icon="Minus" circle size="small" @click="minimizeWindow" />
+        <el-button :icon="FullScreen" circle size="small" @click="toggleFullScreen" />
+        <el-button :icon="Close" circle size="small" type="danger" @click="closeWindow" />
       </div>
     </div>
   </header>

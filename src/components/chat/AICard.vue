@@ -2,8 +2,8 @@
   <div
     class="ai-card"
     :class="{
-      'minimized': config?.isMinimized,
-      'maximized': config?.isMaximized,
+      minimized: config?.isMinimized,
+      maximized: config?.isMaximized,
       'logged-in': props.provider.isLoggedIn
     }"
     :style="cardStyle"
@@ -11,18 +11,9 @@
     <!-- 卡片头部 -->
     <div class="card-header">
       <div class="header-left">
-        <img
-          :src="props.provider.icon"
-          :alt="props.provider.name"
-          class="provider-icon"
-          @error="handleIconError"
-        >
+        <img :src="props.provider.icon" :alt="props.provider.name" class="provider-icon" @error="handleIconError" />
         <span class="provider-name">{{ props.provider.name }}</span>
-        <el-tag
-          :type="props.provider.isLoggedIn ? 'success' : 'info'"
-          size="small"
-          class="status-tag"
-        >
+        <el-tag :type="props.provider.isLoggedIn ? 'success' : 'info'" size="small" class="status-tag">
           {{ props.provider.isLoggedIn ? '已登录' : '未登录' }}
         </el-tag>
       </div>
@@ -35,49 +26,16 @@
           :type="proxyConfig.enabled ? 'primary' : 'default'"
           @click="openProxyDialog"
         />
-        <el-button
-          :icon="Monitor"
-          size="small"
-          circle
-          @click="openDevTools"
-          title="打开控制台"
-        />
-        <el-button
-          v-if="!config?.isMaximized"
-          :icon="FullScreen"
-          size="small"
-          circle
-          @click="toggleMaximized"
-        />
-        <el-button
-          v-if="config?.isMaximized"
-          :icon="Close"
-          size="small"
-          circle
-          @click="toggleMaximized"
-        />
-        <el-button
-          :icon="config?.isMinimized ? ArrowUp : ArrowDown"
-          size="small"
-          circle
-          @click="toggleMinimized"
-        />
-        <el-button
-          :icon="Refresh"
-          size="small"
-          circle
-          :loading="isRefreshing"
-          @click="refreshWebView"
-        />
+        <el-button :icon="Monitor" size="small" circle title="打开控制台" @click="openDevTools" />
+        <el-button v-if="!config?.isMaximized" :icon="FullScreen" size="small" circle @click="toggleMaximized" />
+        <el-button v-if="config?.isMaximized" :icon="Close" size="small" circle @click="toggleMaximized" />
+        <el-button :icon="config?.isMinimized ? ArrowUp : ArrowDown" size="small" circle @click="toggleMinimized" />
+        <el-button :icon="Refresh" size="small" circle :loading="isRefreshing" @click="refreshWebView" />
       </div>
     </div>
 
     <!-- WebView容器 -->
-    <div
-      v-show="!config?.isMinimized"
-      class="webview-container"
-      :style="webviewStyle"
-    >
+    <div v-show="!config?.isMinimized" class="webview-container" :style="webviewStyle">
       <WebView
         v-if="shouldShowWebView"
         ref="webViewRef"
@@ -93,59 +51,39 @@
         @url-changed="handleUrlChanged"
       />
 
-      <div
-          v-else
-          class="webview-placeholder"
-        >
-          <div
-            v-if="!props.provider.isLoggedIn && !isLoading"
-            class="login-prompt"
-          >
-            <el-icon class="prompt-icon">
-              <User />
-            </el-icon>
-            <p>请先在左侧选择 {{ props.provider.name }}</p>
-            <p class="hint-text">选中后将自动加载登录页面</p>
-          </div>
+      <div v-else class="webview-placeholder">
+        <div v-if="!props.provider.isLoggedIn && !isLoading" class="login-prompt">
+          <el-icon class="prompt-icon">
+            <User />
+          </el-icon>
+          <p>请先在左侧选择 {{ props.provider.name }}</p>
+          <p class="hint-text">选中后将自动加载登录页面</p>
+        </div>
 
-        <div
-          v-else-if="isLoading"
-          class="loading-state"
-        >
+        <div v-else-if="isLoading" class="loading-state">
           <el-icon class="loading-icon">
             <Loading />
           </el-icon>
           <p>加载中...</p>
         </div>
 
-        <div
-          v-else-if="props.provider.loadingState === 'error'"
-          class="error-state"
-        >
+        <div v-else-if="props.provider.loadingState === 'error'" class="error-state">
           <el-icon class="error-icon">
             <Close />
           </el-icon>
           <p>{{ props.provider.lastError || '加载失败' }}</p>
-          <el-button
-            type="primary"
-            @click="retryWebView"
-          >
-            重试
-          </el-button>
+          <el-button type="primary" @click="retryWebView">重试</el-button>
         </div>
       </div>
     </div>
 
     <!-- 消息状态指示器 -->
-    <div
-      v-if="sendingStatus !== 'idle'"
-      class="status-indicator"
-    >
+    <div v-if="sendingStatus !== 'idle'" class="status-indicator">
       <el-icon
         :class="{
-          'loading': sendingStatus === 'sending',
-          'success': sendingStatus === 'sent',
-          'error': sendingStatus === 'error'
+          loading: sendingStatus === 'sending',
+          success: sendingStatus === 'sent',
+          error: sendingStatus === 'error'
         }"
       >
         <component :is="getStatusIcon()" />
@@ -154,11 +92,7 @@
     </div>
 
     <!-- 调整大小手柄 -->
-    <div
-      v-show="!config?.isMinimized"
-      class="resize-handle"
-      @mousedown="startResize"
-    >
+    <div v-show="!config?.isMinimized" class="resize-handle" @mousedown="startResize">
       <el-icon><Rank /></el-icon>
     </div>
 
@@ -169,38 +103,23 @@
       width="500px"
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="proxyFormRef"
-        :model="proxyConfig"
-        label-width="100px"
-      >
+      <el-form ref="proxyFormRef" :model="proxyConfig" label-width="100px">
         <el-form-item label="启用代理">
-          <el-switch
-            v-model="proxyConfig.enabled"
-            @change="handleProxyToggle"
-          />
+          <el-switch v-model="proxyConfig.enabled" @change="handleProxyToggle" />
         </el-form-item>
-        
+
         <el-form-item label="代理协议">
-          <el-select
-            v-model="proxyConfig.protocol"
-            :disabled="!proxyConfig.enabled"
-            style="width: 100%"
-          >
+          <el-select v-model="proxyConfig.protocol" :disabled="!proxyConfig.enabled" style="width: 100%">
             <el-option label="HTTP" value="http" />
             <el-option label="HTTPS" value="https" />
             <el-option label="SOCKS5" value="socks5" />
           </el-select>
         </el-form-item>
-        
+
         <el-form-item label="代理地址">
-          <el-input
-            v-model="proxyConfig.address"
-            :disabled="!proxyConfig.enabled"
-            placeholder="请输入代理服务器地址"
-          />
+          <el-input v-model="proxyConfig.address" :disabled="!proxyConfig.enabled" placeholder="请输入代理服务器地址" />
         </el-form-item>
-        
+
         <el-form-item label="端口">
           <el-input
             v-model="proxyConfig.port"
@@ -210,16 +129,11 @@
           />
         </el-form-item>
       </el-form>
-      
+
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="proxyDialogVisible = false">取消</el-button>
-          <el-button
-            type="primary"
-            @click="saveProxyConfig"
-          >
-            保存并应用
-          </el-button>
+          <el-button type="primary" @click="saveProxyConfig">保存并应用</el-button>
         </span>
       </template>
     </el-dialog>
@@ -227,9 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed, ref, onMounted, nextTick
-} from 'vue'
+import { computed, ref, onMounted, nextTick } from 'vue'
 import {
   ArrowUp,
   ArrowDown,
@@ -282,7 +194,7 @@ const cardStyle = computed(() => {
 
   // 如果卡片被隐藏（最大化时），使用visibility和opacity隐藏
   const isHidden = props.config.isHidden === true
-  
+
   return {
     width: `${props.config.size.width}px`,
     // 修复输入法问题：使用min-height而不是固定height，避免影响输入框
@@ -303,13 +215,16 @@ const webviewStyle = computed(() => {
   }
 })
 
-const shouldShowWebView = computed(() =>
-  // 只有在provider启用且不在初始加载状态时才显示WebView
-  props.provider.isEnabled && (props.provider.loadingState !== 'idle'))
+const shouldShowWebView = computed(
+  () =>
+    // 只有在provider启用且不在初始加载状态时才显示WebView
+    props.provider.isEnabled && props.provider.loadingState !== 'idle'
+)
 
 const webviewWidth = computed(() => props.config?.size.width || 800)
 
-const webviewHeight = computed(() => (props.config?.size.height || 800) - 120 // 增加默认高度到800px，减去头部高度
+const webviewHeight = computed(
+  () => (props.config?.size.height || 800) - 120 // 增加默认高度到800px，减去头部高度
 )
 
 /**
@@ -361,7 +276,7 @@ const toggleMaximized = (): void => {
 /**
  * 打开WebView控制台
  */
-const openDevTools = async(): Promise<void> => {
+const openDevTools = async (): Promise<void> => {
   try {
     if (window.electronAPI && window.electronAPI.openDevTools) {
       await window.electronAPI.openDevTools(props.provider.webviewId)
@@ -382,7 +297,7 @@ const openDevTools = async(): Promise<void> => {
 /**
  * 刷新WebView
  */
-const refreshWebView = async(): Promise<void> => {
+const refreshWebView = async (): Promise<void> => {
   isRefreshing.value = true
   try {
     if (window.electronAPI) {
@@ -400,7 +315,7 @@ const refreshWebView = async(): Promise<void> => {
 /**
  * 启用WebView
  */
-const enableWebView = async(): Promise<void> => {
+const enableWebView = async (): Promise<void> => {
   console.log(`Enabling WebView for ${props.provider.name}`)
 
   isLoading.value = true
@@ -577,7 +492,7 @@ const handleProxyToggle = (enabled: boolean): void => {
 /**
  * 保存代理配置
  */
-const saveProxyConfig = async(): Promise<void> => {
+const saveProxyConfig = async (): Promise<void> => {
   try {
     // 验证配置
     if (proxyConfig.value.enabled) {
@@ -585,7 +500,7 @@ const saveProxyConfig = async(): Promise<void> => {
         ElMessage.error('请填写完整的代理配置信息')
         return
       }
-      
+
       // 验证端口号
       const port = parseInt(proxyConfig.value.port)
       if (port < 1 || port > 65535) {
@@ -596,10 +511,10 @@ const saveProxyConfig = async(): Promise<void> => {
 
     // 保存配置到本地存储
     saveProxyConfigToStorage()
-    
+
     // 应用代理配置到webview
     await applyProxyConfig()
-    
+
     ElMessage.success('代理配置已保存并应用')
     proxyDialogVisible.value = false
   } catch (error) {
@@ -637,7 +552,7 @@ const saveProxyConfigToStorage = (): void => {
 /**
  * 应用代理配置到webview
  */
-const applyProxyConfig = async(): Promise<void> => {
+const applyProxyConfig = async (): Promise<void> => {
   if (!window.electronAPI) {
     console.warn('Electron API不可用，无法设置代理')
     return
@@ -646,14 +561,14 @@ const applyProxyConfig = async(): Promise<void> => {
   try {
     if (proxyConfig.value.enabled) {
       const proxyUrl = `${proxyConfig.value.protocol}://${proxyConfig.value.address}:${proxyConfig.value.port}`
-      
+
       // 通过IPC通知主进程设置代理
       await window.electronAPI.setProxy({
         webviewId: props.provider.webviewId,
         proxyRules: proxyUrl,
         enabled: true
       })
-      
+
       console.log(`已为 ${props.provider.name} 设置代理: ${proxyUrl}`)
     } else {
       // 禁用代理
@@ -662,10 +577,10 @@ const applyProxyConfig = async(): Promise<void> => {
         proxyRules: 'direct://',
         enabled: false
       })
-      
+
       console.log(`已为 ${props.provider.name} 禁用代理`)
     }
-    
+
     // 重新加载webview使代理配置生效
     if (webViewRef.value) {
       setTimeout(() => {
@@ -681,7 +596,7 @@ const applyProxyConfig = async(): Promise<void> => {
 /**
  * 发送消息到WebView
  */
-const sendMessage = async(message: string): Promise<boolean> => {
+const sendMessage = async (message: string): Promise<boolean> => {
   if (!webViewRef.value) {
     return false
   }
@@ -746,6 +661,27 @@ onMounted(() => {
   height: calc(100vh - 120px) !important;
   z-index: 1000 !important;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
+  border-color: var(--el-color-primary);
+}
+
+/* 卡片焦点样式 - 用于快捷键选中时的视觉反馈 */
+.ai-card:focus-within,
+.ai-card:focus {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+/* 为卡片添加键盘可访问性 */
+.ai-card {
+  tabindex: 0;
+  cursor: pointer;
+}
+
+/* 卡片悬停效果增强 */
+.ai-card:hover {
+  box-shadow: var(--el-box-shadow);
+  transform: translateY(-2px);
 }
 
 .ai-card.minimized .webview-container {
@@ -844,8 +780,12 @@ onMounted(() => {
 }
 
 @keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .status-indicator {

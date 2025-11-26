@@ -3,10 +3,13 @@
  * 负责管理应用的所有窗口实例
  */
 
-import { BrowserWindow, BrowserWindowConstructorOptions, screen, app } from 'electron'
+import {
+  BrowserWindow, BrowserWindowConstructorOptions, screen, app
+} from 'electron'
 import { join } from 'path'
 import { isDev } from '../utils'
 import { EventEmitter } from 'events'
+
 app.commandLine.appendSwitch('remote-debugging-port', '9222')
 /**
  * 窗口配置接口
@@ -50,7 +53,7 @@ export class WindowManager extends EventEmitter {
    */
   async createMainWindow(): Promise<BrowserWindow> {
     const isDev = process.env.NODE_ENV === 'development'
-    
+
     const config: WindowConfig = {
       id: 'main',
       width: 1400,

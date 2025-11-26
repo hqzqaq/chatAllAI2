@@ -26,9 +26,9 @@ viteBuild.on('close', (code) => {
     console.error('❌ 前端构建失败')
     process.exit(code)
   }
-  
+
   console.log('✅ 前端构建完成')
-  
+
   // 构建Electron应用
   console.log('🔧 构建Electron应用...')
   const electronBuild = spawn('npx', ['electron-builder', '--publish=never'], {
@@ -36,13 +36,13 @@ viteBuild.on('close', (code) => {
     shell: true,
     cwd: process.cwd()
   })
-  
+
   electronBuild.on('close', (code) => {
     if (code !== 0) {
       console.error('❌ Electron构建失败')
       process.exit(code)
     }
-    
+
     console.log('✅ 生产版本构建完成！')
     console.log('📁 安装包位置: dist/')
     process.exit(0)

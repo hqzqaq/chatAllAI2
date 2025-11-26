@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="app-layout"
-    :class="{ 'dark-mode': isDarkMode }"
-  >
+  <div class="app-layout" :class="{ 'dark-mode': isDarkMode }">
     <!-- 顶部导航栏 -->
     <AppHeader />
 
@@ -35,7 +32,9 @@ const isDarkMode = computed(() => appStore.isDarkMode)
   height: 100vh;
   background-color: var(--el-bg-color);
   color: var(--el-text-color-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .main-content {
