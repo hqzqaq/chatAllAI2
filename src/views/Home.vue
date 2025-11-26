@@ -58,7 +58,7 @@
       <div class="status-info">
         <div class="status-item">
           <span class="status-label">应用版本:</span>
-          <span class="status-value">{{ appVersion || '1.0.0' }}</span>
+          <span class="status-value">{{ appVersion || '1.0.8' }}</span>
         </div>
         <div class="status-item">
           <span class="status-label">支持平台:</span>
