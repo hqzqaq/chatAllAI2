@@ -47,7 +47,7 @@ export const useChatStore = defineStore('chat', () => {
     {
       id: 'qwen',
       name: '通义千问',
-      url: 'https://tongyi.com',
+      url: 'https://qianwen.com',
       icon: './icons/qwen.png',
       isLoggedIn: false,
       sessionData: {
