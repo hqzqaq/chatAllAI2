@@ -66,17 +66,36 @@
       </div>
 
       <div class="input-content">
-        <el-input
-          v-model="currentMessage"
-          type="textarea"
-          :rows="3"
-          :placeholder="inputPlaceholder"
-          :disabled="loggedInCount === 0"
-          class="message-input"
-          data-testid="message-input"
-          @keydown.ctrl.enter="handleSend"
-          @keydown.meta.enter="handleSend"
-        />
+        <div class="textarea-container">
+          <el-input
+            ref="textareaRef"
+            v-model="currentMessage"
+            type="textarea"
+            :rows="textareaRows"
+            :placeholder="inputPlaceholder"
+            :disabled="loggedInCount === 0"
+            class="message-input"
+            data-testid="message-input"
+            @keydown.ctrl.enter="handleSend"
+            @keydown.meta.enter="handleSend"
+            @input="handleInput"
+            @focus="handleFocus"
+            @blur="handleBlur"
+          />
+          <div
+            class="textarea-resize-handle"
+            title="拖拽调整大小"
+            @mousedown="startResize"
+            @touchstart="startResize"
+          />
+          <div
+            class="textarea-expand-button"
+            :title="isExpanded ? '收起输入框' : '全屏输入'"
+            @click="toggleExpand"
+          >
+            <el-icon>{{ isExpanded ? 'Minus' : 'Plus' }}</el-icon>
+          </div>
+        </div>
 
         <div class="input-actions">
           <div class="actions-left">
@@ -130,10 +149,10 @@
 
 <script setup lang="ts">
 import {
-  computed, onMounted, onUnmounted, ref
+  computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
@@ -146,11 +165,26 @@ const chatStore = useChatStore()
 // 响应式数据
 const selectedProviders = ref<string[]>([])
 
+// 输入框交互优化相关数据
+const textareaRef = ref<any>(null)
+const textareaRows = ref<number>(3)
+const isExpanded = ref<boolean>(false)
+const isResizing = ref<boolean>(false)
+const minRows = ref<number>(3)
+const maxRows = ref<number>(15)
+const preferredHeight = ref<number | null>(null)
+const resizeStartY = ref<number>(0)
+const resizeStartHeight = ref<number>(0)
+
 // 计算属性
 const currentMessage = computed({
   get: () => chatStore.currentMessage,
   set: (value: string) => {
     chatStore.currentMessage = value
+    // 自动调整高度
+    nextTick(() => {
+      autoResize()
+    })
   }
 })
 
@@ -212,6 +246,197 @@ const inputPlaceholder = computed(() => {
   }
   return '输入您的消息，将同时发送给所有已登录的AI...'
 })
+
+// 输入框交互优化相关方法
+
+/**
+ * 自动调整输入框高度
+ */
+const autoResize = (): void => {
+  if (!textareaRef.value || isResizing.value || isExpanded.value) return
+
+  const textarea = textareaRef.value.$el.querySelector('.el-textarea__inner') as HTMLTextAreaElement
+  if (!textarea) return
+
+  // 重置高度以获取正确的滚动高度
+  textarea.style.height = 'auto'
+
+  // 计算所需行数
+  const computedStyle = getComputedStyle(textarea)
+  const lineHeight = parseFloat(computedStyle.lineHeight)
+  const { scrollHeight } = textarea
+  const padding = parseFloat(computedStyle.paddingTop) + parseFloat(computedStyle.paddingBottom)
+  const contentHeight = scrollHeight - padding
+  const rows = Math.ceil(contentHeight / lineHeight)
+
+  // 限制行数在最小和最大之间
+  textareaRows.value = Math.max(minRows.value, Math.min(maxRows.value, rows))
+}
+
+/**
+ * 处理输入事件
+ */
+const handleInput = (): void => {
+  autoResize()
+}
+
+/**
+ * 处理聚焦事件
+ */
+const handleFocus = (): void => {
+  // 聚焦时可以添加一些视觉反馈
+}
+
+/**
+ * 处理失焦事件
+ */
+const handleBlur = (): void => {
+  // 失焦时保存用户偏好的高度
+  savePreferredHeight()
+}
+
+/**
+ * 开始调整大小
+ */
+const startResize = (event: MouseEvent | TouchEvent): void => {
+  if (isExpanded.value) return
+
+  isResizing.value = true
+
+  // 获取起始位置
+  if (event instanceof MouseEvent) {
+    resizeStartY.value = event.clientY
+  } else {
+    resizeStartY.value = event.touches[0].clientY
+  }
+
+  // 获取起始高度
+  const textarea = textareaRef.value.$el.querySelector('.el-textarea') as HTMLElement
+  if (textarea) {
+    resizeStartHeight.value = textarea.offsetHeight
+  }
+
+  // 添加事件监听器
+  document.addEventListener('mousemove', resize)
+  document.addEventListener('touchmove', resize)
+  document.addEventListener('mouseup', stopResize)
+  document.addEventListener('touchend', stopResize)
+
+  // 防止默认行为
+  event.preventDefault()
+}
+
+/**
+ * 调整大小
+ */
+const resize = (event: MouseEvent | TouchEvent): void => {
+  if (!isResizing.value) return
+
+  // 获取当前位置
+  let currentY: number
+  if (event instanceof MouseEvent) {
+    currentY = event.clientY
+  } else {
+    currentY = event.touches[0].clientY
+  }
+
+  // 计算高度变化
+  const deltaY = currentY - resizeStartY.value
+  const textareaInner = textareaRef.value.$el.querySelector('.el-textarea__inner') as HTMLElement
+  const lineHeight = parseFloat(getComputedStyle(textareaInner).lineHeight)
+  const deltaRows = Math.round(deltaY / lineHeight)
+
+  // 更新行数
+  textareaRows.value = Math.max(minRows.value, Math.min(maxRows.value, textareaRows.value + deltaRows))
+
+  // 更新起始位置和高度
+  resizeStartY.value = currentY
+  const textarea = textareaRef.value.$el.querySelector('.el-textarea') as HTMLElement
+  if (textarea) {
+    resizeStartHeight.value = textarea.offsetHeight
+  }
+}
+
+/**
+ * 停止调整大小
+ */
+const stopResize = (): void => {
+  isResizing.value = false
+
+  // 移除事件监听器
+  document.removeEventListener('mousemove', resize)
+  document.removeEventListener('touchmove', resize)
+  document.removeEventListener('mouseup', stopResize)
+  document.removeEventListener('touchend', stopResize)
+
+  // 保存用户偏好的高度
+  savePreferredHeight()
+}
+
+/**
+ * 切换全屏状态
+ */
+const toggleExpand = (): void => {
+  isExpanded.value = !isExpanded.value
+  
+  if (isExpanded.value) {
+    // 全屏状态
+    textareaRows.value = maxRows.value
+  } else {
+    // 回到最小行数
+    textareaRows.value = minRows.value
+  }
+  
+  // 保存用户偏好
+  savePreferredHeight()
+}
+
+/**
+ * 保存用户偏好的高度
+ */
+const savePreferredHeight = (): void => {
+  if (textareaRef.value) {
+    const textarea = textareaRef.value.$el.querySelector('.el-textarea') as HTMLElement
+    if (textarea) {
+      preferredHeight.value = textarea.offsetHeight
+      localStorage.setItem('textarea-preferred-height', JSON.stringify({
+        height: preferredHeight.value,
+        isExpanded: isExpanded.value
+      }))
+    }
+  }
+}
+
+/**
+ * 加载用户偏好的高度
+ */
+const loadPreferredHeight = (): void => {
+  try {
+    const stored = localStorage.getItem('textarea-preferred-height')
+    if (stored) {
+      const { height, isExpanded: expanded } = JSON.parse(stored)
+      preferredHeight.value = height
+      isExpanded.value = expanded
+
+      if (expanded) {
+        textareaRows.value = maxRows.value
+      } else if (height) {
+        // 根据高度计算行数
+        const textareaInner = textareaRef.value.$el.querySelector('.el-textarea__inner') as HTMLElement
+        const computedStyle = getComputedStyle(textareaInner)
+        const lineHeight = parseFloat(computedStyle.lineHeight)
+        const padding = parseFloat(computedStyle.paddingTop) + parseFloat(computedStyle.paddingBottom)
+        const contentHeight = height - padding
+        textareaRows.value = Math.max(
+          minRows.value,
+          Math.min(maxRows.value, Math.round(contentHeight / lineHeight))
+        )
+      }
+    }
+  } catch (error) {
+    console.error('加载用户偏好的高度失败:', error)
+  }
+}
 
 /**
  * 发送消息
@@ -330,41 +555,6 @@ const handleNewChat = async(): Promise<void> => {
 }
 
 /**
- * 获取新建对话的JavaScript脚本
- * 预留空白，后续补充具体脚本内容
- */
-const getNewChatScript = (): string =>
-  // TODO: 根据MessageScripts.ts的实现方式，为不同AI提供商创建相应的新建对话脚本
-  // 目前返回一个通用的新建对话脚本模板
-  `
-    (function() {
-      // 新建对话脚本模板
-      // 后续将根据具体AI网站的实现补充详细脚本
-      
-      // 尝试查找新建对话按钮
-      const newChatButtons = [
-        document.querySelector('[data-testid="new-chat-button"]'),
-        document.querySelector('[aria-label*="new chat"]'),
-        document.querySelector('[aria-label*="新建对话"]'),
-        document.querySelector('button:contains("New chat")'),
-        document.querySelector('button:contains("新建对话")'),
-        document.querySelector('.new-chat'),
-        document.querySelector('#new-chat')
-      ].filter(Boolean)
-      
-      if (newChatButtons.length > 0) {
-        newChatButtons[0].click()
-        console.log('已点击新建对话按钮')
-        return true
-      } else {
-        console.log('未找到新建对话按钮，尝试其他方式')
-        // 后续将添加针对不同AI网站的具体实现
-        return false
-      }
-    })()
-  `
-
-/**
  * 处理消息分发器状态变化
  */
 const handleStatusChanged = (data: { providerId: string; status: string; messageId: string; error?: any }) => {
@@ -387,6 +577,11 @@ onMounted(() => {
   messageDispatcher.on('message-sent', handleMessageSent)
   // 加载选中的提供商
   loadSelectedProviders()
+
+  // 组件挂载后，加载用户偏好的高度
+  nextTick(() => {
+    loadPreferredHeight()
+  })
 })
 
 /**
@@ -395,6 +590,9 @@ onMounted(() => {
 onUnmounted(() => {
   messageDispatcher.off('status-changed', handleStatusChanged)
   messageDispatcher.off('message-sent', handleMessageSent)
+
+  // 保存用户偏好的高度
+  savePreferredHeight()
 })
 </script>
 
@@ -643,14 +841,81 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.message-input {
+/* 输入框容器样式 */
+.textarea-container {
+  position: relative;
   width: 100%;
+  transition: all 0.3s ease;
 }
 
+.message-input {
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+/* 调整大小手柄样式 */
+.textarea-resize-handle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 16px;
+  height: 16px;
+  cursor: ns-resize;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23909399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.5;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 10;
+  user-select: none;
+}
+
+.textarea-resize-handle:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* 展开按钮样式 */
+.textarea-expand-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid #dcdfe6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  z-index: 10;
+  user-select: none;
+  font-size: 14px;
+  color: #606266;
+}
+
+.textarea-expand-button:hover {
+  opacity: 1;
+  background-color: #ffffff;
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.textarea-expand-button:active {
+  transform: scale(0.95);
+}
+
+/* 输入框操作区域样式 */
 .input-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.3s ease;
 }
 
 .actions-left,
@@ -659,31 +924,130 @@ onUnmounted(() => {
   gap: 8px;
 }
 
+/* 输入框样式优化 */
+:deep(.el-textarea) {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
 :deep(.el-textarea__inner) {
-  resize: vertical;
+  resize: none;
   min-height: 80px;
-  /* 修复输入法问题：确保输入框有正确的布局和高度 */
   height: auto !important;
   min-height: 80px !important;
-  line-height: 1.5;
+  line-height: 1.6;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  box-sizing: border-box;
 }
 
 :deep(.el-textarea__inner:focus) {
   border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 2px rgba(48, 165, 255, 0.2);
 }
 
-/* 修复输入法兼容性问题 */
+/* 展开状态样式 */
+.textarea-container.expanded :deep(.el-textarea__inner) {
+  min-height: 400px;
+  max-height: 60vh;
+}
+
+/* 调整大小状态样式 */
+.textarea-container.resizing :deep(.el-textarea__inner) {
+  cursor: ns-resize;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .textarea-container {
+    width: 100%;
+  }
+
+  .textarea-expand-button {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .textarea-resize-handle {
+    width: 14px;
+    height: 14px;
+  }
+
+  :deep(.el-textarea__inner) {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 480px) {
+  .textarea-container {
+    width: 100%;
+  }
+
+  .input-actions {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .actions-left,
+  .actions-right {
+    justify-content: center;
+  }
+}
+
+/* 动画过渡效果 */
 :deep(.el-textarea) {
-  position: relative;
+  transition: height 0.3s ease, min-height 0.3s ease, max-height 0.3s ease;
 }
 
-:deep(.el-textarea .el-textarea__inner) {
-  /* 确保输入框有正确的盒模型 */
-  box-sizing: border-box;
-  /* 修复输入法输入时的显示问题 */
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  hyphens: auto;
+:deep(.el-textarea__inner) {
+  transition:
+    height 0.3s ease,
+    min-height 0.3s ease,
+    max-height 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* 滚动条样式优化 */
+:deep(.el-textarea__inner::-webkit-scrollbar) {
+  width: 6px;
+  height: 6px;
+}
+
+:deep(.el-textarea__inner::-webkit-scrollbar-track) {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+:deep(.el-textarea__inner::-webkit-scrollbar-thumb) {
+  background: #c1c1c1;
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+:deep(.el-textarea__inner::-webkit-scrollbar-thumb:hover) {
+  background: #a8a8a8;
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .textarea-resize-handle {
+    width: 24px;
+    height: 24px;
+    opacity: 0.8;
+  }
+
+  .textarea-expand-button {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 @keyframes rotate {
