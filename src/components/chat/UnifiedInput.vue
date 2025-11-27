@@ -255,6 +255,85 @@ const handleIconError = (event: Event): void => {
   img.src = '/icons/default.svg'
 }
 
+// AI状态相关方法
+const getProviderAIStatus = (providerId: string): 'waiting_input' | 'responding' | 'completed' | undefined => {
+  return aiStatusMap.value[providerId]
+}
+
+const updateAIStatus = (providerId: string, status: 'waiting_input' | 'responding' | 'completed'): void => {
+  aiStatusMap.value[providerId] = status
+}
+
+/**
+ * 启动AI状态监控
+ * 此函数现在主要用于批量处理，单个提供商的监控通过startAIStatusMonitoringForProvider函数处理
+ */
+const startAIStatusMonitoring = async (): Promise<void> => {
+  try {
+    if (!window.electronAPI) {
+      console.warn('electronAPI不可用，无法启动AI状态监控')
+      return
+    }
+
+    const { loggedInProviders } = chatStore
+
+    if (loggedInProviders.length === 0) {
+      console.log('没有已登录的提供商，跳过AI状态监控启动')
+      return
+    }
+
+    console.log(`为${loggedInProviders.length}个已登录提供商启动AI状态监控`)
+
+    for (const provider of loggedInProviders) {
+      await startAIStatusMonitoringForProvider(provider.id)
+    }
+  } catch (error) {
+    console.error('启动AI状态监控失败:', error)
+  }
+}
+
+const stopAIStatusMonitoring = async (): Promise<void> => {
+  try {
+    if (window.electronAPI) {
+      const { loggedInProviders } = chatStore
+
+      for (const provider of loggedInProviders) {
+        const result = await window.electronAPI.stopAIStatusMonitoring({
+          providerId: provider.id
+        })
+
+        if (result.success) {
+          console.log(`AI状态监控已停止: ${provider.name}`)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('停止AI状态监控失败:', error)
+  }
+}
+
+// 处理AI状态变化事件
+const handleAIStatusChange = (data: any) => {
+  const { providerId, status, timestamp, details } = data
+
+  console.log(`AI状态变化: ${providerId} -> ${status}`, details)
+
+  // 更新状态映射
+  updateAIStatus(providerId, status)
+
+  // 根据状态变化进行相应处理
+  if (status === 'responding') {
+    // AI开始回答，可以在这里添加相关逻辑
+    console.log(`${providerId} 开始回答`)
+  } else if (status === 'completed') {
+    // AI回答完成，可以在这里添加相关逻辑
+    console.log(`${providerId} 回答完成`)
+  } else if (status === 'waiting_input') {
+    // AI等待输入，可以在这里添加相关逻辑
+    console.log(`${providerId} 等待输入`)
+  }
+}
+
 const loggedInCount = computed(() => chatStore.loggedInCount)
 const totalProviders = computed(() => chatStore.totalProviders)
 
