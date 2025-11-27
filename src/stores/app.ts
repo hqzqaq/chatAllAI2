@@ -47,7 +47,7 @@ export const useAppStore = defineStore('app', () => {
   /**
    * 初始化应用
    */
-  const initializeApp = async (): Promise<void> => {
+  const initializeApp = async(): Promise<void> => {
     try {
       // 获取应用版本
       if (window.electronAPI) {
@@ -66,7 +66,7 @@ export const useAppStore = defineStore('app', () => {
   /**
    * 加载用户偏好设置
    */
-  const loadUserPreferences = async (): Promise<void> => {
+  const loadUserPreferences = async(): Promise<void> => {
     try {
       const saved = localStorage.getItem('userPreferences')
       if (saved) {
@@ -80,7 +80,7 @@ export const useAppStore = defineStore('app', () => {
   /**
    * 保存用户偏好设置
    */
-  const saveUserPreferences = async (): Promise<void> => {
+  const saveUserPreferences = async(): Promise<void> => {
     try {
       localStorage.setItem('userPreferences', JSON.stringify(userPreferences.value))
     } catch (error) {
@@ -91,7 +91,7 @@ export const useAppStore = defineStore('app', () => {
   /**
    * 加载布局配置
    */
-  const loadLayoutConfig = async (): Promise<void> => {
+  const loadLayoutConfig = async(): Promise<void> => {
     try {
       const saved = localStorage.getItem('layoutConfig')
       if (saved) {
@@ -105,7 +105,7 @@ export const useAppStore = defineStore('app', () => {
   /**
    * 保存布局配置
    */
-  const saveLayoutConfig = async (): Promise<void> => {
+  const saveLayoutConfig = async(): Promise<void> => {
     try {
       localStorage.setItem('layoutConfig', JSON.stringify(layoutConfig.value))
     } catch (error) {

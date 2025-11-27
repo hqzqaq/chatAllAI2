@@ -11,9 +11,18 @@
     <!-- 卡片头部 -->
     <div class="card-header">
       <div class="header-left">
-        <img :src="props.provider.icon" :alt="props.provider.name" class="provider-icon" @error="handleIconError" />
+        <img
+          :src="props.provider.icon"
+          :alt="props.provider.name"
+          class="provider-icon"
+          @error="handleIconError"
+        >
         <span class="provider-name">{{ props.provider.name }}</span>
-        <el-tag :type="props.provider.isLoggedIn ? 'success' : 'info'" size="small" class="status-tag">
+        <el-tag
+          :type="props.provider.isLoggedIn ? 'success' : 'info'"
+          size="small"
+          class="status-tag"
+        >
           {{ props.provider.isLoggedIn ? '已登录' : '未登录' }}
         </el-tag>
       </div>
@@ -26,16 +35,49 @@
           :type="proxyConfig.enabled ? 'primary' : 'default'"
           @click="openProxyDialog"
         />
-        <el-button :icon="Monitor" size="small" circle title="打开控制台" @click="openDevTools" />
-        <el-button v-if="!config?.isMaximized" :icon="FullScreen" size="small" circle @click="toggleMaximized" />
-        <el-button v-if="config?.isMaximized" :icon="Close" size="small" circle @click="toggleMaximized" />
-        <el-button :icon="config?.isMinimized ? ArrowUp : ArrowDown" size="small" circle @click="toggleMinimized" />
-        <el-button :icon="Refresh" size="small" circle :loading="isRefreshing" @click="refreshWebView" />
+        <el-button
+          :icon="Monitor"
+          size="small"
+          circle
+          title="打开控制台"
+          @click="openDevTools"
+        />
+        <el-button
+          v-if="!config?.isMaximized"
+          :icon="FullScreen"
+          size="small"
+          circle
+          @click="toggleMaximized"
+        />
+        <el-button
+          v-if="config?.isMaximized"
+          :icon="Close"
+          size="small"
+          circle
+          @click="toggleMaximized"
+        />
+        <el-button
+          :icon="config?.isMinimized ? ArrowUp : ArrowDown"
+          size="small"
+          circle
+          @click="toggleMinimized"
+        />
+        <el-button
+          :icon="Refresh"
+          size="small"
+          circle
+          :loading="isRefreshing"
+          @click="refreshWebView"
+        />
       </div>
     </div>
 
     <!-- WebView容器 -->
-    <div v-show="!config?.isMinimized" class="webview-container" :style="webviewStyle">
+    <div
+      v-show="!config?.isMinimized"
+      class="webview-container"
+      :style="webviewStyle"
+    >
       <WebView
         v-if="shouldShowWebView"
         ref="webViewRef"
@@ -51,34 +93,56 @@
         @url-changed="handleUrlChanged"
       />
 
-      <div v-else class="webview-placeholder">
-        <div v-if="!props.provider.isLoggedIn && !isLoading" class="login-prompt">
+      <div
+        v-else
+        class="webview-placeholder"
+      >
+        <div
+          v-if="!props.provider.isLoggedIn && !isLoading"
+          class="login-prompt"
+        >
           <el-icon class="prompt-icon">
             <User />
           </el-icon>
           <p>请先在左侧选择 {{ props.provider.name }}</p>
-          <p class="hint-text">选中后将自动加载登录页面</p>
+          <p class="hint-text">
+            选中后将自动加载登录页面
+          </p>
         </div>
 
-        <div v-else-if="isLoading" class="loading-state">
+        <div
+          v-else-if="isLoading"
+          class="loading-state"
+        >
           <el-icon class="loading-icon">
             <Loading />
           </el-icon>
           <p>加载中...</p>
         </div>
 
-        <div v-else-if="props.provider.loadingState === 'error'" class="error-state">
+        <div
+          v-else-if="props.provider.loadingState === 'error'"
+          class="error-state"
+        >
           <el-icon class="error-icon">
             <Close />
           </el-icon>
           <p>{{ props.provider.lastError || '加载失败' }}</p>
-          <el-button type="primary" @click="retryWebView">重试</el-button>
+          <el-button
+            type="primary"
+            @click="retryWebView"
+          >
+            重试
+          </el-button>
         </div>
       </div>
     </div>
 
     <!-- 消息状态指示器 -->
-    <div v-if="sendingStatus !== 'idle'" class="status-indicator">
+    <div
+      v-if="sendingStatus !== 'idle'"
+      class="status-indicator"
+    >
       <el-icon
         :class="{
           loading: sendingStatus === 'sending',
@@ -92,7 +156,11 @@
     </div>
 
     <!-- 调整大小手柄 -->
-    <div v-show="!config?.isMinimized" class="resize-handle" @mousedown="startResize">
+    <div
+      v-show="!config?.isMinimized"
+      class="resize-handle"
+      @mousedown="startResize"
+    >
       <el-icon><Rank /></el-icon>
     </div>
 
@@ -103,21 +171,45 @@
       width="500px"
       :close-on-click-modal="false"
     >
-      <el-form ref="proxyFormRef" :model="proxyConfig" label-width="100px">
+      <el-form
+        ref="proxyFormRef"
+        :model="proxyConfig"
+        label-width="100px"
+      >
         <el-form-item label="启用代理">
-          <el-switch v-model="proxyConfig.enabled" @change="handleProxyToggle" />
+          <el-switch
+            v-model="proxyConfig.enabled"
+            @change="handleProxyToggle"
+          />
         </el-form-item>
 
         <el-form-item label="代理协议">
-          <el-select v-model="proxyConfig.protocol" :disabled="!proxyConfig.enabled" style="width: 100%">
-            <el-option label="HTTP" value="http" />
-            <el-option label="HTTPS" value="https" />
-            <el-option label="SOCKS5" value="socks5" />
+          <el-select
+            v-model="proxyConfig.protocol"
+            :disabled="!proxyConfig.enabled"
+            style="width: 100%"
+          >
+            <el-option
+              label="HTTP"
+              value="http"
+            />
+            <el-option
+              label="HTTPS"
+              value="https"
+            />
+            <el-option
+              label="SOCKS5"
+              value="socks5"
+            />
           </el-select>
         </el-form-item>
 
         <el-form-item label="代理地址">
-          <el-input v-model="proxyConfig.address" :disabled="!proxyConfig.enabled" placeholder="请输入代理服务器地址" />
+          <el-input
+            v-model="proxyConfig.address"
+            :disabled="!proxyConfig.enabled"
+            placeholder="请输入代理服务器地址"
+          />
         </el-form-item>
 
         <el-form-item label="端口">
@@ -133,7 +225,10 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="proxyDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="saveProxyConfig">保存并应用</el-button>
+          <el-button
+            type="primary"
+            @click="saveProxyConfig"
+          >保存并应用</el-button>
         </span>
       </template>
     </el-dialog>
@@ -141,7 +236,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick } from 'vue'
+import {
+  computed, ref, onMounted, nextTick
+} from 'vue'
 import {
   ArrowUp,
   ArrowDown,
@@ -276,7 +373,7 @@ const toggleMaximized = (): void => {
 /**
  * 打开WebView控制台
  */
-const openDevTools = async (): Promise<void> => {
+const openDevTools = async(): Promise<void> => {
   try {
     if (window.electronAPI && window.electronAPI.openDevTools) {
       await window.electronAPI.openDevTools(props.provider.webviewId)
@@ -297,7 +394,7 @@ const openDevTools = async (): Promise<void> => {
 /**
  * 刷新WebView
  */
-const refreshWebView = async (): Promise<void> => {
+const refreshWebView = async(): Promise<void> => {
   isRefreshing.value = true
   try {
     if (window.electronAPI) {
@@ -315,7 +412,7 @@ const refreshWebView = async (): Promise<void> => {
 /**
  * 启用WebView
  */
-const enableWebView = async (): Promise<void> => {
+const enableWebView = async(): Promise<void> => {
   console.log(`Enabling WebView for ${props.provider.name}`)
 
   isLoading.value = true
@@ -492,7 +589,7 @@ const handleProxyToggle = (enabled: boolean): void => {
 /**
  * 保存代理配置
  */
-const saveProxyConfig = async (): Promise<void> => {
+const saveProxyConfig = async(): Promise<void> => {
   try {
     // 验证配置
     if (proxyConfig.value.enabled) {
@@ -552,7 +649,7 @@ const saveProxyConfigToStorage = (): void => {
 /**
  * 应用代理配置到webview
  */
-const applyProxyConfig = async (): Promise<void> => {
+const applyProxyConfig = async(): Promise<void> => {
   if (!window.electronAPI) {
     console.warn('Electron API不可用，无法设置代理')
     return
@@ -596,7 +693,7 @@ const applyProxyConfig = async (): Promise<void> => {
 /**
  * 发送消息到WebView
  */
-const sendMessage = async (message: string): Promise<boolean> => {
+const sendMessage = async(message: string): Promise<boolean> => {
   if (!webViewRef.value) {
     return false
   }

@@ -7,7 +7,10 @@
       </div>
 
       <!-- AI卡片网格 -->
-      <div class="cards-grid" :style="gridStyle">
+      <div
+        class="cards-grid"
+        :style="gridStyle"
+      >
         <AICard
           v-for="provider in visibleProviders"
           :key="provider.id"
@@ -33,7 +36,7 @@ const layoutStore = useLayoutStore()
 const providers = computed(() => chatStore.providers)
 
 const visibleProviders = computed(() => {
-  const enabledProviders = providers.value.filter(provider => {
+  const enabledProviders = providers.value.filter((provider) => {
     const config = getCardConfig(provider.id)
     // 只有当模型被选中且可见时才显示卡片
     return provider.isEnabled && config?.isVisible !== false
@@ -101,7 +104,7 @@ onMounted(() => {
   // 立即加载布局配置，不要等待
   const initializeLayout = () => {
     console.log('开始初始化布局...')
-    const providerIds = providers.value.map(p => p.id)
+    const providerIds = providers.value.map((p) => p.id)
 
     // 先加载保存的布局配置
     layoutStore.loadLayoutConfig()

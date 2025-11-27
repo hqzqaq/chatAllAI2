@@ -1,7 +1,13 @@
 <template>
-  <div class="webview-wrapper" :class="{ loading: isLoading, error: hasError }">
+  <div
+    class="webview-wrapper"
+    :class="{ loading: isLoading, error: hasError }"
+  >
     <!-- 加载状态 -->
-    <div v-if="isLoading" class="loading-overlay">
+    <div
+      v-if="isLoading"
+      class="loading-overlay"
+    >
       <el-icon class="loading-icon">
         <Loading />
       </el-icon>
@@ -9,12 +15,20 @@
     </div>
 
     <!-- 错误状态 -->
-    <div v-if="hasError" class="error-overlay">
+    <div
+      v-if="hasError"
+      class="error-overlay"
+    >
       <el-icon class="error-icon">
         <Warning />
       </el-icon>
       <p>{{ errorMessage }}</p>
-      <el-button type="primary" @click="retry">重试</el-button>
+      <el-button
+        type="primary"
+        @click="retry"
+      >
+        重试
+      </el-button>
     </div>
 
     <!-- WebView容器 -->
@@ -30,7 +44,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import {
+  ref, computed, onMounted, onUnmounted, watch
+} from 'vue'
 import { Loading, Warning } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { AIProvider } from '@/types'
@@ -319,7 +335,7 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
   })
 
   // 页面加载失败
-  webview.addEventListener('did-fail-load', event => {
+  webview.addEventListener('did-fail-load', (event) => {
     if (event.errorCode === -3) return // 用户取消加载，忽略
 
     isLoading.value = false
@@ -330,18 +346,18 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
   })
 
   // 页面标题变化
-  webview.addEventListener('page-title-updated', event => {
+  webview.addEventListener('page-title-updated', (event) => {
     emit('title-changed', event.title)
   })
 
   // URL变化
-  webview.addEventListener('will-navigate', event => {
+  webview.addEventListener('will-navigate', (event) => {
     console.log(`${props.provider.name} navigating to: ${event.url}`)
     emit('url-changed', event.url)
   })
 
   // 新窗口请求
-  webview.addEventListener('new-window', event => {
+  webview.addEventListener('new-window', (event) => {
     // 在默认浏览器中打开新窗口
     if (window.electronAPI) {
       window.electronAPI.openExternal(event.url)
@@ -349,7 +365,7 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
   })
 
   // 控制台消息（用于调试）
-  webview.addEventListener('console-message', event => {
+  webview.addEventListener('console-message', (event) => {
     if (event.level === 0) {
       // 错误级别
       console.error(`WebView Console [${props.provider.name}]:`, event.message)
@@ -360,7 +376,7 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
 /**
  * 检查登录状态
  */
-const checkLoginStatus = async (): Promise<void> => {
+const checkLoginStatus = async(): Promise<void> => {
   if (!webviewElement.value) return
 
   try {
@@ -387,7 +403,7 @@ const checkLoginStatus = async (): Promise<void> => {
 /**
  * 保存会话数据
  */
-const saveSession = async (): Promise<void> => {
+const saveSession = async(): Promise<void> => {
   if (!window.electronAPI) return
 
   try {
@@ -401,7 +417,7 @@ const saveSession = async (): Promise<void> => {
 /**
  * 加载会话数据
  */
-const loadSession = async (): Promise<void> => {
+const loadSession = async(): Promise<void> => {
   if (!window.electronAPI || sessionLoaded.value) return
 
   sessionLoaded.value = true
@@ -461,7 +477,7 @@ const navigateTo = (url: string): void => {
 /**
  * 执行JavaScript代码
  */
-const executeScript = async (script: string): Promise<any> => {
+const executeScript = async(script: string): Promise<any> => {
   if (!webviewElement.value) {
     throw new Error('WebView not ready')
   }
@@ -472,7 +488,7 @@ const executeScript = async (script: string): Promise<any> => {
 /**
  * 发送消息到WebView
  */
-const sendMessage = async (message: string): Promise<void> => {
+const sendMessage = async(message: string): Promise<void> => {
   if (!webviewElement.value) {
     throw new Error('WebView not ready')
   }
@@ -515,7 +531,7 @@ const destroy = (): void => {
 /**
  * 手动创建WebView（用于按需加载）
  */
-const create = async (): Promise<void> => {
+const create = async(): Promise<void> => {
   console.log(`Manual create WebView for ${props.provider.name}`)
 
   if (!webviewElement.value) {
@@ -523,7 +539,7 @@ const create = async (): Promise<void> => {
     await loadSession()
 
     // 等待一小段时间确保DOM已经渲染
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
     createWebView()
   } else {
@@ -545,7 +561,7 @@ defineExpose({
 })
 
 // 生命周期
-onMounted(async () => {
+onMounted(async() => {
   console.log(`WebView mounted for ${props.provider.name}, autoLoad: ${props.autoLoad}`)
 
   if (props.autoLoad) {
@@ -563,7 +579,7 @@ onUnmounted(() => {
 // 监听provider变化
 watch(
   () => props.provider.url,
-  newUrl => {
+  (newUrl) => {
     if (webviewElement.value && newUrl) {
       navigateTo(newUrl)
     }

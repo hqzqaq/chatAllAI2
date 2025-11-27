@@ -16,7 +16,7 @@ function escapeJavaScriptString(str: string): string {
   // 使用更安全的转义方式，确保字符串在JavaScript中安全使用
   return str
     .replace(/\\/g, '\\\\') // 转义反斜杠
-    .replace(/\'/g, "\\'") // 转义单引号
+    .replace(/\'/g, '\\\'') // 转义单引号
     .replace(/"/g, '\\"') // 转义双引号
     .replace(/\n/g, '\\n') // 转义换行符
     .replace(/\r/g, '\\r') // 转义回车符

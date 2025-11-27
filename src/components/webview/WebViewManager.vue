@@ -21,7 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import {
+  ref, computed, onMounted, onUnmounted
+} from 'vue'
 import { ElMessage } from 'element-plus'
 import WebView from './WebView.vue'
 import type { AIProvider, Message } from '../../types'
@@ -159,7 +161,7 @@ const handleWebViewLoading = (providerId: string, isLoading: boolean): void => {
   webViewStates.value[providerId].isLoading = isLoading
 
   // 更新provider状态
-  const provider = props.providers.find(p => p.id === providerId)
+  const provider = props.providers.find((p) => p.id === providerId)
   if (provider) {
     provider.loadingState = isLoading ? 'loading' : 'loaded'
   }
@@ -173,7 +175,7 @@ const handleWebViewError = (providerId: string, error: string): void => {
   webViewStates.value[providerId].errorMessage = error
   webViewStates.value[providerId].isReady = false
 
-  const provider = props.providers.find(p => p.id === providerId)
+  const provider = props.providers.find((p) => p.id === providerId)
   if (provider) {
     provider.loadingState = 'error'
     provider.lastError = error
@@ -221,7 +223,7 @@ const handleUrlChanged = (providerId: string, url: string): void => {
 /**
  * 重启WebView
  */
-const restartWebView = async (providerId: string): Promise<void> => {
+const restartWebView = async(providerId: string): Promise<void> => {
   const webViewRef = webViewRefs.value[providerId]
   if (!webViewRef) return
 
@@ -232,10 +234,10 @@ const restartWebView = async (providerId: string): Promise<void> => {
     webViewRef.destroy()
 
     // 等待一段时间后重新创建
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // 重新加载
-    const provider = props.providers.find(p => p.id === providerId)
+    const provider = props.providers.find((p) => p.id === providerId)
     if (provider) {
       webViewRef.navigateTo(provider.url)
     }
@@ -260,7 +262,7 @@ const refreshWebView = (providerId: string): void => {
  * 刷新所有WebView
  */
 const refreshAllWebViews = (): void => {
-  Object.keys(webViewRefs.value).forEach(providerId => {
+  Object.keys(webViewRefs.value).forEach((providerId) => {
     refreshWebView(providerId)
   })
 }
@@ -268,7 +270,7 @@ const refreshAllWebViews = (): void => {
 /**
  * 发送消息到指定WebView
  */
-const sendMessageToWebView = async (providerId: string, message: string): Promise<boolean> => {
+const sendMessageToWebView = async(providerId: string, message: string): Promise<boolean> => {
   const webViewRef = webViewRefs.value[providerId]
   if (!webViewRef || !webViewStates.value[providerId].isReady) {
     return false
@@ -288,12 +290,12 @@ const sendMessageToWebView = async (providerId: string, message: string): Promis
 /**
  * 发送消息到所有WebView
  */
-const sendMessageToAllWebViews = async (message: string): Promise<Record<string, boolean>> => {
+const sendMessageToAllWebViews = async(message: string): Promise<Record<string, boolean>> => {
   const results: Record<string, boolean> = {}
 
   const sendPromises = props.providers
-    .filter(provider => provider.isLoggedIn && provider.isEnabled)
-    .map(async provider => {
+    .filter((provider) => provider.isLoggedIn && provider.isEnabled)
+    .map(async(provider) => {
       const success = await sendMessageToWebView(provider.id, message)
       results[provider.id] = success
 
@@ -321,8 +323,8 @@ const sendMessageToAllWebViews = async (message: string): Promise<Record<string,
 /**
  * 检查所有WebView的登录状态
  */
-const checkAllLoginStatus = async (): Promise<void> => {
-  const checkPromises = Object.entries(webViewRefs.value).map(async ([providerId, webViewRef]) => {
+const checkAllLoginStatus = async(): Promise<void> => {
+  const checkPromises = Object.entries(webViewRefs.value).map(async([providerId, webViewRef]) => {
     if (webViewRef && webViewStates.value[providerId].isReady) {
       try {
         await webViewRef.checkLoginStatus()
@@ -349,7 +351,7 @@ const getAllWebViewStates = () => ({ ...webViewStates.value })
  * 启用/禁用WebView
  */
 const toggleWebView = (providerId: string, enabled: boolean): void => {
-  const provider = props.providers.find(p => p.id === providerId)
+  const provider = props.providers.find((p) => p.id === providerId)
   if (provider) {
     provider.isEnabled = enabled
 
@@ -378,7 +380,7 @@ defineExpose({
 // 生命周期
 onMounted(() => {
   // 初始化所有WebView状态
-  props.providers.forEach(provider => {
+  props.providers.forEach((provider) => {
     if (!webViewStates.value[provider.id]) {
       webViewStates.value[provider.id] = {
         isReady: false,
@@ -414,7 +416,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   // 销毁所有WebView
-  Object.values(webViewRefs.value).forEach(webViewRef => {
+  Object.values(webViewRefs.value).forEach((webViewRef) => {
     if (webViewRef) {
       webViewRef.destroy()
     }

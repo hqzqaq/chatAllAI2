@@ -15,7 +15,7 @@ const appStore = useAppStore()
 const layoutStore = useLayoutStore()
 
 // 应用初始化
-onMounted(async () => {
+onMounted(async() => {
   await appStore.initializeApp()
   // 加载布局配置，确保列数等设置在应用启动时被正确恢复
   layoutStore.loadLayoutConfig()

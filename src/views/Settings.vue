@@ -9,24 +9,48 @@
           </div>
         </template>
 
-        <el-tabs v-model="activeTab" class="settings-tabs">
+        <el-tabs
+          v-model="activeTab"
+          class="settings-tabs"
+        >
           <!-- 通用设置 -->
-          <el-tab-pane label="通用" name="general">
+          <el-tab-pane
+            label="通用"
+            name="general"
+          >
             <div class="settings-section">
               <h3>外观设置</h3>
               <el-form label-width="120px">
                 <el-form-item label="主题模式">
-                  <el-radio-group v-model="userPreferences.theme" @change="handleThemeChange">
-                    <el-radio label="light">浅色</el-radio>
-                    <el-radio label="dark">深色</el-radio>
-                    <el-radio label="auto">跟随系统</el-radio>
+                  <el-radio-group
+                    v-model="userPreferences.theme"
+                    @change="handleThemeChange"
+                  >
+                    <el-radio label="light">
+                      浅色
+                    </el-radio>
+                    <el-radio label="dark">
+                      深色
+                    </el-radio>
+                    <el-radio label="auto">
+                      跟随系统
+                    </el-radio>
                   </el-radio-group>
                 </el-form-item>
 
                 <el-form-item label="语言">
-                  <el-select v-model="userPreferences.language" @change="handleLanguageChange">
-                    <el-option label="简体中文" value="zh-CN" />
-                    <el-option label="English" value="en-US" />
+                  <el-select
+                    v-model="userPreferences.language"
+                    @change="handleLanguageChange"
+                  >
+                    <el-option
+                      label="简体中文"
+                      value="zh-CN"
+                    />
+                    <el-option
+                      label="English"
+                      value="en-US"
+                    />
                   </el-select>
                 </el-form-item>
               </el-form>
@@ -38,41 +62,71 @@
               <h3>功能设置</h3>
               <el-form label-width="120px">
                 <el-form-item label="自动保存">
-                  <el-switch v-model="userPreferences.autoSave" @change="handleAutoSaveChange" />
+                  <el-switch
+                    v-model="userPreferences.autoSave"
+                    @change="handleAutoSaveChange"
+                  />
                 </el-form-item>
 
                 <el-form-item label="桌面通知">
-                  <el-switch v-model="userPreferences.notifications" @change="handleNotificationsChange" />
+                  <el-switch
+                    v-model="userPreferences.notifications"
+                    @change="handleNotificationsChange"
+                  />
                 </el-form-item>
               </el-form>
             </div>
           </el-tab-pane>
 
           <!-- 会话管理 -->
-          <el-tab-pane label="会话管理" name="sessions">
+          <el-tab-pane
+            label="会话管理"
+            name="sessions"
+          >
             <SessionStatus :providers="providers" />
           </el-tab-pane>
 
           <!-- 布局设置 -->
-          <el-tab-pane label="布局" name="layout">
+          <el-tab-pane
+            label="布局"
+            name="layout"
+          >
             <div class="settings-section">
               <h3>网格布局</h3>
               <el-form label-width="120px">
                 <el-form-item label="列数">
-                  <el-input-number v-model="gridSettings.columns" :min="1" :max="6" @change="handleGridChange" />
+                  <el-input-number
+                    v-model="gridSettings.columns"
+                    :min="1"
+                    :max="6"
+                    @change="handleGridChange"
+                  />
                 </el-form-item>
 
                 <el-form-item label="间距">
-                  <el-input-number v-model="gridSettings.gap" :min="8" :max="32" @change="handleGridChange" />
+                  <el-input-number
+                    v-model="gridSettings.gap"
+                    :min="8"
+                    :max="32"
+                    @change="handleGridChange"
+                  />
                 </el-form-item>
               </el-form>
 
-              <el-button type="primary" @click="resetLayout">重置布局</el-button>
+              <el-button
+                type="primary"
+                @click="resetLayout"
+              >
+                重置布局
+              </el-button>
             </div>
           </el-tab-pane>
 
           <!-- 关于 -->
-          <el-tab-pane label="关于" name="about">
+          <el-tab-pane
+            label="关于"
+            name="about"
+          >
             <div class="settings-section">
               <div class="about-info">
                 <div class="app-info">
@@ -88,7 +142,11 @@
 
                 <div class="tech-stack">
                   <h3>技术栈</h3>
-                  <el-tag v-for="tech in techStack" :key="tech" class="tech-tag">
+                  <el-tag
+                    v-for="tech in techStack"
+                    :key="tech"
+                    class="tech-tag"
+                  >
                     {{ tech }}
                   </el-tag>
                 </div>
@@ -139,7 +197,7 @@ const nodeVersion = ref('Unknown')
 const electronVersion = ref('Unknown')
 
 // 获取系统信息
-const getSystemInfo = async () => {
+const getSystemInfo = async() => {
   try {
     if (window.electronAPI && window.electronAPI.getSystemInfo) {
       const systemInfo = await window.electronAPI.getSystemInfo()

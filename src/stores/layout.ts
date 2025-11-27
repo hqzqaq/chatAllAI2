@@ -148,7 +148,7 @@ export const useLayoutStore = defineStore('layout', () => {
       config.zIndex = 1000 // 设置最高z-index
 
       // 设置其他卡片为隐藏状态（但不销毁WebView）
-      Object.keys(cardConfigs.value).forEach(id => {
+      Object.keys(cardConfigs.value).forEach((id) => {
         if (id !== providerId) {
           cardConfigs.value[id].isHidden = true // 使用isHidden而不是isVisible
         }
@@ -177,7 +177,7 @@ export const useLayoutStore = defineStore('layout', () => {
         delete config.originalPosition
 
         // 显示所有卡片（清除隐藏状态）
-        Object.keys(cardConfigs.value).forEach(id => {
+        Object.keys(cardConfigs.value).forEach((id) => {
           cardConfigs.value[id].isHidden = false
         })
 
@@ -222,7 +222,7 @@ export const useLayoutStore = defineStore('layout', () => {
    * 重新计算布局 - 支持自动扩展行数，无行数限制
    */
   const recalculateLayout = (): void => {
-    const visibleCards = Object.values(cardConfigs.value).filter(config => config.isVisible && !config.isMaximized)
+    const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible && !config.isMaximized)
 
     visibleCards.forEach((config, index) => {
       const col = index % gridSettings.value.columns

@@ -1,5 +1,8 @@
 <template>
-  <div class="app-layout" :class="{ 'dark-mode': isDarkMode }">
+  <div
+    class="app-layout"
+    :class="{ 'dark-mode': isDarkMode }"
+  >
     <!-- 顶部导航栏 -->
     <AppHeader />
 

@@ -274,26 +274,127 @@ function getQwenNewChatScript(): string {
   return `
     (function() {
       try {
-        // 方法1: 优先尝试点击侧边栏隐藏时的新建对话按钮（加号图标）
-        // 通义网站可能有类似Kimi的侧边栏结构
-        const addButtons = document.querySelectorAll('[class*="icon"][class*="button"], [class*="add"], [class*="new"]');
-        for (let i = 0; i < addButtons.length; i++) {
-          const btn = addButtons[i];
-          const btnText = btn.textContent || btn.innerText || '';
-          const ariaLabel = btn.getAttribute('aria-label') || '';
+        console.log('开始执行Qwen新建对话脚本...');
+        
+        // 方法1: 直接查找并点击新对话按钮
+        console.log('尝试查找新对话按钮...');
+        
+        // 查找包含"新对话"文本的元素
+        const findNewChatButton = () => {
+          // 遍历所有元素，寻找包含"新对话"文本的元素
+          const elements = document.querySelectorAll('*');
+          for (const element of elements) {
+            if (element.textContent && element.textContent.trim() === '新对话') {
+              return element;
+            }
+          }
+          return null;
+        };
+        
+        const newChatTextElement = findNewChatButton();
+        if (newChatTextElement) {
+          console.log('找到包含"新对话"文本的元素:', newChatTextElement);
           
-          // 检查是否是新建对话相关的按钮
-          if (btnText.includes('新建') || btnText.includes('新对话') || btnText.includes('+') || 
-              ariaLabel.includes('新建') || ariaLabel.includes('新对话') || ariaLabel.includes('new')) {
-            btn.click();
-            console.log('已点击新建对话按钮:', btn);
+          // 查找它的父级按钮
+          let button = newChatTextElement.closest('button');
+          if (button) {
+            console.log('找到新对话按钮:', button);
+            
+            // 模拟真实的点击事件
+            const clickEvent = new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              button: 0,
+              clientX: button.getBoundingClientRect().left + 10,
+              clientY: button.getBoundingClientRect().top + 10,
+              composed: true,
+              detail: 1
+            });
+            
+            button.dispatchEvent(clickEvent);
+            console.log('已发送点击事件到新对话按钮');
             return true;
           }
         }
         
-        return false
+        // 方法2: 如果找不到按钮，尝试使用XPath查找
+        console.log('尝试使用XPath查找新对话按钮...');
+        const xpathResult = document.evaluate(
+          "//*[contains(text(), '新对话')]",
+          document,
+          null,
+          XPathResult.ANY_TYPE,
+          null
+        );
+        
+        let node = xpathResult.iterateNext();
+        while (node) {
+          console.log('通过XPath找到元素:', node);
+          
+          if (node.tagName === 'BUTTON') {
+            node.click();
+            console.log('已点击新对话按钮');
+            return true;
+          } else {
+            const parentButton = node.closest('button');
+            if (parentButton) {
+              parentButton.click();
+              console.log('已点击新对话按钮的父按钮');
+              return true;
+            }
+          }
+          
+          node = xpathResult.iterateNext();
+        }
+        
+        // 方法3: 如果按钮查找失败，尝试使用快捷键作为备选方案
+        console.log('尝试使用快捷键方案...');
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        const key = 'k';
+        const metaKey = isMac;
+        const ctrlKey = !isMac;
+        
+        // 创建键盘事件
+        const eventOptions = {
+          key: key,
+          code: 'KeyK',
+          keyCode: 75,
+          which: 75,
+          ctrlKey: ctrlKey,
+          metaKey: metaKey,
+          altKey: false,
+          shiftKey: false,
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          view: window
+        };
+        
+        // 尝试在多个目标上发送事件
+        const targets = [
+          document.activeElement,
+          document.querySelector('input, textarea'),
+          document.body,
+          document
+        ];
+        
+        for (const target of targets) {
+          if (target) {
+            try {
+              target.dispatchEvent(new KeyboardEvent('keydown', eventOptions));
+              target.dispatchEvent(new KeyboardEvent('keyup', eventOptions));
+              console.log('已在目标上发送快捷键:', target);
+            } catch (e) {
+              console.log('目标事件发送失败:', target, e);
+            }
+          }
+        }
+        
+        console.log('已发送快捷键: ' + (isMac ? 'Command+K' : 'Ctrl+K'));
+        return true;
       } catch (error) {
-        console.error('通义新建对话失败:', error);
+        console.error('Qwen新建对话脚本执行失败:', error);
         return false;
       }
     })()

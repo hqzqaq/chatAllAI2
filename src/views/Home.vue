@@ -7,13 +7,32 @@
             <ChatDotRound />
           </el-icon>
         </div>
-        <h1 class="app-title">ChatAllAI</h1>
-        <p class="app-description">多AI模型对话比较工具</p>
-        <p class="app-subtitle">同时与多个AI模型对话，比较不同AI的回答</p>
+        <h1 class="app-title">
+          ChatAllAI
+        </h1>
+        <p class="app-description">
+          多AI模型对话比较工具
+        </p>
+        <p class="app-subtitle">
+          同时与多个AI模型对话，比较不同AI的回答
+        </p>
 
         <div class="action-buttons">
-          <el-button type="primary" size="large" :icon="ChatDotRound" @click="goToChat">开始对话</el-button>
-          <el-button size="large" :icon="Setting" @click="goToSettings">应用设置</el-button>
+          <el-button
+            type="primary"
+            size="large"
+            :icon="ChatDotRound"
+            @click="goToChat"
+          >
+            开始对话
+          </el-button>
+          <el-button
+            size="large"
+            :icon="Setting"
+            @click="goToSettings"
+          >
+            应用设置
+          </el-button>
         </div>
       </div>
     </div>
@@ -66,7 +85,10 @@
         </div>
         <div class="status-item">
           <span class="status-label">应用状态:</span>
-          <el-tag :type="isInitialized ? 'success' : 'warning'" size="small">
+          <el-tag
+            :type="isInitialized ? 'success' : 'warning'"
+            size="small"
+          >
             {{ isInitialized ? '已就绪' : '初始化中' }}
           </el-tag>
         </div>
@@ -78,7 +100,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChatDotRound, Setting, Connection, EditPen, Grid, Lock } from '@element-plus/icons-vue'
+import {
+  ChatDotRound, Setting, Connection, EditPen, Grid, Lock
+} from '@element-plus/icons-vue'
 import { useAppStore } from '../stores'
 
 const router = useRouter()

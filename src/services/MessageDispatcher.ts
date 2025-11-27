@@ -32,7 +32,7 @@ class BrowserEventEmitter {
   emit(event: string, ...args: any[]): void {
     const eventListeners = this.listeners.get(event)
     if (eventListeners) {
-      eventListeners.forEach(listener => {
+      eventListeners.forEach((listener) => {
         try {
           listener(...args)
         } catch (error) {
@@ -123,7 +123,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
 
     try {
       // 并发发送脚本到所有提供商
-      const sendPromises = providers.map(async providerId => {
+      const sendPromises = providers.map(async(providerId) => {
         try {
           // 创建临时的provider对象
           const provider: AIProvider = {
@@ -194,7 +194,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
     this.messageQueue.set(finalMessageId, message)
 
     // 并发发送到所有提供商
-    const sendPromises = providers.map(provider => this.sendToProvider(provider, message))
+    const sendPromises = providers.map((provider) => this.sendToProvider(provider, message))
 
     try {
       const settledResults = await Promise.allSettled(sendPromises)
@@ -403,8 +403,8 @@ export class MessageDispatcher extends BrowserEventEmitter {
   resetProviderStatus(providerId: string): void {
     this.sendingStatus.set(providerId, 'idle')
     // 清理重试计数
-    const keysToDelete = Array.from(this.retryCount.keys()).filter(key => key.endsWith(`-${providerId}`))
-    keysToDelete.forEach(key => this.retryCount.delete(key))
+    const keysToDelete = Array.from(this.retryCount.keys()).filter((key) => key.endsWith(`-${providerId}`))
+    keysToDelete.forEach((key) => this.retryCount.delete(key))
   }
 
   /**
@@ -420,7 +420,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
    * 检查是否有正在发送的消息
    */
   hasSendingMessages(): boolean {
-    return Array.from(this.sendingStatus.values()).some(status => status === 'sending')
+    return Array.from(this.sendingStatus.values()).some((status) => status === 'sending')
   }
 
   /**
@@ -454,7 +454,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
    * 延迟函数
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   /**

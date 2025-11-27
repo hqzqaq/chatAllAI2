@@ -9,7 +9,10 @@
           <span class="input-title">统一输入</span>
         </div>
         <div class="header-right">
-          <el-tag :type="loggedInCount > 0 ? 'success' : 'info'" size="small">
+          <el-tag
+            :type="loggedInCount > 0 ? 'success' : 'info'"
+            size="small"
+          >
             {{ loggedInCount }}/{{ totalProviders }} 已连接
           </el-tag>
         </div>
@@ -23,7 +26,11 @@
           </el-icon>
           <span class="selector-title">选择AI模型</span>
         </div>
-        <el-checkbox-group v-model="selectedProviders" class="provider-checkboxes" @change="handleProviderSelection">
+        <el-checkbox-group
+          v-model="selectedProviders"
+          class="provider-checkboxes"
+          @change="handleProviderSelection"
+        >
           <el-checkbox
             v-for="provider in availableProviders"
             :key="provider.id"
@@ -32,7 +39,12 @@
             class="provider-checkbox"
           >
             <div class="provider-option">
-              <img :src="provider.icon" :alt="provider.name" class="provider-icon-small" @error="handleIconError" />
+              <img
+                :src="provider.icon"
+                :alt="provider.name"
+                class="provider-icon-small"
+                @error="handleIconError"
+              >
               <span class="provider-name">{{ provider.name }}</span>
               <el-tag
                 v-if="provider.isLoggedIn && selectedProviders.includes(provider.id)"
@@ -42,7 +54,10 @@
               >
                 已登录
               </el-tag>
-              <el-icon v-if="provider.loadingState === 'loading'" class="loading-icon">
+              <el-icon
+                v-if="provider.loadingState === 'loading'"
+                class="loading-icon"
+              >
                 <Loading />
               </el-icon>
             </div>
@@ -114,8 +129,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { EditPen, Position, Refresh, Delete, Select, Loading, Plus } from '@element-plus/icons-vue'
+import {
+  computed, onMounted, onUnmounted, ref
+} from 'vue'
+import {
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus
+} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
@@ -162,7 +181,7 @@ const saveSelectedProviders = (): void => {
 
 // 应用选中的提供商到聊天存储
 const applySelectedProviders = (): void => {
-  chatStore.providers.forEach(provider => {
+  chatStore.providers.forEach((provider) => {
     const shouldEnable = selectedProviders.value.includes(provider.id)
     if (provider.isEnabled !== shouldEnable) {
       chatStore.toggleProvider(provider.id, shouldEnable)
@@ -197,7 +216,7 @@ const inputPlaceholder = computed(() => {
 /**
  * 发送消息
  */
-const handleSend = async (): Promise<void> => {
+const handleSend = async(): Promise<void> => {
   if (loggedInCount.value === 0) {
     ElMessage.warning('请先登录至少一个AI网站')
     return
@@ -220,11 +239,11 @@ const handleSend = async (): Promise<void> => {
     const results = await messageDispatcher.sendMessage(messageContent, loggedInProviders)
 
     // 处理发送结果
-    const successCount = results.filter(result => result.success).length
+    const successCount = results.filter((result) => result.success).length
     const errorCount = results.length - successCount
 
     // 将消息添加到对话历史
-    results.forEach(result => {
+    results.forEach((result) => {
       const message = {
         id: result.messageId,
         content: messageContent,
@@ -254,7 +273,7 @@ const handleSend = async (): Promise<void> => {
 /**
  * 刷新连接
  */
-const handleRefresh = async (): Promise<void> => {
+const handleRefresh = async(): Promise<void> => {
   try {
     // 重置消息分发器状态
     messageDispatcher.resetAllStatus()
@@ -280,7 +299,7 @@ const handleClear = (): void => {
 /**
  * 新建对话
  */
-const handleNewChat = async (): Promise<void> => {
+const handleNewChat = async(): Promise<void> => {
   if (loggedInCount.value === 0) {
     ElMessage.warning('请先登录至少一个AI网站')
     return
@@ -291,11 +310,11 @@ const handleNewChat = async (): Promise<void> => {
     const { loggedInProviders } = chatStore
 
     // 使用messageDispatcher发送新建对话脚本
-    const results = await messageDispatcher.sendNewChatScript(loggedInProviders.map(provider => provider.id))
+    const results = await messageDispatcher.sendNewChatScript(loggedInProviders.map((provider) => provider.id))
 
     // 检查发送结果
-    const successCount = results.filter(result => result.success).length
-    const errorCount = results.filter(result => !result.success).length
+    const successCount = results.filter((result) => result.success).length
+    const errorCount = results.filter((result) => !result.success).length
 
     if (errorCount === 0) {
       ElMessage.success(`新建对话请求已发送到 ${successCount} 个AI模型`)
