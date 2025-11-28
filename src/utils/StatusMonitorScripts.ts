@@ -133,7 +133,9 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
         // 首先检查深度思考状态
         const deepThinkingActive = checkDeepThinkingStatus();
         
-        const messageElements = document.querySelectorAll('div[data-testid="message_text_content"], div[data-testid="think_quota_block"]');
+        const messageElements = document.querySelectorAll(
+          'div[data-testid="message_text_content"], div[data-testid="think_quota_block"]'
+        );
         const currentLastMessage = messageElements.length > 0 ? messageElements[messageElements.length - 1] : null;
 
         if (currentLastMessage || deepThinkingActive) {
@@ -325,16 +327,113 @@ function getDeepSeekStatusMonitorScript(providerId: string): string {
 /**
  * 通义千问状态监控脚本
  */
-function getQwenStatusMonitorScript(): string {
+function getQwenStatusMonitorScript(providerId: string): string {
   return `
     (function() {
-      console.log('通义千问状态监控脚本已加载');
-      // 通义千问特定的状态监控逻辑
-      return {
-        message: '通义千问状态监控器已启动',
-        status: 'waiting_input'
-      };
-    })()
+      let lastStatus = '';
+      let observer = null;
+      let lastMessageElement = null;
+      let completionTimeout = null;
+      let lastMessageContent = ''; // 跟踪消息内容变化
+
+      function postStatus(status, details = {}) {
+        if (status === lastStatus) return;
+        lastStatus = status;
+        if (window.__WEBVIEW_API__ && window.__WEBVIEW_API__.sendToHost) {
+          window.__WEBVIEW_API__.sendToHost('webview-ai-status-change', {
+            providerId: '${providerId}',
+            status: status,
+            details: details
+          });
+        } else {
+          // Fallback or error for when preload API is not available
+          console.error('[Qwen Monitor] Preload API not available.');
+        }
+        console.log('[Qwen Monitor] Status changed:' + status);
+      }
+
+      function monitorMessage(element) {
+        if (observer) {
+          observer.disconnect();
+        }
+        
+        // 记录初始内容
+        lastMessageContent = element.textContent || '';
+
+        observer = new MutationObserver((mutations) => {
+          // 检查是否有实际内容变化，排除UI变化
+          let hasContentChange = false;
+          
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'characterData' || 
+                (mutation.type === 'childList' && mutation.addedNodes.length > 0)) {
+              // 检查变化是否影响文本内容
+              const currentContent = element.textContent || '';
+              if (currentContent !== lastMessageContent) {
+                hasContentChange = true;
+                lastMessageContent = currentContent;
+              }
+            }
+          });
+          
+          // 只有内容真正变化时才触发状态更新
+          if (hasContentChange) {
+            postStatus('ai_responding');
+            if (completionTimeout) {
+              clearTimeout(completionTimeout);
+            }
+            completionTimeout = setTimeout(() => {
+              postStatus('ai_completed');
+            }, 1000); // 1 second of inactivity to mark as complete
+          }
+        });
+
+        // 只观察内容变化，忽略样式和属性变化
+        observer.observe(element, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: false // 不观察属性变化，减少UI变化干扰
+        });
+      }
+
+      function checkForAIResponse() {
+        // 只监控特定的wrapper元素
+        const wrapperElements = document.querySelectorAll('[class^="wrapper"]');
+        
+        // 查找最新的wrapper元素
+        const currentLastElement = wrapperElements.length > 0 ? wrapperElements[wrapperElements.length - 1] : null;
+
+        if (currentLastElement) {
+          // 如果检测到wrapper元素，则认为是AI正在响应或已响应
+          if (currentLastElement !== lastMessageElement) {
+            lastMessageElement = currentLastElement;
+            // 直接监控wrapper元素
+            monitorMessage(currentLastElement);
+            postStatus('ai_responding');
+            if (completionTimeout) clearTimeout(completionTimeout);
+            completionTimeout = setTimeout(() => {
+              postStatus('ai_completed');
+            }, 1000);
+          }
+        } else {
+          if (lastMessageElement) {
+            if (observer) observer.disconnect();
+            observer = null;
+            lastMessageElement = null;
+            lastMessageContent = '';
+            if (completionTimeout) clearTimeout(completionTimeout);
+            postStatus('ai_completed');
+          }
+          postStatus('waiting_input');
+        }
+      }
+
+      // 降低检查频率，减少性能开销
+      setInterval(checkForAIResponse, 1000);
+      console.log('[Qwen Monitor] Initialized with wrapper element monitoring.');
+      postStatus('waiting_input');
+    })();
   `
 }
 
