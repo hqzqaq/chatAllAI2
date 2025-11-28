@@ -119,7 +119,7 @@ export const useChatStore = defineStore('chat', () => {
     {
       id: 'glm',
       name: 'GLM',
-      url: 'https://chatglm.cn/main/alltoolsdetail?lang=zh',
+      url: 'https://chatglm.cn/',
       icon: './icons/glm.svg',
       isLoggedIn: false,
       sessionData: {

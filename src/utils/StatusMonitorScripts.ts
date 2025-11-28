@@ -240,16 +240,7 @@ function getCopilotStatusMonitorScript(): string {
  * GLM状态监控脚本
  */
 function getGLMStatusMonitorScript(): string {
-  return `
-    (function() {
-      console.log('GLM状态监控脚本已加载');
-      // GLM特定的状态监控逻辑
-      return {
-        message: 'GLM状态监控器已启动',
-        status: 'waiting_input'
-      };
-    })()
-  `
+  return getGenericStatusMonitorScript('glm', '[class="detail chatScrollContainer conversation-list"]')
 }
 
 /**
