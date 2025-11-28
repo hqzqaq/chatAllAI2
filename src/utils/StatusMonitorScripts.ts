@@ -247,16 +247,7 @@ function getGLMStatusMonitorScript(): string {
  * 元宝状态监控脚本
  */
 function getYuanBaoStatusMonitorScript(): string {
-  return `
-    (function() {
-      console.log('元宝状态监控脚本已加载');
-      // 元宝特定的状态监控逻辑
-      return {
-        message: '元宝状态监控器已启动',
-        status: 'waiting_input'
-      };
-    })()
-  `
+  return getGenericStatusMonitorScript('yuanbao', '[class="agent-chat__list__content-wrapper"]')
 }
 
 /**
