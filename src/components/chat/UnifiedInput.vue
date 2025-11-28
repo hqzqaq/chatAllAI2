@@ -10,10 +10,10 @@
         </div>
         <div class="header-right">
           <el-tag
-            :type="loggedInCount > 0 ? 'success' : 'info'"
+            :type="connectedCount > 0 ? 'success' : 'info'"
             size="small"
           >
-            {{ loggedInCount }}/{{ totalProviders }} 已连接
+            {{ connectedCount }}/{{ selectedProviders.length }} 已连接
           </el-tag>
           <el-tag
             v-if="hasRespondingAI"
@@ -175,6 +175,7 @@ import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
 import type { MessageSendResult } from '../../services/MessageDispatcher'
+import type { AIProvider } from '@/types'
 
 const chatStore = useChatStore()
 
@@ -243,7 +244,12 @@ const applySelectedProviders = (): void => {
 }
 
 // 处理提供商选择变化
-const handleProviderSelection = (): void => {
+const handleProviderSelection = (value: string[]): void => {
+  availableProviders.value.forEach((item: AIProvider) => {
+    if (!value.includes(item.id)) {
+      item.isLoggedIn = false
+    }
+  })
   saveSelectedProviders()
   applySelectedProviders()
 }
@@ -255,15 +261,13 @@ const handleIconError = (event: Event): void => {
 }
 
 // AI状态相关方法
-const getProviderAIStatus = (providerId: string): 'waiting_input' | 'responding' | 'completed' | undefined => {
-  return aiStatusMap.value[providerId]
-}
+const getProviderAIStatus = (providerId: string): 'waiting_input' | 'responding' | 'completed' | undefined => aiStatusMap.value[providerId]
 
 const updateAIStatus = (providerId: string, status: 'waiting_input' | 'responding' | 'completed'): void => {
   aiStatusMap.value[providerId] = status
 }
 
-const stopAIStatusMonitoring = async (): Promise<void> => {
+const stopAIStatusMonitoring = async(): Promise<void> => {
   try {
     if (window.electronAPI) {
       const { loggedInProviders } = chatStore
@@ -285,7 +289,9 @@ const stopAIStatusMonitoring = async (): Promise<void> => {
 
 // 处理AI状态变化事件
 const handleAIStatusChange = (data: any) => {
-  const { providerId, status, timestamp, details } = data
+  const {
+    providerId, status, timestamp, details
+  } = data
 
   console.log(`AI状态变化: ${providerId} -> ${status}`, details)
 
@@ -308,16 +314,17 @@ const handleAIStatusChange = (data: any) => {
 const loggedInCount = computed(() => chatStore.loggedInCount)
 const totalProviders = computed(() => chatStore.totalProviders)
 
+// 已选中且已登录的提供商数量
+const connectedProviders = computed(() => availableProviders.value.filter((provider) => provider.isLoggedIn && selectedProviders.value.includes(provider.id)))
+
+const connectedCount = computed(() => connectedProviders.value.length)
+
 const hasSendingMessages = computed(() => messageDispatcher.hasSendingMessages())
 
 // AI状态相关计算属性
-const hasRespondingAI = computed(() => {
-  return Object.values(aiStatusMap.value).some(status => status === 'responding')
-})
+const hasRespondingAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'responding'))
 
-const respondingAICount = computed(() => {
-  return Object.values(aiStatusMap.value).filter(status => status === 'responding').length
-})
+const respondingAICount = computed(() => Object.values(aiStatusMap.value).filter((status) => status === 'responding').length)
 
 const inputPlaceholder = computed(() => {
   if (loggedInCount.value === 0) {
@@ -699,7 +706,7 @@ const handleLoginStatusChanged = (event: CustomEvent) => {
 /**
  * 为当前已登录的提供商启动AI状态监控
  */
-const startAIStatusMonitoringForLoggedInProviders = async (): Promise<void> => {
+const startAIStatusMonitoringForLoggedInProviders = async(): Promise<void> => {
   const { loggedInProviders } = chatStore
 
   if (loggedInProviders.length === 0) {
@@ -717,14 +724,14 @@ const startAIStatusMonitoringForLoggedInProviders = async (): Promise<void> => {
 /**
  * 为单个提供商启动AI状态监控
  */
-const startAIStatusMonitoringForProvider = async (providerId: string): Promise<void> => {
+const startAIStatusMonitoringForProvider = async(providerId: string): Promise<void> => {
   try {
     if (!window.electronAPI) {
       console.warn('electronAPI不可用，无法启动AI状态监控')
       return
     }
 
-    const provider = chatStore.providers.find(p => p.id === providerId)
+    const provider = chatStore.providers.find((p) => p.id === providerId)
     if (!provider) {
       console.warn(`提供商不存在: ${providerId}`)
       return
@@ -734,11 +741,11 @@ const startAIStatusMonitoringForProvider = async (providerId: string): Promise<v
     console.log(`启动AI状态监控: ${provider.name} (webviewId: ${webviewId})`)
 
     // 延迟启动，确保webview和登录检测脚本已完全加载
-    setTimeout(async () => {
+    setTimeout(async() => {
       try {
         const result = await window.electronAPI.startAIStatusMonitoring({
           webviewId,
-          providerId: providerId
+          providerId
         })
 
         if (result.success) {
@@ -768,14 +775,14 @@ const startAIStatusMonitoringForProvider = async (providerId: string): Promise<v
 /**
  * 为单个提供商停止AI状态监控
  */
-const stopAIStatusMonitoringForProvider = async (providerId: string): Promise<void> => {
+const stopAIStatusMonitoringForProvider = async(providerId: string): Promise<void> => {
   try {
     if (!window.electronAPI) {
       console.warn('electronAPI不可用，无法停止AI状态监控')
       return
     }
 
-    const provider = chatStore.providers.find(p => p.id === providerId)
+    const provider = chatStore.providers.find((p) => p.id === providerId)
     if (!provider) {
       console.warn(`提供商不存在: ${providerId}`)
       return
@@ -784,7 +791,7 @@ const stopAIStatusMonitoringForProvider = async (providerId: string): Promise<vo
     console.log(`停止AI状态监控: ${provider.name}`)
 
     const result = await window.electronAPI.stopAIStatusMonitoring({
-      providerId: providerId
+      providerId
     })
 
     if (result.success) {

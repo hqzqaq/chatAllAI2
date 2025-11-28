@@ -501,12 +501,12 @@ const handleLoginStatusChanged = (isLoggedIn: boolean): void => {
   if (props.provider.isLoggedIn !== isLoggedIn) {
     chatStore.updateProviderLoginStatus(props.provider.id, isLoggedIn)
     console.log(`Login status changed for ${props.provider.name}: ${isLoggedIn}`)
-    
+
     // 触发全局登录状态变化事件，让UnifiedInput组件能够监听
     const loginStatusChangedEvent = new CustomEvent('login-status-changed', {
       detail: {
         providerId: props.provider.id,
-        isLoggedIn: isLoggedIn
+        isLoggedIn
       }
     })
     window.dispatchEvent(loginStatusChangedEvent)

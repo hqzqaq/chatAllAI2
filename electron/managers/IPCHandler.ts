@@ -163,10 +163,10 @@ export class IPCHandler extends EventEmitter {
 
     // 新增：获取预加载脚本路径
     ipcMain.handle('get-preload-path', (event, preloadName: string) => {
-      const path = require('path');
+      const path = require('path')
       // __dirname 在主进程中指向 dist-electron 目录
-      return path.resolve(__dirname, preloadName);
-    });
+      return path.resolve(__dirname, preloadName)
+    })
   }
 
   /**
@@ -210,16 +210,16 @@ export class IPCHandler extends EventEmitter {
 
       // 转换状态为统一格式
       const statusMap = {
-        'ai_responding': 'responding',
-        'ai_completed': 'completed',
-        'waiting_input': 'waiting_input'
+        ai_responding: 'responding',
+        ai_completed: 'completed',
+        waiting_input: 'waiting_input'
       }
 
       const status = statusMap[statusData.status] || statusData.status
 
       // 创建状态变化事件
       const statusChangeEvent: AIStatusChangeEvent = {
-        providerId: providerId,
+        providerId,
         status: status as 'waiting_input' | 'responding' | 'completed',
         timestamp: Date.now(),
         details: statusData.details
@@ -1023,9 +1023,8 @@ export class IPCHandler extends EventEmitter {
       if (result) {
         this.log(`AI status monitoring started successfully for ${data.webviewId}`)
         return { success: true }
-      } else {
-        throw new Error('Failed to start AI status monitoring script.')
       }
+      throw new Error('Failed to start AI status monitoring script.')
     } catch (error) {
       this.log(`Failed to start AI status monitoring for ${data.webviewId}:`, error)
       return {
@@ -1042,29 +1041,29 @@ export class IPCHandler extends EventEmitter {
     data: { providerId: string }
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      this.log(`Stopping AI status monitoring for provider ${data.providerId}`);
-      
+      this.log(`Stopping AI status monitoring for provider ${data.providerId}`)
+
       // 清理监听器
       if (this.aiStatusMonitorListeners) {
-        Object.keys(this.aiStatusMonitorListeners).forEach(webviewId => {
+        Object.keys(this.aiStatusMonitorListeners).forEach((webviewId) => {
           if (webviewId.includes(data.providerId)) {
-            const mainWindow = this.windowManager.getMainWindow();
+            const mainWindow = this.windowManager.getMainWindow()
             if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.off('ipc-message', this.aiStatusMonitorListeners[webviewId]);
+              mainWindow.webContents.off('ipc-message', this.aiStatusMonitorListeners[webviewId])
             }
-            delete this.aiStatusMonitorListeners[webviewId];
+            delete this.aiStatusMonitorListeners[webviewId]
           }
-        });
+        })
       }
-      
-      this.log(`AI status monitoring stopped for provider ${data.providerId}`);
-      return { success: true };
+
+      this.log(`AI status monitoring stopped for provider ${data.providerId}`)
+      return { success: true }
     } catch (error) {
-      this.log(`Failed to stop AI status monitoring for ${data.providerId}:`, error);
+      this.log(`Failed to stop AI status monitoring for ${data.providerId}:`, error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      }
     }
   }
 
@@ -1075,19 +1074,19 @@ export class IPCHandler extends EventEmitter {
     data: { providerId: string }
   ): Promise<AIStatusInfo> {
     try {
-      this.log(`Getting current AI status for provider ${data.providerId}`);
-      
+      this.log(`Getting current AI status for provider ${data.providerId}`)
+
       // 这里可以查询当前状态，暂时返回默认状态
       const defaultStatus: AIStatusInfo = {
         providerId: data.providerId,
         status: 'waiting_input',
         timestamp: Date.now()
-      };
-      
-      return defaultStatus;
+      }
+
+      return defaultStatus
     } catch (error) {
-      this.log(`Failed to get current AI status for ${data.providerId}:`, error);
-      throw error;
+      this.log(`Failed to get current AI status for ${data.providerId}:`, error)
+      throw error
     }
   }
 
