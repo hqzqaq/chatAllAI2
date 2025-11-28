@@ -25,7 +25,7 @@ export function getStatusMonitorScript(providerId: string): string {
   }
 
   const scriptGenerator = scripts[providerId]
-  return scriptGenerator ? scriptGenerator(providerId) : getGenericStatusMonitorScript(providerId)
+  return scriptGenerator ? scriptGenerator(providerId) : getGenericStatusMonitorScript(providerId, '')
 }
 
 /**
@@ -116,7 +116,7 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
               } else {
                 postStatus('ai_completed');
               }
-            }, 1000); // 1 second of inactivity to mark as complete
+            }, 3000); // 1 second of inactivity to mark as complete
           }
         });
 
@@ -149,7 +149,7 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
             if (completionTimeout) clearTimeout(completionTimeout);
             
             // 根据是否深度思考设置不同的超时时间
-            const timeoutDuration = deepThinkingActive ? 3000 : 1000;
+            const timeoutDuration = deepThinkingActive ? 3000 : 3000;
             completionTimeout = setTimeout(() => {
               // 再次检查深度思考状态
               if (checkDeepThinkingStatus()) {
@@ -176,7 +176,7 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
       }
 
       // 降低检查频率，减少性能开销
-      setInterval(checkForAIResponse, 1000);
+      setInterval(checkForAIResponse, 3000);
       console.log('[DouBao Monitor] Initialized with deep thinking support.');
       postStatus('waiting_input');
     })();
@@ -186,17 +186,8 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
 /**
  * Kimi状态监控脚本
  */
-function getKimiStatusMonitorScript(): string {
-  return `
-    (function() {
-      console.log('Kimi状态监控脚本已加载');
-      // Kimi特定的状态监控逻辑
-      return {
-        message: 'Kimi状态监控器已启动',
-        status: 'waiting_input'
-      };
-    })()
-  `
+function getKimiStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '[class="chat-content-list"]')
 }
 
 /**
@@ -338,7 +329,7 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
             }
             completionTimeout = setTimeout(() => {
               postStatus('ai_completed');
-            }, 1000); // 1 second of inactivity to mark as complete
+            }, 3000); // 1 second of inactivity to mark as complete
           }
         });
 
@@ -363,7 +354,7 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
             if (completionTimeout) clearTimeout(completionTimeout);
             completionTimeout = setTimeout(() => {
               postStatus('ai_completed');
-            }, 1000);
+            }, 3000);
           }
         } else {
           if (lastMessageElement) {
@@ -379,7 +370,7 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
       }
 
       // 降低检查频率，减少性能开销
-      setInterval(checkForAIResponse, 1000);
+      setInterval(checkForAIResponse, 3000);
       console.log('[DeepSeek Monitor] Initialized.');
       postStatus('waiting_input');
     })();
