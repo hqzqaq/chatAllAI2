@@ -10,12 +10,6 @@
         </div>
         <div class="header-right">
           <el-tag
-            :type="connectedCount > 0 ? 'success' : 'info'"
-            size="small"
-          >
-            {{ connectedCount }}/{{ selectedProviders.length }} 已连接
-          </el-tag>
-          <el-tag
             v-if="hasRespondingAI"
             type="warning"
             size="small"
