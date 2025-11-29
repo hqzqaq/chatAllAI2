@@ -193,17 +193,8 @@ function getKimiStatusMonitorScript(providerId: string): string {
 /**
  * Grok状态监控脚本
  */
-function getGrokStatusMonitorScript(): string {
-  return `
-    (function() {
-      console.log('Grok状态监控脚本已加载');
-      // Grok特定的状态监控逻辑
-      return {
-        message: 'Grok状态监控器已启动',
-        status: 'waiting_input'
-      };
-    })()
-  `
+function getGrokStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '[style="flex-direction: column;"]')
 }
 
 /**
