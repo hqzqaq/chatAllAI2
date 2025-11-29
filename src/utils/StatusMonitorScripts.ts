@@ -224,16 +224,7 @@ function getQwenStatusMonitorScript(providerId: string): string {
  * Copilot状态监控脚本
  */
 function getCopilotStatusMonitorScript(): string {
-  return `
-    (function() {
-      console.log('Copilot状态监控脚本已加载');
-      // Copilot特定的状态监控逻辑
-      return {
-        message: 'Copilot状态监控器已启动',
-        status: 'waiting_input'
-      };
-    })()
-  `
+  return getGenericStatusMonitorScript('copilot', '[data-content="conversation"]')
 }
 
 /**
