@@ -351,9 +351,9 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
 
     isLoading.value = false
     hasError.value = true
-    errorMessage.value = `加载失败: ${event.errorDescription || '未知错误'}`
+    // errorMessage.value = `加载失败: ${event.errorDescription || '未知错误'}`
     emit('loading', false)
-    emit('error', errorMessage.value)
+    // emit('error', errorMessage.value)
   })
 
   // 页面标题变化
