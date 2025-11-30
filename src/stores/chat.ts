@@ -174,6 +174,22 @@ export const useChatStore = defineStore('chat', () => {
   const loggedInCount = computed(() => loggedInProviders.value.length)
 
   /**
+   * 加载所有提供商的代理配置
+   */
+  const loadProxyConfigs = (): void => {
+    try {
+      providers.value.forEach((provider) => {
+        const storedConfig = localStorage.getItem(`proxy-config-${provider.id}`)
+        if (storedConfig) {
+          console.log(`Loaded proxy config for ${provider.name}:`, JSON.parse(storedConfig))
+        }
+      })
+    } catch (error) {
+      console.error('Failed to load proxy configs:', error)
+    }
+  }
+
+  /**
    * 初始化对话历史
    */
   const initializeConversations = (): void => {
@@ -192,6 +208,8 @@ export const useChatStore = defineStore('chat', () => {
       }
       sendingStatus.value[provider.id] = 'idle'
     })
+    // 加载代理配置
+    loadProxyConfigs()
   }
 
   /**
