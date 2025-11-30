@@ -98,7 +98,7 @@ const webviewId = computed(() => `webview-${props.provider.id}`)
 /**
  * 创建WebView元素
  */
-const createWebView = (): void => {
+const createWebView = async(): Promise<void> => {
   console.log(`Creating WebView for ${props.provider.name}`)
 
   const container = document.getElementById(webviewId.value)
@@ -128,6 +128,17 @@ const createWebView = (): void => {
   webview.setAttribute('allowpopups', 'true')
   webview.setAttribute('useragent', getUserAgent())
   webview.setAttribute('partition', `persist:${props.provider.id}`)
+
+  // 设置preload脚本
+  if (window.electronAPI) {
+    try {
+      const preloadPath = await window.electronAPI.getPreloadPath('webview-preload.js')
+      webview.setAttribute('preload', `file://${preloadPath}`)
+      console.log(`Preload script set for ${props.provider.name}: file://${preloadPath}`)
+    } catch (e) {
+      console.error('Failed to get preload path:', e)
+    }
+  }
 
   console.log(`WebView created for ${props.provider.name}, URL: ${props.provider.url}`)
 

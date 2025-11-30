@@ -10,10 +10,12 @@
         </div>
         <div class="header-right">
           <el-tag
-            :type="loggedInCount > 0 ? 'success' : 'info'"
+            v-if="hasRespondingAI"
+            type="warning"
             size="small"
+            class="ai-status-tag"
           >
-            {{ loggedInCount }}/{{ totalProviders }} 已连接
+            {{ respondingAICount }} 个AI回答中
           </el-tag>
         </div>
       </div>
@@ -46,8 +48,17 @@
                 @error="handleIconError"
               >
               <span class="provider-name">{{ provider.name }}</span>
+              <!-- AI状态显示 -->
               <el-tag
-                v-if="provider.isLoggedIn && selectedProviders.includes(provider.id)"
+                v-if="getProviderAIStatus(provider.id) === 'responding'"
+                type="warning"
+                size="small"
+                class="ai-status-tag"
+              >
+                回答中
+              </el-tag>
+              <el-tag
+                v-else-if="provider.isLoggedIn && selectedProviders.includes(provider.id)"
                 type="success"
                 size="small"
                 class="status-tag"
@@ -134,7 +145,7 @@
               type="primary"
               :icon="Position"
               :loading="hasSendingMessages"
-              :disabled="!currentMessage || loggedInCount === 0"
+              :disabled="!currentMessage || loggedInCount === 0 || hasRespondingAI"
               data-testid="send-button"
               @click="handleSend"
             >
@@ -158,12 +169,15 @@ import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
 import type { MessageSendResult } from '../../services/MessageDispatcher'
-import { getNewChatScript } from '../../utils/NewChatScripts'
+import type { AIProvider } from '@/types'
 
 const chatStore = useChatStore()
 
 // 响应式数据
 const selectedProviders = ref<string[]>([])
+
+// AI状态管理
+const aiStatusMap = ref<{ [providerId: string]: 'waiting_input' | 'responding' | 'completed' }>({})
 
 // 输入框交互优化相关数据
 const textareaRef = ref<any>(null)
@@ -224,7 +238,12 @@ const applySelectedProviders = (): void => {
 }
 
 // 处理提供商选择变化
-const handleProviderSelection = (): void => {
+const handleProviderSelection = (value: string[]): void => {
+  availableProviders.value.forEach((item: AIProvider) => {
+    if (!value.includes(item.id)) {
+      item.isLoggedIn = false
+    }
+  })
   saveSelectedProviders()
   applySelectedProviders()
 }
@@ -235,14 +254,78 @@ const handleIconError = (event: Event): void => {
   img.src = '/icons/default.svg'
 }
 
+// AI状态相关方法
+const getProviderAIStatus = (providerId: string): 'waiting_input' | 'responding' | 'completed' | undefined => aiStatusMap.value[providerId]
+
+const updateAIStatus = (providerId: string, status: 'waiting_input' | 'responding' | 'completed'): void => {
+  aiStatusMap.value[providerId] = status
+}
+
+const stopAIStatusMonitoring = async(): Promise<void> => {
+  try {
+    if (window.electronAPI) {
+      const { loggedInProviders } = chatStore
+
+      for (const provider of loggedInProviders) {
+        const result = await window.electronAPI.stopAIStatusMonitoring({
+          providerId: provider.id
+        })
+
+        if (result.success) {
+          console.log(`AI状态监控已停止: ${provider.name}`)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('停止AI状态监控失败:', error)
+  }
+}
+
+// 处理AI状态变化事件
+const handleAIStatusChange = (data: any) => {
+  const {
+    providerId, status, timestamp, details
+  } = data
+
+  console.log(`AI状态变化: ${providerId} -> ${status}`, details)
+
+  // 更新状态映射
+  updateAIStatus(providerId, status)
+
+  // 根据状态变化进行相应处理
+  if (status === 'responding') {
+    // AI开始回答，可以在这里添加相关逻辑
+    console.log(`${providerId} 开始回答`)
+  } else if (status === 'completed') {
+    // AI回答完成，可以在这里添加相关逻辑
+    console.log(`${providerId} 回答完成`)
+  } else if (status === 'waiting_input') {
+    // AI等待输入，可以在这里添加相关逻辑
+    console.log(`${providerId} 等待输入`)
+  }
+}
+
 const loggedInCount = computed(() => chatStore.loggedInCount)
 const totalProviders = computed(() => chatStore.totalProviders)
 
+// 已选中且已登录的提供商数量
+const connectedProviders = computed(() => availableProviders.value.filter((provider) => provider.isLoggedIn && selectedProviders.value.includes(provider.id)))
+
+const connectedCount = computed(() => connectedProviders.value.length)
+
 const hasSendingMessages = computed(() => messageDispatcher.hasSendingMessages())
+
+// AI状态相关计算属性
+const hasRespondingAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'responding'))
+
+const respondingAICount = computed(() => Object.values(aiStatusMap.value).filter((status) => status === 'responding').length)
 
 const inputPlaceholder = computed(() => {
   if (loggedInCount.value === 0) {
     return '请先登录至少一个AI网站...'
+  }
+  if (hasRespondingAI.value) {
+    return 'AI正在回答中，请等待回答完成后再发送新消息...'
   }
   return '输入您的消息，将同时发送给所有已登录的AI...'
 })
@@ -378,7 +461,7 @@ const stopResize = (): void => {
  */
 const toggleExpand = (): void => {
   isExpanded.value = !isExpanded.value
-  
+
   if (isExpanded.value) {
     // 全屏状态
     textareaRows.value = maxRows.value
@@ -386,7 +469,7 @@ const toggleExpand = (): void => {
     // 回到最小行数
     textareaRows.value = minRows.value
   }
-  
+
   // 保存用户偏好
   savePreferredHeight()
 }
@@ -569,12 +652,23 @@ const handleMessageSent = (data: { messageId: string; results: MessageSendResult
   console.log('Message sent:', data)
 }
 
+let unsubscribeAIStatusChange: (() => void) | null = null
+
 /**
  * 组件挂载时设置事件监听
  */
 onMounted(() => {
   messageDispatcher.on('status-changed', handleStatusChanged)
   messageDispatcher.on('message-sent', handleMessageSent)
+
+  // 监听AI状态变化事件
+  if (window.electronAPI && window.electronAPI.onAIStatusChange) {
+    unsubscribeAIStatusChange = window.electronAPI.onAIStatusChange(handleAIStatusChange)
+  }
+
+  // 监听登录状态变化事件
+  window.addEventListener('login-status-changed', handleLoginStatusChanged)
+
   // 加载选中的提供商
   loadSelectedProviders()
 
@@ -582,7 +676,127 @@ onMounted(() => {
   nextTick(() => {
     loadPreferredHeight()
   })
+
+  // 初始检查：为当前已登录的提供商启动AI状态监控
+  startAIStatusMonitoringForLoggedInProviders()
 })
+
+/**
+ * 处理登录状态变化事件
+ */
+const handleLoginStatusChanged = (event: CustomEvent) => {
+  const { providerId, isLoggedIn } = event.detail
+  console.log(`登录状态变化: ${providerId} -> ${isLoggedIn ? '已登录' : '未登录'}`)
+
+  if (isLoggedIn) {
+    // 用户从未登录状态变为登录状态，启动AI状态监控
+    startAIStatusMonitoringForProvider(providerId)
+  } else {
+    // 用户从登录状态变为未登录状态，停止AI状态监控
+    stopAIStatusMonitoringForProvider(providerId)
+  }
+}
+
+/**
+ * 为当前已登录的提供商启动AI状态监控
+ */
+const startAIStatusMonitoringForLoggedInProviders = async(): Promise<void> => {
+  const { loggedInProviders } = chatStore
+
+  if (loggedInProviders.length === 0) {
+    console.log('没有已登录的提供商，跳过AI状态监控启动')
+    return
+  }
+
+  console.log(`为${loggedInProviders.length}个已登录提供商启动AI状态监控`)
+
+  for (const provider of loggedInProviders) {
+    await startAIStatusMonitoringForProvider(provider.id)
+  }
+}
+
+/**
+ * 为单个提供商启动AI状态监控
+ */
+const startAIStatusMonitoringForProvider = async(providerId: string): Promise<void> => {
+  try {
+    if (!window.electronAPI) {
+      console.warn('electronAPI不可用，无法启动AI状态监控')
+      return
+    }
+
+    const provider = chatStore.providers.find((p) => p.id === providerId)
+    if (!provider) {
+      console.warn(`提供商不存在: ${providerId}`)
+      return
+    }
+
+    const webviewId = `webview-${providerId}`
+    console.log(`启动AI状态监控: ${provider.name} (webviewId: ${webviewId})`)
+
+    // 延迟启动，确保webview和登录检测脚本已完全加载
+    setTimeout(async() => {
+      try {
+        const result = await window.electronAPI.startAIStatusMonitoring({
+          webviewId,
+          providerId
+        })
+
+        if (result.success) {
+          console.log(`AI状态监控已启动: ${provider.name}`)
+        } else {
+          console.warn(`AI状态监控启动失败: ${provider.name}`, result.error)
+
+          // 启动失败时重试
+          setTimeout(() => {
+            startAIStatusMonitoringForProvider(providerId)
+          }, 2000)
+        }
+      } catch (error) {
+        console.error(`启动AI状态监控时发生错误: ${provider.name}`, error)
+
+        // 发生错误时重试
+        setTimeout(() => {
+          startAIStatusMonitoringForProvider(providerId)
+        }, 2000)
+      }
+    }, 1000) // 延迟1秒，确保登录检测脚本已执行
+  } catch (error) {
+    console.error(`启动AI状态监控失败: ${providerId}`, error)
+  }
+}
+
+/**
+ * 为单个提供商停止AI状态监控
+ */
+const stopAIStatusMonitoringForProvider = async(providerId: string): Promise<void> => {
+  try {
+    if (!window.electronAPI) {
+      console.warn('electronAPI不可用，无法停止AI状态监控')
+      return
+    }
+
+    const provider = chatStore.providers.find((p) => p.id === providerId)
+    if (!provider) {
+      console.warn(`提供商不存在: ${providerId}`)
+      return
+    }
+
+    console.log(`停止AI状态监控: ${provider.name}`)
+
+    const result = await window.electronAPI.stopAIStatusMonitoring({
+      providerId
+    })
+
+    if (result.success) {
+      console.log(`AI状态监控已停止: ${provider.name}`)
+    } else {
+      console.warn(`AI状态监控停止失败: ${provider.name}`, result.error)
+    }
+  } catch (error) {
+    console.error(`停止AI状态监控失败: ${providerId}`, error)
+  }
+}
 
 /**
  * 组件卸载时清理事件监听
@@ -593,6 +807,14 @@ onUnmounted(() => {
 
   // 保存用户偏好的高度
   savePreferredHeight()
+
+  // 移除AI状态变化事件监听
+  if (unsubscribeAIStatusChange) {
+    unsubscribeAIStatusChange()
+  }
+
+  // 停止AI状态监控
+  stopAIStatusMonitoring()
 })
 </script>
 
@@ -762,6 +984,19 @@ onUnmounted(() => {
   border-radius: 10px;
 }
 
+.ai-status-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+}
+
+.header-right .ai-status-tag {
+  margin-left: 8px;
+}
+
 .loading-icon {
   color: #8e8e93;
   animation: rotate 1s linear infinite;
@@ -861,7 +1096,7 @@ onUnmounted(() => {
   width: 16px;
   height: 16px;
   cursor: ns-resize;
-  background-image: 
+  background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23909399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;

@@ -466,6 +466,8 @@ const handleWebViewReady = (): void => {
   const provider = chatStore.getProvider(props.provider.id)
   if (provider) {
     provider.loadingState = 'loaded'
+    // 应用代理配置
+    applyProxyConfig()
   }
 }
 
@@ -501,6 +503,15 @@ const handleLoginStatusChanged = (isLoggedIn: boolean): void => {
   if (props.provider.isLoggedIn !== isLoggedIn) {
     chatStore.updateProviderLoginStatus(props.provider.id, isLoggedIn)
     console.log(`Login status changed for ${props.provider.name}: ${isLoggedIn}`)
+
+    // 触发全局登录状态变化事件，让UnifiedInput组件能够监听
+    const loginStatusChangedEvent = new CustomEvent('login-status-changed', {
+      detail: {
+        providerId: props.provider.id,
+        isLoggedIn
+      }
+    })
+    window.dispatchEvent(loginStatusChangedEvent)
   }
 }
 
@@ -625,13 +636,17 @@ const saveProxyConfig = async(): Promise<void> => {
  */
 const loadProxyConfig = (): void => {
   try {
-    const storedConfig = localStorage.getItem(`proxy-config-${props.provider.id}`)
+    const key = `proxy-config-${props.provider.id}`
+    const storedConfig = localStorage.getItem(key)
     if (storedConfig) {
       const config = JSON.parse(storedConfig)
       proxyConfig.value = { ...proxyConfig.value, ...config }
+      console.log(`Loaded proxy config for ${props.provider.name} from storage:`, config)
+    } else {
+      console.log(`No proxy config found for ${props.provider.name} in storage`)
     }
   } catch (error) {
-    console.error('加载代理配置失败:', error)
+    console.error(`Failed to load proxy config for ${props.provider.name}:`, error)
   }
 }
 
@@ -640,9 +655,11 @@ const loadProxyConfig = (): void => {
  */
 const saveProxyConfigToStorage = (): void => {
   try {
-    localStorage.setItem(`proxy-config-${props.provider.id}`, JSON.stringify(proxyConfig.value))
+    const key = `proxy-config-${props.provider.id}`
+    localStorage.setItem(key, JSON.stringify(proxyConfig.value))
+    console.log(`Saved proxy config for ${props.provider.name} to storage:`, proxyConfig.value)
   } catch (error) {
-    console.error('保存代理配置到存储失败:', error)
+    console.error(`Failed to save proxy config for ${props.provider.name} to storage:`, error)
   }
 }
 
@@ -716,6 +733,9 @@ defineExpose({
 
 // 生命周期
 onMounted(() => {
+  // 加载代理配置
+  loadProxyConfig()
+  
   // 初始化WebView状态，确保provider被启用
   const provider = chatStore.getProvider(props.provider.id)
   if (provider && !provider.isEnabled) {

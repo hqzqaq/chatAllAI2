@@ -10,6 +10,7 @@ import { EventEmitter } from 'events'
 import { WindowManager } from './WindowManager'
 import { SessionManager } from './SessionManager'
 import { getSendMessageScript } from '../../src/utils/MessageScripts'
+import { getStatusMonitorScript } from '../../src/utils/StatusMonitorScripts'
 import {
   IPCChannel,
   IPCRequest,
@@ -29,7 +30,11 @@ import {
   SettingsRequest,
   SettingsResponse,
   ErrorReportRequest,
-  PerformanceMetricsResponse
+  PerformanceMetricsResponse,
+  AIStatusStartMonitoringRequest,
+  AIStatusStartMonitoringResponse,
+  AIStatusInfo,
+  AIStatusChangeEvent
 } from '../../src/types/ipc'
 
 /**
@@ -56,6 +61,8 @@ export class IPCHandler extends EventEmitter {
   private messageHandlers: Map<IPCChannel, Function> = new Map()
 
   private invokeHandlers: Map<IPCChannel, Function> = new Map()
+
+  private aiStatusMonitorListeners?: { [webviewId: string]: (event: any) => void }
 
   constructor(
     windowManager: WindowManager,
@@ -148,6 +155,18 @@ export class IPCHandler extends EventEmitter {
 
     // 性能监控
     this.handleInvoke(IPCChannel.PERFORMANCE_GET_METRICS, this.handlePerformanceGetMetrics.bind(this))
+
+    // AI状态监控
+    this.handleInvoke(IPCChannel.AI_STATUS_START_MONITORING, this.handleAIStatusStartMonitoring.bind(this))
+    this.handleInvoke(IPCChannel.AI_STATUS_STOP_MONITORING, this.handleAIStatusStopMonitoring.bind(this))
+    this.handleInvoke(IPCChannel.AI_STATUS_GET_CURRENT, this.handleAIStatusGetCurrent.bind(this))
+
+    // 新增：获取预加载脚本路径
+    ipcMain.handle('get-preload-path', (event, preloadName: string) => {
+      const path = require('path')
+      // __dirname 在主进程中指向 dist-electron 目录
+      return path.resolve(__dirname, preloadName)
+    })
   }
 
   /**
@@ -160,6 +179,57 @@ export class IPCHandler extends EventEmitter {
     // 消息接收通知
     this.handleSend(IPCChannel.MESSAGE_RECEIVED, this.handleMessageReceived.bind(this))
     this.handleSend(IPCChannel.MESSAGE_ERROR, this.handleMessageError.bind(this))
+
+    // 监听来自WebView preload脚本的AI状态变化事件
+    ipcMain.on('webview-ai-status-change', (event, data) => {
+      const { providerId, status, details } = data
+
+      // 转换状态为统一格式
+      const statusMap = {
+        ai_responding: 'responding',
+        ai_completed: 'completed',
+        waiting_input: 'waiting_input'
+      }
+      const mappedStatus = statusMap[status] || status
+
+      const statusChangeEvent: AIStatusChangeEvent = {
+        providerId,
+        status: mappedStatus as 'waiting_input' | 'responding' | 'completed',
+        timestamp: Date.now(),
+        details
+      }
+
+      this.sendToRenderer(IPCChannel.AI_STATUS_CHANGE, statusChangeEvent)
+      this.log(`AI status changed for ${providerId}: ${mappedStatus}`)
+    })
+
+    // 内部AI状态变化事件
+    ipcMain.on('internal-ai-status-change', (event, data) => {
+      const { providerId, statusData } = data
+      this.log(`Internal AI status changed for ${providerId}:`, statusData)
+
+      // 转换状态为统一格式
+      const statusMap = {
+        ai_responding: 'responding',
+        ai_completed: 'completed',
+        waiting_input: 'waiting_input'
+      }
+
+      const status = statusMap[statusData.status] || statusData.status
+
+      // 创建状态变化事件
+      const statusChangeEvent: AIStatusChangeEvent = {
+        providerId,
+        status: status as 'waiting_input' | 'responding' | 'completed',
+        timestamp: Date.now(),
+        details: statusData.details
+      }
+
+      // 发送状态变化事件到渲染进程
+      this.sendToRenderer(IPCChannel.AI_STATUS_CHANGE, statusChangeEvent)
+
+      this.log(`AI status changed for ${providerId}: ${status}`)
+    })
   }
 
   /**
@@ -910,6 +980,113 @@ export class IPCHandler extends EventEmitter {
         success: false,
         error: errorMessage
       }
+    }
+  }
+
+  /**
+   * 处理AI状态监控启动
+   */
+  private async handleAIStatusStartMonitoring(
+    data: AIStatusStartMonitoringRequest
+  ): Promise<AIStatusStartMonitoringResponse> {
+    try {
+      this.log(`Starting AI status monitoring for webview ${data.webviewId}, provider ${data.providerId}`)
+
+      const mainWindow = this.windowManager.getMainWindow()
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        throw new Error('Main window not available')
+      }
+
+      // 获取为特定provider定制的状态监控脚本
+      const statusMonitorScript = getStatusMonitorScript(data.providerId)
+
+      // 在webview中执行该脚本
+      const script = `
+        (async function() {
+          try {
+            const webviewElement = document.querySelector('#${data.webviewId}-element');
+            if (!webviewElement) {
+              console.error('[AI Status Monitor] WebView element not found:', '${data.webviewId}');
+              return false;
+            }
+            await webviewElement.executeJavaScript(${JSON.stringify(statusMonitorScript)});
+            return true;
+          } catch (error) {
+            console.error('[AI Status Monitor] Error in status monitoring script execution:', error);
+            return false;
+          }
+        })()
+      `
+
+      const result = await mainWindow.webContents.executeJavaScript(script)
+
+      if (result) {
+        this.log(`AI status monitoring started successfully for ${data.webviewId}`)
+        return { success: true }
+      }
+      throw new Error('Failed to start AI status monitoring script.')
+    } catch (error) {
+      this.log(`Failed to start AI status monitoring for ${data.webviewId}:`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  /**
+   * 处理AI状态监控停止
+   */
+  private async handleAIStatusStopMonitoring(
+    data: { providerId: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.log(`Stopping AI status monitoring for provider ${data.providerId}`)
+
+      // 清理监听器
+      if (this.aiStatusMonitorListeners) {
+        Object.keys(this.aiStatusMonitorListeners).forEach((webviewId) => {
+          if (webviewId.includes(data.providerId)) {
+            const mainWindow = this.windowManager.getMainWindow()
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.off('ipc-message', this.aiStatusMonitorListeners[webviewId])
+            }
+            delete this.aiStatusMonitorListeners[webviewId]
+          }
+        })
+      }
+
+      this.log(`AI status monitoring stopped for provider ${data.providerId}`)
+      return { success: true }
+    } catch (error) {
+      this.log(`Failed to stop AI status monitoring for ${data.providerId}:`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  /**
+   * 处理获取当前AI状态
+   */
+  private async handleAIStatusGetCurrent(
+    data: { providerId: string }
+  ): Promise<AIStatusInfo> {
+    try {
+      this.log(`Getting current AI status for provider ${data.providerId}`)
+
+      // 这里可以查询当前状态，暂时返回默认状态
+      const defaultStatus: AIStatusInfo = {
+        providerId: data.providerId,
+        status: 'waiting_input',
+        timestamp: Date.now()
+      }
+
+      return defaultStatus
+    } catch (error) {
+      this.log(`Failed to get current AI status for ${data.providerId}:`, error)
+      throw error
     }
   }
 
