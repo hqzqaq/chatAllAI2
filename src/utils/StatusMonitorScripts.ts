@@ -258,8 +258,9 @@ function getMiromindStatusMonitorScript(): string {
       }
 
       function checkForAIResponse() {
-        const buttonElement = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > div > div > footer > div.mb-2.flex.items-center.justify-center > button');
-
+        let buttons = document.querySelectorAll('.items-center.justify-center button');
+        let buttonElement = Array.from(buttons).find(btn => btn.textContent.trim() === '取消');
+        
         if (buttonElement) {
           postStatus('ai_responding');
           if (completionTimeout) {

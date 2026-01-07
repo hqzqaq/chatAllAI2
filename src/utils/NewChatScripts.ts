@@ -436,8 +436,9 @@ function getMiromindNewChatScript(): string {
     (function() {
       try {
         // 检查停止按钮是否存在
-        const stopButton = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > div > div > footer > div.mb-2.flex.items-center.justify-center > button');
-
+        let buttons = document.querySelectorAll('.items-center.justify-center button');
+        let stopButton = Array.from(buttons).find(btn => btn.textContent.trim() === '取消');
+        
         if (stopButton) {
           console.log('发现停止按钮，正在停止当前对话...');
           stopButton.click();
@@ -445,7 +446,7 @@ function getMiromindNewChatScript(): string {
           // 等待3秒后点击新建对话按钮
           setTimeout(() => {
             try {
-              const newChatButton = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > header > div > div.flex.items-center.gap-1.md\\:gap-3 > button.hover\\:text-gray-700.flex.items-center.justify-center.text-primary.transition-colors');
+              const newChatButton = document.querySelector('[aria-describedby="«r0»"');
               
               if (newChatButton) {
                 newChatButton.click();
@@ -461,8 +462,8 @@ function getMiromindNewChatScript(): string {
           return true;
         } else {
           // 如果没有停止按钮，直接点击新建对话按钮
-          const newChatButton = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > header > div > div.flex.items-center.gap-1.md\\:gap-3 > button.hover\\:text-gray-700.flex.items-center.justify-center.text-primary.transition-colors');
-          
+          const newChatButton = document.querySelector('[aria-describedby="«r0»"');
+                 
           if (newChatButton) {
             newChatButton.click();
             console.log('已点击miromind新建对话按钮');
