@@ -21,7 +21,8 @@ export function getNewChatScript(providerId: string): string {
     qwen: getQwenNewChatScript(),
     copilot: getCopilotNewChatScript(),
     glm: getGLMNewChatScript(),
-    yuanbao: getYuanBaoNewChatScript()
+    yuanbao: getYuanBaoNewChatScript(),
+    miromind: getMiromindNewChatScript(),
   }
 
   return scripts[providerId] || getGenericNewChatScript()
@@ -421,6 +422,58 @@ function getCopilotNewChatScript(): string {
         return false;
       } catch (error) {
         console.error('Copilot新建对话失败:', error);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
+ * miromind新建对话脚本
+ */
+function getMiromindNewChatScript(): string {
+  return `
+    (function() {
+      try {
+        // 检查停止按钮是否存在
+        const stopButton = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > div > div > footer > div.mb-2.flex.items-center.justify-center > button');
+
+        if (stopButton) {
+          console.log('发现停止按钮，正在停止当前对话...');
+          stopButton.click();
+          
+          // 等待3秒后点击新建对话按钮
+          setTimeout(() => {
+            try {
+              const newChatButton = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > header > div > div.flex.items-center.gap-1.md\\:gap-3 > button.hover\\:text-gray-700.flex.items-center.justify-center.text-primary.transition-colors');
+              
+              if (newChatButton) {
+                newChatButton.click();
+                console.log('已点击miromind新建对话按钮');
+              } else {
+                console.log('未找到新建对话按钮');
+              }
+            } catch (error) {
+              console.error('点击新建对话按钮失败:', error);
+            }
+          }, 3000);
+          
+          return true;
+        } else {
+          // 如果没有停止按钮，直接点击新建对话按钮
+          const newChatButton = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > header > div > div.flex.items-center.gap-1.md\\:gap-3 > button.hover\\:text-gray-700.flex.items-center.justify-center.text-primary.transition-colors');
+          
+          if (newChatButton) {
+            newChatButton.click();
+            console.log('已点击miromind新建对话按钮');
+            return true;
+          }
+          
+          console.log('未找到新建对话按钮');
+          return false;
+        }
+      } catch (error) {
+        console.error('miromind新建对话失败:', error);
         return false;
       }
     })()

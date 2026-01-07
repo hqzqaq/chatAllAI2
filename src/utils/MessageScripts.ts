@@ -41,7 +41,8 @@ export function getSendMessageScript(providerId: string, message: string): strin
     qwen: getQwenScript(escapedMessage),
     copilot: getCopilotScript(escapedMessage),
     glm: getGLMScript(escapedMessage),
-    yuanbao: getYuanBaoScript(escapedMessage)
+    yuanbao: getYuanBaoScript(escapedMessage),
+    miromind: getMiromindScript(escapedMessage)
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -478,10 +479,17 @@ function getGenericScript(escapedMessage: string): string {
 }
 
 /**
+ * Copilot发送脚本
+ */
+function getMiromindScript(escapedMessage: string): string {
+  return getDeepSeekScript(escapedMessage)
+}
+
+/**
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao']
+  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao', 'miromind']
 }
 
 /**

@@ -54,6 +54,10 @@ export function getLoginCheckScript(providerId: string): string {
       // 检查yuanbao的登录状态
       !(document.querySelector('.agent-dialogue__tool__login') && 
       (document.querySelector('.agent-dialogue__tool__login').textContent === '登录'))
+    `,
+    miromind:`
+      !((document.querySelector('[class="ant-space-item"]')) &&   
+      (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
     `
   }
 

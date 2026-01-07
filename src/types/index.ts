@@ -68,8 +68,6 @@ export interface Session {
   localStorage: Record<string, string>
   sessionStorage: Record<string, string>
   isActive: boolean
-  createdAt: Date
-  updatedAt: Date
   expiresAt?: Date
 }
 

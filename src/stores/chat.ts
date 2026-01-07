@@ -151,6 +151,24 @@ export const useChatStore = defineStore('chat', () => {
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0
+    },
+    {
+      id: 'miromind',
+      name: 'MiroThinker',
+      url: 'https://dr.miromind.ai/',
+      icon: './icons/miromind.png',
+      isLoggedIn: false,
+      sessionData: {
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        isActive: false,
+        lastActiveTime: new Date()
+      },
+      webviewId: 'webview-miromind',
+      isEnabled: false,
+      loadingState: 'idle',
+      retryCount: 0
     }
   ])
 

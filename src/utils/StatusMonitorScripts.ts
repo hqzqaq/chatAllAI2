@@ -21,7 +21,8 @@ export function getStatusMonitorScript(providerId: string): string {
     qwen: getQwenStatusMonitorScript,
     copilot: getCopilotStatusMonitorScript,
     glm: getGLMStatusMonitorScript,
-    yuanbao: getYuanBaoStatusMonitorScript
+    yuanbao: getYuanBaoStatusMonitorScript,
+    miromind: getMiromindStatusMonitorScript,
   }
 
   const scriptGenerator = scripts[providerId]
@@ -233,6 +234,58 @@ function getYuanBaoStatusMonitorScript(): string {
 }
 
 /**
+ * miromind状态监控脚本
+ */
+function getMiromindStatusMonitorScript(): string {
+  return `
+    (function() {
+      let lastStatus = '';
+      let completionTimeout = null;
+
+      function postStatus(status, details = {}) {
+        if (status === lastStatus) return;
+        lastStatus = status;
+        if (window.__WEBVIEW_API__ && window.__WEBVIEW_API__.sendToHost) {
+          window.__WEBVIEW_API__.sendToHost('webview-ai-status-change', {
+            providerId: 'miromind',
+            status: status,
+            details: details
+          });
+        } else {
+          console.error('[miromind Monitor] Preload API not available.');
+        }
+        console.log('[miromind Monitor] Status changed:' + status);
+      }
+
+      function checkForAIResponse() {
+        const buttonElement = document.querySelector('body > div.fixed.inset-0.flex.flex-col.overflow-hidden.overscroll-none > div > div.relative.flex.h-full.flex-1.flex-col.overflow-hidden.overscroll-y-none > div > div > footer > div.mb-2.flex.items-center.justify-center > button');
+
+        if (buttonElement) {
+          postStatus('ai_responding');
+          if (completionTimeout) {
+            clearTimeout(completionTimeout);
+          }
+          completionTimeout = setTimeout(() => {
+            postStatus('ai_completed');
+          }, 3000);
+        } else {
+          if (completionTimeout) {
+            clearTimeout(completionTimeout);
+            completionTimeout = null;
+          }
+          postStatus('waiting_input');
+        }
+      }
+
+      setInterval(checkForAIResponse, 3000);
+      console.log('[miromind Monitor] Initialized.');
+      postStatus('waiting_input');
+    })();
+  `
+}
+
+
+/**
  * 通用状态监控脚本
  */
 function getGenericStatusMonitorScript(providerId: string, elementSelector: string): string {
@@ -353,7 +406,8 @@ export function getSupportedProviders(): string[] {
     'qwen',
     'copilot',
     'glm',
-    'yuanbao'
+    'yuanbao',
+    'miromind'
   ]
 }
 
