@@ -23,6 +23,7 @@ export function getStatusMonitorScript(providerId: string): string {
     glm: getGLMStatusMonitorScript,
     yuanbao: getYuanBaoStatusMonitorScript,
     miromind: getMiromindStatusMonitorScript,
+    gemini: getGeminiStatusMonitorScript,
   }
 
   const scriptGenerator = scripts[providerId]
@@ -392,6 +393,13 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
       postStatus('waiting_input');
     })();
   `
+}
+
+/**
+ * Gemini状态监控脚本
+ */
+function getGeminiStatusMonitorScript(): string {
+  return getGenericStatusMonitorScript('gemini', '[data-test-id="chat-history-container"]')
 }
 
 /**

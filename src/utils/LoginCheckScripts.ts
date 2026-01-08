@@ -55,7 +55,10 @@ export function getLoginCheckScript(providerId: string): string {
     miromind:`
       !((document.querySelector('[class="ant-space-item"]')) &&   
       (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
-    `
+    `,
+    gemini: `
+      !!document.querySelector('.gb_be')
+    `,
   }
 
   return scripts[providerId] || 'false'

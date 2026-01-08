@@ -42,7 +42,8 @@ export function getSendMessageScript(providerId: string, message: string): strin
     copilot: getCopilotScript(escapedMessage),
     glm: getGLMScript(escapedMessage),
     yuanbao: getYuanBaoScript(escapedMessage),
-    miromind: getMiromindScript(escapedMessage)
+    miromind: getMiromindScript(escapedMessage),
+    gemini: getGeminiScript(escapedMessage),
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -486,10 +487,73 @@ function getMiromindScript(escapedMessage: string): string {
 }
 
 /**
+ * Gemini发送脚本
+ */
+function getGeminiScript(escapedMessage: string): string {
+  return `
+      (function() {
+      // --- Configuration ---
+      const CHAT_INPUT_SELECTOR = '[data-placeholder="Ask Gemini 3"]';
+      const SEND_BUTTON_SELECTOR = '[aria-label="Send message"]';
+      const INPUT_SEND_DELAY_MS = 500;
+
+      // --- Input Handling ---
+      function findChatInput() {
+        const element = document.querySelector(CHAT_INPUT_SELECTOR);
+        if (element) {
+          return element;
+        }
+        return null;
+      }
+
+      const inputElement = findChatInput();
+
+      if (!inputElement) {
+        console.error("[Input] Chat input TEXTAREA element not found using selector:", CHAT_INPUT_SELECTOR);
+        return false;
+      }
+
+      try {
+        inputElement.focus();
+        console.log("[Input] Focused the textarea element.");
+
+        const newValue = '${escapedMessage}';
+
+        // 使用更可靠的方式设置input值
+        try {
+          inputElement.innerText = newValue;
+        } catch (e) {
+          console.error("Error setting input value using native setter or direct assignment:", e);
+          if (inputElement.innerText !== newValue) {
+            inputElement.value = newValue;
+            console.warn("Forced input value setting after error.");
+          }
+        }
+
+        // 延迟后发送Enter键事件
+        setTimeout(() => {
+          const sendButton = document.querySelector(SEND_BUTTON_SELECTOR);
+          if (sendButton) {
+            sendButton.click();
+            console.log("Simulated 'click' event on send button.");
+          } else {
+            console.error("[Input] Send button element not found using selector:", SEND_BUTTON_SELECTOR);
+          }
+        }, INPUT_SEND_DELAY_MS);
+        return true;
+      } catch (e) {
+        console.error("[Input] Error during input simulation:", e);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao', 'miromind']
+  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao', 'miromind', 'gemini']
 }
 
 /**

@@ -169,6 +169,24 @@ export const useChatStore = defineStore('chat', () => {
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0
+    },
+    {
+      id: 'gemini',
+      name: 'Gemini',
+      url: 'https://gemini.google.com/',
+      icon: './icons/gemini.svg',
+      isLoggedIn: false,
+      sessionData: {
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        isActive: false,
+        lastActiveTime: new Date()
+      },
+      webviewId: 'webview-gemini',
+      isEnabled: false,
+      loadingState: 'idle',
+      retryCount: 0
     }
   ])
 
