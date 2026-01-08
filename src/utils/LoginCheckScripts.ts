@@ -59,6 +59,9 @@ export function getLoginCheckScript(providerId: string): string {
     gemini: `
       !!document.querySelector('.gb_be')
     `,
+    chatgpt: `
+      !!document.querySelector('[data-testid="login-button"]')
+    `,
   }
 
   return scripts[providerId] || 'false'

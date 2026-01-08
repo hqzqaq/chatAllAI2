@@ -24,6 +24,7 @@ export function getStatusMonitorScript(providerId: string): string {
     yuanbao: getYuanBaoStatusMonitorScript,
     miromind: getMiromindStatusMonitorScript,
     gemini: getGeminiStatusMonitorScript,
+    chatgpt: getChatGPTStatusMonitorScript,
   }
 
   const scriptGenerator = scripts[providerId]
@@ -403,6 +404,15 @@ function getGeminiStatusMonitorScript(): string {
 }
 
 /**
+ * ChatGPT状态监控脚本
+ */
+function getChatGPTStatusMonitorScript(): string {
+  return getGenericStatusMonitorScript('chatgpt', '#thread')
+}
+
+
+
+/**
  * 获取所有支持的AI提供商列表
  */
 export function getSupportedProviders(): string[] {
@@ -415,7 +425,9 @@ export function getSupportedProviders(): string[] {
     'copilot',
     'glm',
     'yuanbao',
-    'miromind'
+    'miromind',
+    'gemini',
+    'chatgpt'
   ]
 }
 
