@@ -34,7 +34,7 @@
           @change="handleProviderSelection"
         >
           <el-checkbox
-            v-for="provider in availableProviders"
+            v-for="provider in sortedProviders"
             :key="provider.id"
             :label="provider.id"
             :disabled="provider.loadingState === 'loading'"
@@ -203,6 +203,29 @@ const currentMessage = computed({
 })
 
 const availableProviders = computed(() => chatStore.providers)
+
+const sortedProviders = computed(() => {
+  const providers = [...availableProviders.value]
+  return providers.sort((a, b) => {
+    const aSelected = selectedProviders.value.includes(a.id)
+    const bSelected = selectedProviders.value.includes(b.id)
+    
+    if (aSelected && !bSelected) {
+      return -1
+    }
+    if (!aSelected && bSelected) {
+      return 1
+    }
+    
+    if (aSelected && bSelected) {
+      const aIndex = selectedProviders.value.indexOf(a.id)
+      const bIndex = selectedProviders.value.indexOf(b.id)
+      return bIndex - aIndex
+    }
+    
+    return 0
+  })
+})
 
 // 从本地存储加载选中的提供商
 const loadSelectedProviders = (): void => {
