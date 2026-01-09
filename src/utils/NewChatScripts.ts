@@ -547,19 +547,45 @@ function getChatGPTNewChatScript(): string {
   return `
     (function() {
       try {
-        // 精准选择ChatGPT的新建对话按钮
-        const newChatButton = document.querySelector('[data-testid="create-new-chat-button"]');
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        const key = 'o';
+        const ctrlKey = !isMac;
+        const metaKey = isMac;
+        const shiftKey = true;
         
-        if (newChatButton) {
-          newChatButton.click();
-          console.log('已点击ChatGPT新建对话按钮');
-          return true;
-        }
+        const keydownEvent = new KeyboardEvent('keydown', {
+          key: key,
+          code: 'KeyO',
+          keyCode: 79,
+          which: 79,
+          ctrlKey: ctrlKey,
+          metaKey: metaKey,
+          altKey: false,
+          shiftKey: shiftKey,
+          bubbles: true,
+          cancelable: true
+        });
         
-        console.log('未找到可见的新建对话按钮');
-        return false;
+        const keyupEvent = new KeyboardEvent('keyup', {
+          key: key,
+          code: 'KeyO',
+          keyCode: 79,
+          which: 79,
+          ctrlKey: ctrlKey,
+          metaKey: metaKey,
+          altKey: false,
+          shiftKey: shiftKey,
+          bubbles: true,
+          cancelable: true
+        });
+        
+        document.dispatchEvent(keydownEvent);
+        document.dispatchEvent(keyupEvent);
+        
+        console.log('已发送快捷键: ' + (isMac ? 'Command+Shift+O' : 'Ctrl+Shift+O'));
+        return true;
       } catch (error) {
-        console.error('ChatGPT新建对话失败:', error);
+        console.error('发送快捷键失败:', error);
         return false;
       }
     })()
