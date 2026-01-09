@@ -23,6 +23,8 @@ export function getNewChatScript(providerId: string): string {
     glm: getGLMNewChatScript(),
     yuanbao: getYuanBaoNewChatScript(),
     miromind: getMiromindNewChatScript(),
+    gemini: getGeminiNewChatScript(),
+    chatgpt: getChatGPTNewChatScript(),
   }
 
   return scripts[providerId] || getGenericNewChatScript()
@@ -507,6 +509,58 @@ function getGenericNewChatScript(): string {
         console.log('未找到新建对话按钮，尝试其他方式')
         // 后续将添加针对具体网站的实现
         return false
+      }
+    })()
+  `
+}
+
+/**
+ * Gemini新建对话脚本
+ */
+function getGeminiNewChatScript(): string {
+  return `
+    (function() {
+      try {
+        // 精准选择Gemini的新建对话按钮
+        const newChatButton = document.querySelector('[data-test-id="side-nav-action-button-icon"]');
+        
+        if (newChatButton) {
+          newChatButton.click();
+          console.log('已点击Gemini新建对话按钮');
+          return true;
+        }
+        
+        console.log('未找到可见的新建对话按钮');
+        return false;
+      } catch (error) {
+        console.error('Gemini新建对话失败:', error);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
+ * ChatGPT新建对话脚本
+ */
+function getChatGPTNewChatScript(): string {
+  return `
+    (function() {
+      try {
+        // 精准选择ChatGPT的新建对话按钮
+        const newChatButton = document.querySelector('[data-testid="create-new-chat-button"]');
+        
+        if (newChatButton) {
+          newChatButton.click();
+          console.log('已点击ChatGPT新建对话按钮');
+          return true;
+        }
+        
+        console.log('未找到可见的新建对话按钮');
+        return false;
+      } catch (error) {
+        console.error('ChatGPT新建对话失败:', error);
+        return false;
       }
     })()
   `

@@ -21,10 +21,7 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     grok: `
       // 检查grok的登录状态
-      !!(document.querySelector('[data-ved]') ||
-         document.querySelector('.gb_d') ||
-         document.querySelector('[aria-label*="Account"]') ||
-         document.querySelector('[alt="pfp"]'))
+      !document.querySelector('[href="/sign-in"]')
     `,
     deepseek: `
       // 检查DeepSeek的登录状态
@@ -58,7 +55,13 @@ export function getLoginCheckScript(providerId: string): string {
     miromind:`
       !((document.querySelector('[class="ant-space-item"]')) &&   
       (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
-    `
+    `,
+    gemini: `
+      !!document.querySelector('.gb_be')
+    `,
+    chatgpt: `
+      !!document.querySelector('[data-testid="login-button"]')
+    `,
   }
 
   return scripts[providerId] || 'false'

@@ -393,6 +393,7 @@ const checkLoginStatus = async(): Promise<void> => {
   try {
     // 根据不同的AI网站检查不同的登录标识
     const loginCheckScript = getLoginCheckScript(props.provider.id)
+    console.log('检查Gemini登录状态', props.provider.id)
     const result = await webviewElement.value.executeJavaScript(loginCheckScript)
 
     const isLoggedIn = Boolean(result)
