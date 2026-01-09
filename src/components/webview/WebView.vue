@@ -391,18 +391,20 @@ const checkLoginStatus = async(): Promise<void> => {
   if (!webviewElement.value) return
 
   try {
-    // 根据不同的AI网站检查不同的登录标识
-    const loginCheckScript = getLoginCheckScript(props.provider.id)
-    console.log('检查Gemini登录状态', props.provider.id)
-    const result = await webviewElement.value.executeJavaScript(loginCheckScript)
+    let isLoggedIn = false
 
-    const isLoggedIn = Boolean(result)
+    if (props.provider.id === 'chatgpt') {
+      // chatgpt 有较强的脚本执行检测，频繁执行脚本会导致页面不可用，这里默认设置为已登录
+      isLoggedIn = true
+    } else {
+      const loginCheckScript = getLoginCheckScript(props.provider.id)
+      const result = await webviewElement.value.executeJavaScript(loginCheckScript)
+      isLoggedIn = Boolean(result)
+    }
 
-    // 只有在登录状态真正发生变化时才触发事件和保存会话
     if (isLoggedIn !== props.provider.isLoggedIn) {
       emit('login-status-changed', isLoggedIn)
 
-      // 如果登录成功，保存会话
       if (isLoggedIn && window.electronAPI) {
         await saveSession()
       }
