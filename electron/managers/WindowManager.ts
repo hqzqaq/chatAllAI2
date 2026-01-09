@@ -76,8 +76,7 @@ export class WindowManager extends EventEmitter {
       // 开发环境显示菜单栏，生产环境隐藏
       autoHideMenuBar: !isDev,
       // 开发环境显示窗口框架，生产环境隐藏窗口框架（无边框窗口）
-      frame: isDev,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      frame: isDev
     }
 
     const window = await this.createWindow(config)
@@ -102,6 +101,10 @@ export class WindowManager extends EventEmitter {
     // 创建窗口
     const window = new BrowserWindow(config)
 
+    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    // 应用于所有请求
+    window.webContents.setUserAgent(userAgent)
+    
     // 存储窗口和配置
     this.windows.set(config.id, window)
     this.windowConfigs.set(config.id, config)
