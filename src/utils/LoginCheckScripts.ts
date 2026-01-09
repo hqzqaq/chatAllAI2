@@ -60,7 +60,7 @@ export function getLoginCheckScript(providerId: string): string {
       !!document.querySelector('.gb_be')
     `,
     chatgpt: `
-      !!document.querySelector('[data-testid="login-button"]')
+      !!document.querySelector('[alt="Profile image"]')
     `,
   }
 
