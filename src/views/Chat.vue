@@ -42,9 +42,47 @@ const visibleProviders = computed(() => {
     return provider.isEnabled && config?.isVisible !== false
   })
 
-  // 移除行数限制，显示所有启用的provider
-  return enabledProviders
+  // 获取选中的提供商列表（从 localStorage 读取）
+  const selectedProviders = getSelectedProviders()
+
+  // 按照与 UnifiedInput 中相同的逻辑排序：后选中的排在最前面
+  const sortedProviders = [...enabledProviders].sort((a, b) => {
+    const aSelected = selectedProviders.includes(a.id)
+    const bSelected = selectedProviders.includes(b.id)
+    
+    if (aSelected && !bSelected) {
+      return -1
+    }
+    if (!aSelected && bSelected) {
+      return 1
+    }
+    
+    if (aSelected && bSelected) {
+      const aIndex = selectedProviders.indexOf(a.id)
+      const bIndex = selectedProviders.indexOf(b.id)
+      return bIndex - aIndex
+    }
+    
+    return 0
+  })
+
+  return sortedProviders
 })
+
+/**
+ * 获取选中的提供商列表
+ */
+const getSelectedProviders = (): string[] => {
+  try {
+    const stored = localStorage.getItem('selected-providers')
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('加载选中的提供商失败:', error)
+  }
+  return []
+}
 
 const gridStyle = computed(() => {
   const { columns } = layoutStore.gridSettings
