@@ -83,7 +83,7 @@ export const useChatStore = defineStore('chat', () => {
     {
       id: 'grok',
       name: 'Grok',
-      url: 'https://x.com/i/grok?focus=1',
+      url: 'https://grok.com/',
       icon: './icons/grok.png',
       isLoggedIn: false,
       sessionData: {
