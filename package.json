@@ -10,6 +10,9 @@
     "dev:vite": "vite",
     "build": "vite build && electron-builder",
     "build:mac": "vite build && electron-builder --mac --publish=never",
+    "build:mac:arm64": "vite build && electron-builder --mac --arm64 --publish=never",
+    "build:mac:x64": "vite build && electron-builder --mac --x64 --publish=never",
+    "build:mac:universal": "vite build && electron-builder --mac --universal --publish=never",
     "build:win": "vite build && electron-builder --win --publish=never",
     "preview": "vite preview",
     "electron:dev": "vite build && electron .",
@@ -65,7 +68,11 @@
     "appId": "com.chatallai.app",
     "productName": "ChatAllAI",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "electronDownload": {
+      "cache": "./electron-cache"
     },
     "files": [
       "dist-electron/**/*",
@@ -123,13 +130,6 @@
             "x64",
             "arm64"
           ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
         }
       ],
       "icon": "public/icons/chatallai.png",
@@ -155,7 +155,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
-    "compression": "maximum",
+    "compression": "normal",
     "removePackageScripts": true,
     "asar": {
       "smartUnpack": false

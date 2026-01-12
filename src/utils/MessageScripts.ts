@@ -148,7 +148,7 @@ function getYuanBaoScript(escapedMessage: string): string {
  * grok发送脚本
  */
 function getGrokScript(escapedMessage: string): string {
-  return getDeepSeekScript(escapedMessage)
+  return getChatGPTScript(escapedMessage, '[contenteditable="true"]', '[type="submit"]')
 }
 
 /**
@@ -553,12 +553,12 @@ function getGeminiScript(escapedMessage: string): string {
 /**
  * ChatGPT发送脚本
  */
-function getChatGPTScript(escapedMessage: string): string {
+function getChatGPTScript(escapedMessage: string, chatInputSelector: string = '[id="prompt-textarea"]', sendButtonSelector: string = '[data-testid="send-button"]'): string {
   return `
       (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = '[id="prompt-textarea"]';
-      const SEND_BUTTON_SELECTOR = '[data-testid="send-button"]';
+      const CHAT_INPUT_SELECTOR = '${chatInputSelector}';
+      const SEND_BUTTON_SELECTOR = '${sendButtonSelector}';
       const INPUT_SEND_DELAY_MS = 500;
 
       // --- Input Handling ---
