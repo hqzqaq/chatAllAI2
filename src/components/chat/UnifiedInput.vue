@@ -39,6 +39,12 @@
             :label="provider.id"
             :disabled="provider.loadingState === 'loading'"
             class="provider-checkbox"
+            draggable="true"
+            @dragstart="handleDragStart($event, provider)"
+            @dragover="handleDragOver($event)"
+            @dragleave="handleDragLeave($event)"
+            @drop="handleDrop($event, provider)"
+            @dragend="handleDragEnd"
           >
             <div class="provider-option">
               <img
@@ -178,7 +184,7 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
@@ -189,8 +195,14 @@ import PromptManager from './PromptManager.vue'
 
 const chatStore = useChatStore()
 
-// 响应式数据
-const selectedProviders = ref<string[]>([])
+const draggedProvider = ref<AIProvider | null>(null)
+
+const selectedProviders = computed({
+  get: () => chatStore.selectedProviders,
+  set: (value: string[]) => {
+    chatStore.updateSelectedProviders(value)
+  }
+})
 
 // AI状态管理
 const aiStatusMap = ref<{ [providerId: string]: 'waiting_input' | 'responding' | 'completed' }>({})
@@ -246,29 +258,6 @@ const sortedProviders = computed(() => {
   })
 })
 
-// 从本地存储加载选中的提供商
-const loadSelectedProviders = (): void => {
-  try {
-    const stored = localStorage.getItem('selected-providers')
-    if (stored) {
-      selectedProviders.value = JSON.parse(stored)
-      // 应用选中的提供商
-      applySelectedProviders()
-    }
-  } catch (error) {
-    console.error('加载选中的提供商失败:', error)
-  }
-}
-
-// 保存选中的提供商到本地存储
-const saveSelectedProviders = (): void => {
-  try {
-    localStorage.setItem('selected-providers', JSON.stringify(selectedProviders.value))
-  } catch (error) {
-    console.error('保存选中的提供商失败:', error)
-  }
-}
-
 // 应用选中的提供商到聊天存储
 const applySelectedProviders = (): void => {
   chatStore.providers.forEach((provider) => {
@@ -286,8 +275,73 @@ const handleProviderSelection = (value: string[]): void => {
       item.isLoggedIn = false
     }
   })
-  saveSelectedProviders()
   applySelectedProviders()
+}
+
+const handleDragStart = (event: DragEvent, provider: AIProvider): void => {
+  draggedProvider.value = provider
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+  }
+  const target = event.target as HTMLElement
+  const checkbox = target.closest('.provider-checkbox')
+  if (checkbox) {
+    checkbox.classList.add('dragging')
+  }
+}
+
+const handleDragOver = (event: DragEvent): void => {
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  const target = event.target as HTMLElement
+  const checkbox = target.closest('.provider-checkbox')
+  if (checkbox && !checkbox.classList.contains('dragging')) {
+    checkbox.classList.add('drag-over')
+  }
+}
+
+const handleDragLeave = (event: DragEvent): void => {
+  const target = event.target as HTMLElement
+  const checkbox = target.closest('.provider-checkbox')
+  if (checkbox) {
+    checkbox.classList.remove('drag-over')
+  }
+}
+
+const handleDragEnd = (): void => {
+  const draggingCheckboxes = document.querySelectorAll('.provider-checkbox.dragging')
+  draggingCheckboxes.forEach((el) => el.classList.remove('dragging'))
+  const dragOverCheckboxes = document.querySelectorAll('.provider-checkbox.drag-over')
+  dragOverCheckboxes.forEach((el) => el.classList.remove('drag-over'))
+}
+
+const handleDrop = (event: DragEvent, targetProvider: AIProvider): void => {
+  event.preventDefault()
+  
+  const target = event.target as HTMLElement
+  const checkbox = target.closest('.provider-checkbox')
+  if (checkbox) {
+    checkbox.classList.remove('drag-over')
+  }
+  
+  if (!draggedProvider.value || draggedProvider.value.id === targetProvider.id) {
+    draggedProvider.value = null
+    return
+  }
+
+  const draggedIndex = selectedProviders.value.indexOf(draggedProvider.value.id)
+  const targetIndex = selectedProviders.value.indexOf(targetProvider.id)
+
+  if (draggedIndex !== -1 && targetIndex !== -1) {
+    const newSelectedProviders = [...selectedProviders.value]
+    newSelectedProviders.splice(draggedIndex, 1)
+    newSelectedProviders.splice(targetIndex, 0, draggedProvider.value.id)
+    selectedProviders.value = newSelectedProviders
+  }
+
+  draggedProvider.value = null
 }
 
 // 处理图标加载错误
@@ -732,9 +786,6 @@ onMounted(() => {
   // 监听登录状态变化事件
   window.addEventListener('login-status-changed', handleLoginStatusChanged)
 
-  // 加载选中的提供商
-  loadSelectedProviders()
-
   // 组件挂载后，加载用户偏好的高度
   nextTick(() => {
     loadPreferredHeight()
@@ -970,6 +1021,39 @@ onUnmounted(() => {
   min-width: 140px;
   max-width: 240px;
   box-sizing: border-box;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: #999;
+  font-size: 16px;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.drag-handle:hover {
+  color: #666;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.provider-checkbox[draggable="true"] .drag-handle {
+  cursor: grab;
+}
+
+.provider-checkbox[draggable="true"]:active .drag-handle {
+  cursor: grabbing;
+}
+
+.provider-checkbox.dragging {
+  opacity: 0.5;
+}
+
+.provider-checkbox.drag-over {
+  border: 2px dashed #4a90e2;
+  background: rgba(74, 144, 226, 0.1);
 }
 
 /* iOS风格复选框样式 */

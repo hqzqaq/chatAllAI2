@@ -211,6 +211,9 @@ export const useChatStore = defineStore('chat', () => {
   // 当前输入的消息
   const currentMessage = ref<string>('')
 
+  // 选中的提供商列表（用于排序）
+  const selectedProviders = ref<string[]>([])
+
   // 对话历史记录
   const conversations = ref<Record<string, Message[]>>({})
 
@@ -244,6 +247,39 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
+   * 加载选中的提供商列表
+   */
+  const loadSelectedProviders = (): void => {
+    try {
+      const stored = localStorage.getItem('selected-providers')
+      if (stored) {
+        selectedProviders.value = JSON.parse(stored)
+      }
+    } catch (error) {
+      console.error('加载选中的提供商失败:', error)
+    }
+  }
+
+  /**
+   * 保存选中的提供商列表
+   */
+  const saveSelectedProviders = (): void => {
+    try {
+      localStorage.setItem('selected-providers', JSON.stringify(selectedProviders.value))
+    } catch (error) {
+      console.error('保存选中的提供商失败:', error)
+    }
+  }
+
+  /**
+   * 更新选中的提供商列表
+   */
+  const updateSelectedProviders = (providers: string[]): void => {
+    selectedProviders.value = providers
+    saveSelectedProviders()
+  }
+
+  /**
    * 初始化对话历史
    */
   const initializeConversations = (): void => {
@@ -264,6 +300,8 @@ export const useChatStore = defineStore('chat', () => {
     })
     // 加载代理配置
     loadProxyConfigs()
+    // 加载选中的提供商列表
+    loadSelectedProviders()
   }
 
   /**
@@ -396,6 +434,7 @@ export const useChatStore = defineStore('chat', () => {
   return {
     providers,
     currentMessage,
+    selectedProviders,
     conversations,
     sessions,
     sendingStatus,
@@ -412,6 +451,9 @@ export const useChatStore = defineStore('chat', () => {
     clearCurrentMessage,
     getProvider,
     getConversation,
+    loadSelectedProviders,
+    saveSelectedProviders,
+    updateSelectedProviders,
     updateProviderLoadingState,
     updateProviderError,
     toggleProvider,
