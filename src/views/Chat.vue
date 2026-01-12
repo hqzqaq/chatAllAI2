@@ -49,20 +49,20 @@ const visibleProviders = computed(() => {
   const sortedProviders = [...enabledProviders].sort((a, b) => {
     const aSelected = selectedProviders.includes(a.id)
     const bSelected = selectedProviders.includes(b.id)
-    
+
     if (aSelected && !bSelected) {
       return -1
     }
     if (!aSelected && bSelected) {
       return 1
     }
-    
+
     if (aSelected && bSelected) {
       const aIndex = selectedProviders.indexOf(a.id)
       const bIndex = selectedProviders.indexOf(b.id)
       return bIndex - aIndex
     }
-    
+
     return 0
   })
 

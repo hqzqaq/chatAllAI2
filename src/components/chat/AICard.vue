@@ -735,7 +735,7 @@ defineExpose({
 onMounted(() => {
   // 加载代理配置
   loadProxyConfig()
-  
+
   // 初始化WebView状态，确保provider被启用
   const provider = chatStore.getProvider(props.provider.id)
   if (provider && !provider.isEnabled) {

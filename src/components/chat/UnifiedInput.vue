@@ -133,6 +133,15 @@
 
           <div class="actions-right">
             <el-button
+              type="info"
+              :icon="Document"
+              :disabled="loggedInCount === 0"
+              data-testid="prompt-manager-button"
+              @click="handleOpenPromptManager"
+            >
+              Prompt 管理
+            </el-button>
+            <el-button
               type="success"
               :icon="Plus"
               :disabled="loggedInCount === 0"
@@ -155,6 +164,12 @@
         </div>
       </div>
     </el-card>
+
+    <PromptManager
+      v-model="promptManagerVisible"
+      :user-input="currentMessage"
+      @apply-prompt="handleApplyPrompt"
+    />
   </div>
 </template>
 
@@ -163,13 +178,14 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
 import type { MessageSendResult } from '../../services/MessageDispatcher'
 import type { AIProvider } from '@/types'
+import PromptManager from './PromptManager.vue'
 
 const chatStore = useChatStore()
 
@@ -178,6 +194,9 @@ const selectedProviders = ref<string[]>([])
 
 // AI状态管理
 const aiStatusMap = ref<{ [providerId: string]: 'waiting_input' | 'responding' | 'completed' }>({})
+
+// Prompt 管理器
+const promptManagerVisible = ref<boolean>(false)
 
 // 输入框交互优化相关数据
 const textareaRef = ref<any>(null)
@@ -209,20 +228,20 @@ const sortedProviders = computed(() => {
   return providers.sort((a, b) => {
     const aSelected = selectedProviders.value.includes(a.id)
     const bSelected = selectedProviders.value.includes(b.id)
-    
+
     if (aSelected && !bSelected) {
       return -1
     }
     if (!aSelected && bSelected) {
       return 1
     }
-    
+
     if (aSelected && bSelected) {
       const aIndex = selectedProviders.value.indexOf(a.id)
       const bIndex = selectedProviders.value.indexOf(b.id)
       return bIndex - aIndex
     }
-    
+
     return 0
   })
 })
@@ -658,6 +677,27 @@ const handleNewChat = async(): Promise<void> => {
     console.error('Failed to create new chat:', error)
     ElMessage.error('新建对话失败')
   }
+}
+
+/**
+ * 打开 Prompt 管理器
+ */
+const handleOpenPromptManager = (): void => {
+  promptManagerVisible.value = true
+}
+
+/**
+ * 应用 Prompt
+ */
+const handleApplyPrompt = (prompt: any, userInput?: string): void => {
+  let { content } = prompt
+
+  if (userInput) {
+    content = content.replace(/\{\{user_input\}\}/g, userInput)
+  }
+
+  chatStore.currentMessage = content
+  promptManagerVisible.value = false
 }
 
 /**

@@ -44,7 +44,7 @@ export function getSendMessageScript(providerId: string, message: string): strin
     yuanbao: getYuanBaoScript(escapedMessage),
     miromind: getMiromindScript(escapedMessage),
     gemini: getGeminiScript(escapedMessage),
-    chatgpt: getChatGPTScript(escapedMessage),
+    chatgpt: getChatGPTScript(escapedMessage)
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -612,8 +612,6 @@ function getChatGPTScript(escapedMessage: string): string {
     })()
   `
 }
-
-
 
 /**
  * 获取所有支持的提供商列表

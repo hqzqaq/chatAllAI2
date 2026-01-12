@@ -52,7 +52,7 @@ export function getLoginCheckScript(providerId: string): string {
       !(document.querySelector('.agent-dialogue__tool__login') && 
       (document.querySelector('.agent-dialogue__tool__login').textContent === '登录'))
     `,
-    miromind:`
+    miromind: `
       !((document.querySelector('[class="ant-space-item"]')) &&   
       (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
     `,
@@ -61,7 +61,7 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     chatgpt: `
       !!document.querySelector('[alt="Profile image"]')
-    `,
+    `
   }
 
   return scripts[providerId] || 'false'

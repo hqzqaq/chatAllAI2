@@ -101,10 +101,10 @@ export class WindowManager extends EventEmitter {
     // 创建窗口
     const window = new BrowserWindow(config)
 
-    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     // 应用于所有请求
     window.webContents.setUserAgent(userAgent)
-    
+
     // 存储窗口和配置
     this.windows.set(config.id, window)
     this.windowConfigs.set(config.id, config)

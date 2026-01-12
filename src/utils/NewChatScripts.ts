@@ -24,7 +24,7 @@ export function getNewChatScript(providerId: string): string {
     yuanbao: getYuanBaoNewChatScript(),
     miromind: getMiromindNewChatScript(),
     gemini: getGeminiNewChatScript(),
-    chatgpt: getChatGPTNewChatScript(),
+    chatgpt: getChatGPTNewChatScript()
   }
 
   return scripts[providerId] || getGenericNewChatScript()
