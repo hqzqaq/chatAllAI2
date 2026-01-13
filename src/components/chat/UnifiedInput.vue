@@ -148,6 +148,16 @@
               Prompt 管理
             </el-button>
             <el-button
+              type="warning"
+              :icon="Lightning"
+              :disabled="loggedInCount === 0 || !quickPrompt"
+              :title="quickPrompt || '暂无快捷 Prompt'"
+              data-testid="quick-prompt-button"
+              @click="handleApplyQuickPrompt"
+            >
+              快捷 Prompt
+            </el-button>
+            <el-button
               type="success"
               :icon="Plus"
               :disabled="loggedInCount === 0"
@@ -184,7 +194,7 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank, Lightning
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
@@ -209,6 +219,12 @@ const aiStatusMap = ref<{ [providerId: string]: 'waiting_input' | 'responding' |
 
 // Prompt 管理器
 const promptManagerVisible = ref<boolean>(false)
+
+// 快捷 Prompt 管理
+const quickPrompt = ref<string>('')
+
+// 默认 Prompt
+const DEFAULT_PROMPT = '请帮我分析以下内容，并提供详细的建议和解决方案。'
 
 // 输入框交互优化相关数据
 const textareaRef = ref<any>(null)
@@ -618,6 +634,39 @@ const loadPreferredHeight = (): void => {
 }
 
 /**
+ * 保存快捷 Prompt
+ */
+const saveQuickPrompt = (): void => {
+  try {
+    localStorage.setItem('quick-prompt', JSON.stringify({
+      content: quickPrompt.value
+    }))
+  } catch (error) {
+    console.error('保存快捷 Prompt 失败:', error)
+  }
+}
+
+/**
+ * 加载快捷 Prompt
+ */
+const loadQuickPrompt = (): void => {
+  try {
+    const stored = localStorage.getItem('quick-prompt')
+    if (stored) {
+      const { content } = JSON.parse(stored)
+      quickPrompt.value = content
+    } else {
+      // 如果没有保存的快捷 Prompt，使用默认值
+      quickPrompt.value = DEFAULT_PROMPT
+      saveQuickPrompt()
+    }
+  } catch (error) {
+    console.error('加载快捷 Prompt 失败:', error)
+    quickPrompt.value = DEFAULT_PROMPT
+  }
+}
+
+/**
  * 发送消息
  */
 const handleSend = async(): Promise<void> => {
@@ -752,6 +801,29 @@ const handleApplyPrompt = (prompt: any, userInput?: string): void => {
 
   chatStore.currentMessage = content
   promptManagerVisible.value = false
+
+  // 同步更新快捷 Prompt - 保存原始模板（包含 {{user_input}}）
+  quickPrompt.value = prompt.content
+  saveQuickPrompt()
+}
+
+/**
+ * 应用快捷 Prompt
+ */
+const handleApplyQuickPrompt = (): void => {
+  if (!quickPrompt.value) {
+    ElMessage.warning('暂无快捷 Prompt')
+    return
+  }
+
+  // 将 {{user_input}} 替换为当前输入框的内容
+  let content = quickPrompt.value
+  if (currentMessage.value) {
+    content = content.replace(/\{\{user_input\}\}/g, currentMessage.value)
+  }
+
+  chatStore.currentMessage = content
+  ElMessage.success('已应用快捷 Prompt')
 }
 
 /**
@@ -790,6 +862,9 @@ onMounted(() => {
   nextTick(() => {
     loadPreferredHeight()
   })
+
+  // 加载快捷 Prompt
+  loadQuickPrompt()
 
   // 初始检查：为当前已登录的提供商启动AI状态监控
   startAIStatusMonitoringForLoggedInProviders()
