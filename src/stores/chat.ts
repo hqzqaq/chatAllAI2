@@ -280,6 +280,23 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
+   * 应用选中的提供商（启用选中的提供商）
+   */
+  const applySelectedProviders = (): void => {
+    providers.value.forEach((provider) => {
+      const shouldEnable = selectedProviders.value.includes(provider.id)
+      if (provider.isEnabled !== shouldEnable) {
+        provider.isEnabled = shouldEnable
+        if (shouldEnable) {
+          provider.loadingState = 'loading'
+        } else {
+          provider.loadingState = 'idle'
+        }
+      }
+    })
+  }
+
+  /**
    * 初始化对话历史
    */
   const initializeConversations = (): void => {
@@ -302,6 +319,8 @@ export const useChatStore = defineStore('chat', () => {
     loadProxyConfigs()
     // 加载选中的提供商列表
     loadSelectedProviders()
+    // 应用选中的提供商（启用选中的提供商）
+    applySelectedProviders()
   }
 
   /**
@@ -454,6 +473,7 @@ export const useChatStore = defineStore('chat', () => {
     loadSelectedProviders,
     saveSelectedProviders,
     updateSelectedProviders,
+    applySelectedProviders,
     updateProviderLoadingState,
     updateProviderError,
     toggleProvider,
