@@ -205,6 +205,24 @@ export const useChatStore = defineStore('chat', () => {
       isEnabled: false,
       loadingState: 'idle',
       retryCount: 0
+    },
+    {
+      id: 'mimo',
+      name: 'mimo',
+      url: 'https://aistudio.xiaomimimo.com/#/',
+      icon: './icons/mimo.ico',
+      isLoggedIn: false,
+      sessionData: {
+        cookies: [],
+        localStorage: {},
+        sessionStorage: {},
+        isActive: false,
+        lastActiveTime: new Date()
+      },
+      webviewId: 'webview-mimo',
+      isEnabled: false,
+      loadingState: 'idle',
+      retryCount: 0
     }
   ])
 

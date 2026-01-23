@@ -61,7 +61,11 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     chatgpt: `
       !!document.querySelector('[alt="Profile image"]')
-    `
+    `,
+    mimo: `
+      !Array.from(document.querySelectorAll('[type="button"]'))
+                   .some(btn => btn.textContent.trim() === '立即登录');
+    `,
   }
 
   return scripts[providerId] || 'false'

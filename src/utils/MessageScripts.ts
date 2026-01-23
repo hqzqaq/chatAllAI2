@@ -44,7 +44,8 @@ export function getSendMessageScript(providerId: string, message: string): strin
     yuanbao: getYuanBaoScript(escapedMessage),
     miromind: getMiromindScript(escapedMessage),
     gemini: getGeminiScript(escapedMessage),
-    chatgpt: getChatGPTScript(escapedMessage)
+    chatgpt: getChatGPTScript(escapedMessage),
+    mimo: getMimoScript(escapedMessage),
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -614,10 +615,17 @@ function getChatGPTScript(escapedMessage: string, chatInputSelector: string = '[
 }
 
 /**
+ * mimo发送脚本
+ */
+function getMimoScript(escapedMessage: string): string {
+  return getDeepSeekScript(escapedMessage)
+}
+
+/**
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao', 'miromind', 'gemini', 'chatgpt']
+  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao', 'miromind', 'gemini', 'chatgpt', 'mimo']
 }
 
 /**

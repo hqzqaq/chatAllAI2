@@ -24,7 +24,8 @@ export function getStatusMonitorScript(providerId: string): string {
     yuanbao: getYuanBaoStatusMonitorScript,
     miromind: getMiromindStatusMonitorScript,
     gemini: getGeminiStatusMonitorScript,
-    chatgpt: getChatGPTStatusMonitorScript
+    chatgpt: getChatGPTStatusMonitorScript,
+    mimo: getMimoStatusMonitorScript,
   }
 
   const scriptGenerator = scripts[providerId]
@@ -217,28 +218,28 @@ function getQwenStatusMonitorScript(providerId: string): string {
 /**
  * Copilot状态监控脚本
  */
-function getCopilotStatusMonitorScript(): string {
-  return getGenericStatusMonitorScript('copilot', '[data-content="conversation"]')
+function getCopilotStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '[data-content="conversation"]')
 }
 
 /**
  * GLM状态监控脚本
  */
-function getGLMStatusMonitorScript(): string {
-  return getGenericStatusMonitorScript('glm', '[class="detail chatScrollContainer conversation-list"]')
+function getGLMStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '[class="detail chatScrollContainer conversation-list"]')
 }
 
 /**
  * 元宝状态监控脚本
  */
-function getYuanBaoStatusMonitorScript(): string {
-  return getGenericStatusMonitorScript('yuanbao', '[class="agent-chat__list__content-wrapper"]')
+function getYuanBaoStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '[class="agent-chat__list__content-wrapper"]')
 }
 
 /**
  * miromind状态监控脚本
  */
-function getMiromindStatusMonitorScript(): string {
+function getMiromindStatusMonitorScript(providerId: string): string {
   return `
     (function() {
       let lastStatus = '';
@@ -249,14 +250,14 @@ function getMiromindStatusMonitorScript(): string {
         lastStatus = status;
         if (window.__WEBVIEW_API__ && window.__WEBVIEW_API__.sendToHost) {
           window.__WEBVIEW_API__.sendToHost('webview-ai-status-change', {
-            providerId: 'miromind',
+            providerId: '${providerId}',
             status: status,
             details: details
           });
         } else {
-          console.error('[miromind Monitor] Preload API not available.');
+          console.error('[${providerId} Monitor] Preload API not available.');
         }
-        console.log('[miromind Monitor] Status changed:' + status);
+        console.log('[${providerId} Monitor] Status changed:' + status);
       }
 
       function checkForAIResponse() {
@@ -399,15 +400,22 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
 /**
  * Gemini状态监控脚本
  */
-function getGeminiStatusMonitorScript(): string {
-  return getGenericStatusMonitorScript('gemini', '[data-test-id="chat-history-container"]')
+function getGeminiStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '[data-test-id="chat-history-container"]')
 }
 
 /**
  * ChatGPT状态监控脚本
  */
-function getChatGPTStatusMonitorScript(): string {
-  return getGenericStatusMonitorScript('chatgpt', '#thread')
+function getChatGPTStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '#thread')
+}
+
+/**
+ * mimo状态监控脚本
+ */
+function getMimoStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '#message-list')
 }
 
 /**
@@ -425,7 +433,8 @@ export function getSupportedProviders(): string[] {
     'yuanbao',
     'miromind',
     'gemini',
-    'chatgpt'
+    'chatgpt',
+    'mimo'
   ]
 }
 

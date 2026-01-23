@@ -24,7 +24,8 @@ export function getNewChatScript(providerId: string): string {
     yuanbao: getYuanBaoNewChatScript(),
     miromind: getMiromindNewChatScript(),
     gemini: getGeminiNewChatScript(),
-    chatgpt: getChatGPTNewChatScript()
+    chatgpt: getChatGPTNewChatScript(),
+    mimo: getMimoNewChatScript(),
   }
 
   return scripts[providerId] || getGenericNewChatScript()
@@ -584,6 +585,32 @@ function getChatGPTNewChatScript(): string {
         
         console.log('已发送快捷键: ' + (isMac ? 'Command+Shift+O' : 'Ctrl+Shift+O'));
         return true;
+      } catch (error) {
+        console.error('发送快捷键失败:', error);
+        return false;
+      }
+    })()
+  `
+}
+
+
+/**
+ * mimo新建对话脚本
+ */
+function getMimoNewChatScript(): string {
+  return `
+    (function() {
+      try {
+        const newButton = document.querySelector('[aria-label="开始新对话"]');
+        
+        if (newButton) {
+          newButton.click();
+          console.log('已点击mimo新建对话按钮');
+          return true;
+        } else {
+          console.log('未找到新建对话按钮');
+          return false;
+        }
       } catch (error) {
         console.error('发送快捷键失败:', error);
         return false;
