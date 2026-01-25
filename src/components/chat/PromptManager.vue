@@ -27,6 +27,7 @@
           </div>
 
           <div class="category-filter">
+          <div class="category-header">
             <el-radio-group
               v-model="selectedCategory"
               size="small"
@@ -45,7 +46,27 @@
                 {{ category }}
               </el-radio-button>
             </el-radio-group>
+            <div class="category-actions">
+              <el-button
+                type="primary"
+                :icon="Plus"
+                size="small"
+                @click="handleCreateCategory"
+              >
+                新建分类
+              </el-button>
+              <el-button
+                v-if="selectedCategory !== 'all' && selectedCategory !== 'favorite'"
+                type="danger"
+                :icon="Delete"
+                size="small"
+                @click="handleDeleteCategory"
+              >
+                删除分类
+              </el-button>
+            </div>
           </div>
+        </div>
 
           <div class="prompt-list">
             <div
@@ -252,6 +273,7 @@
             placeholder="选择或输入分类"
             filterable
             allow-create
+            @change="handleCategoryChange"
           >
             <el-option
               v-for="category in categories"
@@ -267,6 +289,7 @@
           prop="content"
         >
           <el-input
+            ref="contentTextareaRef"
             v-model="formData.content"
             type="textarea"
             :rows="12"
@@ -311,6 +334,44 @@
       </template>
     </el-dialog>
 
+    <el-dialog
+      v-model="categoryDialogVisible"
+      title="新建分类"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="categoryFormRef"
+        :model="categoryFormData"
+        :rules="categoryFormRules"
+        label-width="80px"
+      >
+        <el-form-item
+          label="分类名称"
+          prop="name"
+        >
+          <el-input
+            v-model="categoryFormData.name"
+            placeholder="输入分类名称"
+            maxlength="20"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="categoryDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="handleSaveCategory"
+        >
+          确定
+        </el-button>
+      </template>
+    </el-dialog>
+
     <input
       ref="fileInputRef"
       type="file"
@@ -323,7 +384,7 @@
 
 <script setup lang="ts">
 import {
-  ref, computed, onMounted, watch
+  ref, computed, onMounted, watch, nextTick
 } from 'vue'
 import {
   Search, Plus, Edit, Delete, Position, Share, Star, Rank
@@ -375,11 +436,15 @@ const searchKeyword = ref('')
 const selectedCategory = ref('all')
 const selectedPromptId = ref<string | null>(null)
 const prompts = ref<Prompt[]>([])
+const categories = ref<string[]>([])
 const useHistory = ref<UseHistory[]>([])
 const editDialogVisible = ref(false)
+const categoryDialogVisible = ref(false)
 const isEditMode = ref(false)
 const formRef = ref<FormInstance>()
+const categoryFormRef = ref<FormInstance>()
 const fileInputRef = ref<HTMLInputElement>()
+const contentTextareaRef = ref<any>()
 
 const formData = ref({
   id: '',
@@ -401,11 +466,19 @@ const formRules: FormRules = {
   ]
 }
 
+const categoryFormData = ref({
+  name: ''
+})
+
+const categoryFormRules: FormRules = {
+  name: [
+    { required: true, message: '请输入分类名称', trigger: 'blur' },
+    { min: 1, max: 20, message: '分类名称长度在 1 到 20 个字符', trigger: 'blur' }
+  ]
+}
+
 const availableVariables: Variable[] = [
-  { name: '{{user_input}}', description: '用户输入内容' },
-  { name: '{{current_date}}', description: '当前日期' },
-  { name: '{{current_time}}', description: '当前时间' },
-  { name: '{{conversation_history}}', description: '对话历史' }
+  { name: '{{user_input}}', description: '用户输入内容' }
 ]
 
 const defaultPrompts: Prompt[] = [
@@ -446,11 +519,6 @@ const defaultPrompts: Prompt[] = [
     order: 2
   }
 ]
-
-const categories = computed(() => {
-  const categorySet = new Set(prompts.value.map((p) => p.category))
-  return Array.from(categorySet).sort()
-})
 
 const filteredPrompts = computed(() => {
   let result = [...prompts.value]
@@ -511,6 +579,21 @@ const loadPrompts = (): void => {
     console.error('加载 prompts 失败:', error)
     prompts.value = [...defaultPrompts]
   }
+
+  try {
+    const storedCategories = localStorage.getItem('categories')
+    if (storedCategories) {
+      categories.value = JSON.parse(storedCategories)
+    } else {
+      const categorySet = new Set(prompts.value.map((p) => p.category))
+      categories.value = Array.from(categorySet).sort()
+      saveCategories()
+    }
+  } catch (error) {
+    console.error('加载分类失败:', error)
+    const categorySet = new Set(prompts.value.map((p) => p.category))
+    categories.value = Array.from(categorySet).sort()
+  }
 }
 
 const savePrompts = (): void => {
@@ -519,6 +602,15 @@ const savePrompts = (): void => {
   } catch (error) {
     console.error('保存 prompts 失败:', error)
     ElMessage.error('保存失败')
+  }
+}
+
+const saveCategories = (): void => {
+  try {
+    localStorage.setItem('categories', JSON.stringify(categories.value))
+  } catch (error) {
+    console.error('保存分类失败:', error)
+    ElMessage.error('保存分类失败')
   }
 }
 
@@ -577,6 +669,12 @@ const handleSave = async(): Promise<void> => {
           order: prompts.value.length
         }
         prompts.value.push(newPrompt)
+
+        if (!categories.value.includes(formData.value.category)) {
+          categories.value.push(formData.value.category)
+          categories.value.sort()
+          saveCategories()
+        }
       }
 
       savePrompts()
@@ -648,30 +746,148 @@ const handleContentChange = (): void => {
   }
 }
 
+const handleCategoryChange = (value: string): void => {
+  formData.value.category = value
+}
+
+const handleCreateCategory = (): void => {
+  categoryFormData.value.name = ''
+  categoryDialogVisible.value = true
+}
+
+const handleSaveCategory = async(): Promise<void> => {
+  if (!categoryFormRef.value) return
+
+  await categoryFormRef.value.validate((valid) => {
+    if (valid) {
+      const newCategory = categoryFormData.value.name.trim()
+
+      if (categories.value.includes(newCategory)) {
+        ElMessage.warning('该分类已存在')
+        return
+      }
+
+      categories.value.push(newCategory)
+      categories.value.sort()
+      saveCategories()
+
+      categoryDialogVisible.value = false
+
+      isEditMode.value = false
+      formData.value = {
+        id: '',
+        name: '',
+        content: '',
+        category: newCategory,
+        description: ''
+      }
+      editDialogVisible.value = true
+      selectedCategory.value = newCategory
+      ElMessage.success('分类创建成功，请创建第一个 prompt')
+    }
+  })
+}
+
+const handleDeleteCategory = async(): Promise<void> => {
+  if (selectedCategory.value === 'all' || selectedCategory.value === 'favorite') {
+    return
+  }
+
+  const categoryToDelete = selectedCategory.value
+  const promptsInCategory = prompts.value.filter((p) => p.category === categoryToDelete)
+
+  if (promptsInCategory.length === 0) {
+    const categoryIndex = categories.value.indexOf(categoryToDelete)
+    if (categoryIndex !== -1) {
+      categories.value.splice(categoryIndex, 1)
+      saveCategories()
+    }
+    selectedCategory.value = 'all'
+    ElMessage.success('分类已删除')
+    return
+  }
+
+  if (promptsInCategory.length === 1) {
+    const prompt = promptsInCategory[0]
+    const index = prompts.value.findIndex((p) => p.id === prompt.id)
+    if (index !== -1) {
+      prompts.value.splice(index, 1)
+      savePrompts()
+    }
+    const categoryIndex = categories.value.indexOf(categoryToDelete)
+    if (categoryIndex !== -1) {
+      categories.value.splice(categoryIndex, 1)
+      saveCategories()
+    }
+    selectedCategory.value = 'all'
+    if (selectedPromptId.value === prompt.id) {
+      selectedPromptId.value = null
+    }
+    ElMessage.success('分类及其包含的 prompt 已删除')
+  } else {
+    try {
+      await ElMessageBox.confirm(
+        `该分类下有 ${promptsInCategory.length} 个 prompt，确定要删除分类及其包含的所有 prompt 吗？`,
+        '确认删除',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+
+      const promptIdsToDelete = promptsInCategory.map((p) => p.id)
+      prompts.value = prompts.value.filter((p) => !promptIdsToDelete.includes(p.id))
+      savePrompts()
+      const categoryIndex = categories.value.indexOf(categoryToDelete)
+      if (categoryIndex !== -1) {
+        categories.value.splice(categoryIndex, 1)
+        saveCategories()
+      }
+      selectedCategory.value = 'all'
+      if (selectedPromptId.value && promptIdsToDelete.includes(selectedPromptId.value)) {
+        selectedPromptId.value = null
+      }
+      ElMessage.success('分类及其包含的所有 prompt 已删除')
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('删除分类失败:', error)
+        ElMessage.error('删除分类失败')
+      }
+    }
+  }
+}
+
 const toggleFavorite = (prompt: Prompt): void => {
   prompt.isFavorite = !prompt.isFavorite
   savePrompts()
 }
 
 const insertVariable = (variableName: string): void => {
-  const textarea = document.querySelector('.el-textarea__inner') as HTMLTextAreaElement
-  if (textarea) {
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = formData.value.content
-    const before = text.substring(0, start)
-    const after = text.substring(end)
-    formData.value.content = `${before}${variableName}${after}`
+  if (!contentTextareaRef.value) return
+
+  const textarea = contentTextareaRef.value.textarea as HTMLTextAreaElement
+  if (!textarea) return
+
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const text = formData.value.content
+  const before = text.substring(0, start)
+  const after = text.substring(end)
+  formData.value.content = `${before}${variableName}${after}`
+  
+  nextTick(() => {
     textarea.focus()
-    setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + variableName.length
-    }, 0)
-  }
+    textarea.selectionStart = textarea.selectionEnd = start + variableName.length
+  })
 }
 
 const handleExport = (): void => {
   try {
-    const data = JSON.stringify(prompts.value, null, 2)
+    const data = JSON.stringify({
+      prompts: prompts.value,
+      categories: categories.value
+    }, null, 2)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -700,11 +916,11 @@ const handleFileImport = (event: Event): void => {
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        const importedPrompts = JSON.parse(e.target?.result as string) as Prompt[]
+        const importedData = JSON.parse(e.target?.result as string)
 
-        if (Array.isArray(importedPrompts)) {
+        if (Array.isArray(importedData)) {
           ElMessageBox.confirm(
-            `确定要导入 ${importedPrompts.length} 个 prompts 吗？这将覆盖现有的 prompts。`,
+            `确定要导入 ${importedData.length} 个 prompts 吗？这将覆盖现有的 prompts。`,
             '确认导入',
             {
               confirmButtonText: '确定',
@@ -712,8 +928,34 @@ const handleFileImport = (event: Event): void => {
               type: 'warning'
             }
           ).then(() => {
-            prompts.value = importedPrompts
+            prompts.value = importedData
+            const categorySet = new Set(prompts.value.map((p) => p.category))
+            categories.value = Array.from(categorySet).sort()
             savePrompts()
+            saveCategories()
+            ElMessage.success('导入成功')
+          }).catch(() => {
+            ElMessage.info('已取消导入')
+          })
+        } else if (importedData.prompts && Array.isArray(importedData.prompts)) {
+          ElMessageBox.confirm(
+            `确定要导入 ${importedData.prompts.length} 个 prompts 吗？这将覆盖现有的 prompts。`,
+            '确认导入',
+            {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }
+          ).then(() => {
+            prompts.value = importedData.prompts
+            if (importedData.categories && Array.isArray(importedData.categories)) {
+              categories.value = importedData.categories
+            } else {
+              const categorySet = new Set(prompts.value.map((p) => p.category))
+              categories.value = Array.from(categorySet).sort()
+            }
+            savePrompts()
+            saveCategories()
             ElMessage.success('导入成功')
           }).catch(() => {
             ElMessage.info('已取消导入')
@@ -747,7 +989,10 @@ const handleResetToDefault = async(): Promise<void> => {
     )
 
     prompts.value = [...defaultPrompts]
+    const categorySet = new Set(prompts.value.map((p) => p.category))
+    categories.value = Array.from(categorySet).sort()
     savePrompts()
+    saveCategories()
     selectedPromptId.value = null
     ElMessage.success('重置成功')
   } catch (error) {
@@ -868,14 +1113,26 @@ watch(() => props.modelValue, (newVal) => {
   overflow-x: auto;
 }
 
-.category-filter :deep(.el-radio-group) {
+.category-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-header :deep(.el-radio-group) {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.category-filter :deep(.el-radio-button) {
+.category-header :deep(.el-radio-button) {
   margin: 2px;
+}
+
+.category-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .prompt-list {
