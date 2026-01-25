@@ -81,7 +81,7 @@ function getKimiScript(escapedMessage: string): string {
         const result = setKimiInputValue(text);
         console.log(result);
         setTimeout(() => {
-            const sendButton = document.querySelector('[class="send-button"]')
+            const sendButton = document.querySelector('[class="send-button-container"]')
             
             if (sendButton && !sendButton.disabled) {
                 sendButton.click();
