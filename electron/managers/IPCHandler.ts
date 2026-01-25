@@ -996,7 +996,10 @@ export class IPCHandler extends EventEmitter {
       if (!mainWindow || mainWindow.isDestroyed()) {
         throw new Error('Main window not available')
       }
-
+      // chatgpt网页有较强的爬虫检测机制，不宜频繁执行js
+      if(data.providerId === 'chatgpt'){
+         return { success: false }
+      }
       // 获取为特定provider定制的状态监控脚本
       const statusMonitorScript = getStatusMonitorScript(data.providerId)
 
