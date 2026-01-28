@@ -224,11 +224,8 @@ function getDouBaoNewChatScript(): string {
   return `
     (function() {
       try {
-        // 检测平台并设置相应的快捷键
-        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        // 统一使用Ctrl+K快捷键
         const key = 'k';
-        const ctrlKey = !isMac;
-        const metaKey = isMac;
         
         // 创建键盘事件
         const keydownEvent = new KeyboardEvent('keydown', {
@@ -236,8 +233,8 @@ function getDouBaoNewChatScript(): string {
           code: 'KeyK',
           keyCode: 75,
           which: 75,
-          ctrlKey: ctrlKey,
-          metaKey: metaKey,
+          ctrlKey: true,
+          metaKey: false,
           altKey: false,
           shiftKey: false,
           bubbles: true,
@@ -249,8 +246,8 @@ function getDouBaoNewChatScript(): string {
           code: 'KeyK',
           keyCode: 75,
           which: 75,
-          ctrlKey: ctrlKey,
-          metaKey: metaKey,
+          ctrlKey: true,
+          metaKey: false,
           altKey: false,
           shiftKey: false,
           bubbles: true,
@@ -261,7 +258,7 @@ function getDouBaoNewChatScript(): string {
         document.dispatchEvent(keydownEvent);
         document.dispatchEvent(keyupEvent);
         
-        console.log('已发送快捷键: ' + (isMac ? 'Command+K' : 'Ctrl+K'));
+        console.log('已发送快捷键: Ctrl+K');
         return true;
       } catch (error) {
         console.error('发送快捷键失败:', error);
