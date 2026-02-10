@@ -224,11 +224,8 @@ function getDouBaoNewChatScript(): string {
   return `
     (function() {
       try {
-        // 检测平台并设置相应的快捷键
-        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        // 统一使用Ctrl+K快捷键
         const key = 'k';
-        const ctrlKey = !isMac;
-        const metaKey = isMac;
         
         // 创建键盘事件
         const keydownEvent = new KeyboardEvent('keydown', {
@@ -236,8 +233,8 @@ function getDouBaoNewChatScript(): string {
           code: 'KeyK',
           keyCode: 75,
           which: 75,
-          ctrlKey: ctrlKey,
-          metaKey: metaKey,
+          ctrlKey: true,
+          metaKey: false,
           altKey: false,
           shiftKey: false,
           bubbles: true,
@@ -249,8 +246,8 @@ function getDouBaoNewChatScript(): string {
           code: 'KeyK',
           keyCode: 75,
           which: 75,
-          ctrlKey: ctrlKey,
-          metaKey: metaKey,
+          ctrlKey: true,
+          metaKey: false,
           altKey: false,
           shiftKey: false,
           bubbles: true,
@@ -261,7 +258,7 @@ function getDouBaoNewChatScript(): string {
         document.dispatchEvent(keydownEvent);
         document.dispatchEvent(keyupEvent);
         
-        console.log('已发送快捷键: ' + (isMac ? 'Command+K' : 'Ctrl+K'));
+        console.log('已发送快捷键: Ctrl+K');
         return true;
       } catch (error) {
         console.error('发送快捷键失败:', error);
@@ -449,13 +446,22 @@ function getMiromindNewChatScript(): string {
           // 等待3秒后点击新建对话按钮
           setTimeout(() => {
             try {
-              const newChatButton = document.querySelector('[aria-describedby="«r0»"');
-              
-              if (newChatButton) {
-                newChatButton.click();
-                console.log('已点击miromind新建对话按钮');
-              } else {
-                console.log('未找到新建对话按钮');
+              // 1. 拿到 header 元素
+              const header = document.querySelector('header');
+
+              if (header) {
+                  // 2. 找到 header 下的第一个 div
+                  const firstDiv = header.querySelector('div');
+                  
+                  if (firstDiv) {
+                      // 3. 在这个 div 中寻找第一个 button
+                      const targetButton = firstDiv.querySelector('button');
+                      
+                      if (targetButton) {
+                          console.log('成功找到按钮:', targetButton);
+                          targetButton.click();
+                      }
+                  }
               }
             } catch (error) {
               console.error('点击新建对话按钮失败:', error);
@@ -465,12 +471,23 @@ function getMiromindNewChatScript(): string {
           return true;
         } else {
           // 如果没有停止按钮，直接点击新建对话按钮
-          const newChatButton = document.querySelector('[aria-describedby="«r0»"');
-                 
-          if (newChatButton) {
-            newChatButton.click();
-            console.log('已点击miromind新建对话按钮');
-            return true;
+          // 1. 拿到 header 元素
+          const header = document.querySelector('header');
+
+          if (header) {
+              // 2. 找到 header 下的第一个 div
+              const firstDiv = header.querySelector('div');
+              
+              if (firstDiv) {
+                  // 3. 在这个 div 中寻找第一个 button
+                  const targetButton = firstDiv.querySelector('button');
+                  
+                  if (targetButton) {
+                      console.log('成功找到按钮:', targetButton);
+                      targetButton.click();
+                      return true;
+                  }
+              }
           }
           
           console.log('未找到新建对话按钮');
