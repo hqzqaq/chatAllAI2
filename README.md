@@ -65,6 +65,8 @@ ChatAllAI通过以下方式解决上述问题：
 - **Copilot**：微软AI助手
 - **GLM**：智谱AI
 - **元宝**：腾讯元宝
+- **Mimo**：小米 Mimo
+- **Minimax**：MiniMax Agent
 
 ## 使用指南
 
@@ -627,7 +629,7 @@ ChatAllAI项目展示了如何通过现代Web技术栈构建功能丰富的桌�
 - **注重用户体验**：直观的界面和流畅的操作
 
 ## 开发工具
-- trae-cn 主力模型为：deepseek-v3.1 terminal
+- trae-cn
 - codebuddy
 - qoder
 
@@ -635,6 +637,16 @@ ChatAllAI项目展示了如何通过现代Web技术栈构建功能丰富的桌�
 MIT License
 
 ## 版本更新记录
+
+### v1.1.4
+- **新增模型**：添加 Minimax AI 服务支持
+  - 添加 Minimax 提供商配置
+  - 实现 Minimax 登录状态检测脚本
+  - 实现 Minimax 消息发送脚本
+  - 实现 Minimax 新建对话脚本
+  - 添加 Minimax 状态监控脚本
+  - 添加 Minimax 图标资源
+  - 修复 kimi 无法新建对话
 
 ### v1.1.3
 - **bug修复**：修复新建对话无效的问题
@@ -727,4 +739,4 @@ MIT License
 
 ---
 
-*本文基于ChatAllAI v1.0.9版本进行分析，技术细节可能随版本更新而变化。*
+*本文基于ChatAllAI v1.1.4版本进行分析，技术细节可能随版本更新而变化。*
