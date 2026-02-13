@@ -66,6 +66,10 @@ export function getLoginCheckScript(providerId: string): string {
       !Array.from(document.querySelectorAll('[type="button"]'))
                    .some(btn => btn.textContent.trim() === '立即登录');
     `,
+    minimax: `
+      !Array.from(document.querySelectorAll('button'))
+        .some(btn => btn.textContent.trim() === '登 录')
+    `,
   }
 
   return scripts[providerId] || 'false'

@@ -26,6 +26,7 @@ export function getNewChatScript(providerId: string): string {
     gemini: getGeminiNewChatScript(),
     chatgpt: getChatGPTNewChatScript(),
     mimo: getMimoNewChatScript(),
+    minimax: getMinimaxNewChatScript(),
   }
 
   return scripts[providerId] || getGenericNewChatScript()
@@ -52,11 +53,8 @@ function getKimiNewChatScript(): string {
           expandButton.click();
         }
 
-        // 方法2: 如果找不到按钮和链接，尝试改进的键盘事件
-        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        // 方法2: 统一使用 Ctrl+K 快捷键
         const key = 'k';
-        const metaKey = isMac;
-        const ctrlKey = !isMac;
         
         // 创建更精确的键盘事件
         const eventOptions = {
@@ -64,8 +62,8 @@ function getKimiNewChatScript(): string {
           code: 'KeyK',
           keyCode: 75,
           which: 75,
-          ctrlKey: ctrlKey,
-          metaKey: metaKey,
+          ctrlKey: true,
+          metaKey: false,
           altKey: false,
           shiftKey: false,
           bubbles: true,
@@ -92,7 +90,7 @@ function getKimiNewChatScript(): string {
           }
         }
         
-        console.log('已发送快捷键: ' + (isMac ? 'Command+K' : 'Ctrl+K'));
+        console.log('已发送快捷键: Ctrl+K');
         if(expandButton) {
           expandButton.click();
         }
@@ -630,6 +628,62 @@ function getMimoNewChatScript(): string {
         }
       } catch (error) {
         console.error('发送快捷键失败:', error);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
+ * minimax新建对话脚本
+ */
+function getMinimaxNewChatScript(): string {
+  return `
+    (function() {
+      try {
+        const key = 'k';
+        
+        // 创建更精确的键盘事件
+        const eventOptions = {
+          key: key,
+          code: 'KeyK',
+          keyCode: 75,
+          which: 75,
+          ctrlKey: true,
+          metaKey: false,
+          altKey: false,
+          shiftKey: false,
+          bubbles: true,
+          cancelable: true
+        };
+        
+        // 尝试在多个目标上发送事件
+        const targets = [
+          document.activeElement,
+          document.querySelector('input, textarea'),
+          document.body,
+          document
+        ];
+        
+        for (const target of targets) {
+          if (target) {
+            try {
+              target.dispatchEvent(new KeyboardEvent('keydown', eventOptions));
+              target.dispatchEvent(new KeyboardEvent('keyup', eventOptions));
+              console.log('已在目标上发送快捷键:', target);
+            } catch (e) {
+              console.log('目标事件发送失败:', target, e);
+            }
+          }
+        }
+        
+        console.log('已发送快捷键: Ctrl+K');
+        if(expandButton) {
+          expandButton.click();
+        }
+        return true;
+      } catch (error) {
+        console.error('Minimax新建会话失败:', error);
         return false;
       }
     })()

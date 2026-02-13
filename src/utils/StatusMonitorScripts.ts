@@ -26,6 +26,7 @@ export function getStatusMonitorScript(providerId: string): string {
     gemini: getGeminiStatusMonitorScript,
     chatgpt: getChatGPTStatusMonitorScript,
     mimo: getMimoStatusMonitorScript,
+    minimax: getMinimaxStatusMonitorScript,
   }
 
   const scriptGenerator = scripts[providerId]
@@ -419,6 +420,13 @@ function getMimoStatusMonitorScript(providerId: string): string {
 }
 
 /**
+ * minimax状态监控脚本
+ */
+function getMinimaxStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '#message-container')
+}
+
+/**
  * 获取所有支持的AI提供商列表
  */
 export function getSupportedProviders(): string[] {
@@ -434,7 +442,8 @@ export function getSupportedProviders(): string[] {
     'miromind',
     'gemini',
     'chatgpt',
-    'mimo'
+    'mimo',
+    'minimax',
   ]
 }
 

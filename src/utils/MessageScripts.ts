@@ -46,6 +46,7 @@ export function getSendMessageScript(providerId: string, message: string): strin
     gemini: getGeminiScript(escapedMessage),
     chatgpt: getChatGPTScript(escapedMessage),
     mimo: getMimoScript(escapedMessage),
+    minimax: getMinimaxScript(escapedMessage),
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -620,6 +621,74 @@ function getChatGPTScript(escapedMessage: string, chatInputSelector: string = '[
 function getMimoScript(escapedMessage: string): string {
   return getDeepSeekScript(escapedMessage)
 }
+
+/**
+ * Minimax发送脚本
+ */
+function getMinimaxScript(escapedMessage: string): string {
+    return `
+    (function() {
+      // --- Configuration ---
+      const CHAT_INPUT_SELECTOR = '[contenteditable="true"]';
+      const INPUT_SEND_DELAY_MS = 500;
+
+      // --- Input Handling ---
+      function findChatInput() {
+        const element = document.querySelector(CHAT_INPUT_SELECTOR);
+        if (element) {
+          return element;
+        }
+        return null;
+      }
+
+      const inputElement = findChatInput();
+
+      if (!inputElement) {
+        console.error("[Input] Chat input TEXTAREA element not found using selector:", CHAT_INPUT_SELECTOR);
+        return false;
+      }
+
+      try {
+        inputElement.focus();
+        console.log("[Input] Focused the input element.");
+
+        const newValue = '${escapedMessage}';
+        inputElement.textContent = newValue;
+
+        // 触发input事件
+        const inputEvent = new Event('input', {
+          bubbles: true,
+          cancelable: false,
+        });
+
+        inputElement.dispatchEvent(inputEvent);
+        console.log("Simulated 'input' event dispatched.");
+
+        // 延迟后发送Enter键事件
+        setTimeout(() => {
+          const enterEvent = new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+          });
+
+          const dispatched = inputElement.dispatchEvent(enterEvent);
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + !dispatched + '.');
+        }, INPUT_SEND_DELAY_MS);
+
+        return true;
+      } catch (e) {
+        console.error("[Input] Error during input simulation:", e);
+        return false;
+      }
+    })()
+  `
+}
+
+
 
 /**
  * 获取所有支持的提供商列表
