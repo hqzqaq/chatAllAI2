@@ -638,6 +638,15 @@ MIT License
 
 ## 版本更新记录
 
+### v1.1.5
+- **功能新增**：添加日期时间变量支持
+  - 在 Prompt 管理器中添加 {{date}} 变量（格式：YYYY-MM-DD）
+  - 在 Prompt 管理器中添加 {{datetime}} 变量（格式：YYYY-MM-DD HH:mm:ss）
+  - 应用 Prompt 时自动替换为当前日期时间
+- **bug修复**：修复 miromind 新建对话问题
+  - 优化 miromind 新建对话脚本逻辑
+  - 修正按钮定位选择器
+
 ### v1.1.4
 - **新增模型**：添加 Minimax AI 服务支持
   - 添加 Minimax 提供商配置
