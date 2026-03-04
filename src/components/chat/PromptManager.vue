@@ -478,7 +478,9 @@ const categoryFormRules: FormRules = {
 }
 
 const availableVariables: Variable[] = [
-  { name: '{{user_input}}', description: '用户输入内容' }
+  { name: '{{user_input}}', description: '用户输入内容' },
+  { name: '{{date}}', description: '当前日期 (YYYY-MM-DD)' },
+  { name: '{{datetime}}', description: '当前日期时间 (YYYY-MM-DD HH:mm:ss)' }
 ]
 
 const defaultPrompts: Prompt[] = [
@@ -725,6 +727,12 @@ const handleApplyPrompt = (prompt: Prompt): void => {
   if (props.userInput) {
     content = content.replace(/\{\{user_input\}\}/g, props.userInput)
   }
+
+  const now = new Date()
+  const date = now.toISOString().split('T')[0]
+  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  content = content.replace(/\{\{date\}\}/g, date)
+  content = content.replace(/\{\{datetime\}\}/g, datetime)
 
   prompt.useCount += 1
   prompt.lastUsedAt = new Date().toISOString()

@@ -799,6 +799,12 @@ const handleApplyPrompt = (prompt: any, userInput?: string): void => {
     content = content.replace(/\{\{user_input\}\}/g, userInput)
   }
 
+  const now = new Date()
+  const date = now.toISOString().split('T')[0]
+  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  content = content.replace(/\{\{date\}\}/g, date)
+  content = content.replace(/\{\{datetime\}\}/g, datetime)
+
   chatStore.currentMessage = content
   promptManagerVisible.value = false
 
@@ -816,11 +822,16 @@ const handleApplyQuickPrompt = (): void => {
     return
   }
 
-  // 将 {{user_input}} 替换为当前输入框的内容
   let content = quickPrompt.value
   if (currentMessage.value) {
     content = content.replace(/\{\{user_input\}\}/g, currentMessage.value)
   }
+
+  const now = new Date()
+  const date = now.toISOString().split('T')[0]
+  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  content = content.replace(/\{\{date\}\}/g, date)
+  content = content.replace(/\{\{datetime\}\}/g, datetime)
 
   chatStore.currentMessage = content
   ElMessage.success('已应用快捷 Prompt')
