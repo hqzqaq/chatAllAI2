@@ -448,16 +448,18 @@ function getMiromindNewChatScript(): string {
               const header = document.querySelector('header');
 
               if (header) {
-                  // 2. 找到 header 下的第一个 div
-                  const firstDiv = header.querySelector('div');
+                  // 2. 找到 header 下的第三个 div
+                  const divs = header.querySelectorAll('div');
+                  const secondDiv = divs[2];
                   
-                  if (firstDiv) {
+                  if (secondDiv) {
                       // 3. 在这个 div 中寻找第一个 button
-                      const targetButton = firstDiv.querySelector('button');
+                      const targetButton = secondDiv.querySelector('button');
                       
                       if (targetButton) {
                           console.log('成功找到按钮:', targetButton);
                           targetButton.click();
+                          return true;
                       }
                   }
               }
@@ -473,12 +475,13 @@ function getMiromindNewChatScript(): string {
           const header = document.querySelector('header');
 
           if (header) {
-              // 2. 找到 header 下的第一个 div
-              const firstDiv = header.querySelector('div');
+              // 2. 找到 header 下的第三个 div
+              const divs = header.querySelectorAll('div');
+              const secondDiv = divs[2];
               
-              if (firstDiv) {
+              if (secondDiv) {
                   // 3. 在这个 div 中寻找第一个 button
-                  const targetButton = firstDiv.querySelector('button');
+                  const targetButton = secondDiv.querySelector('button');
                   
                   if (targetButton) {
                       console.log('成功找到按钮:', targetButton);
