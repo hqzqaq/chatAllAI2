@@ -89,7 +89,11 @@ function getChatGPTLastMessageScript(): string {
 }
 
 function getMimoLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('.markdown-prose');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getMinimaxLastMessageScript(): string {
