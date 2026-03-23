@@ -56,7 +56,11 @@ function getCopilotLastMessageScript(): string {
 }
 
 function getGLMLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('.answer-content-wrap');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getYuanBaoLastMessageScript(): string {
