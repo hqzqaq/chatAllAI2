@@ -32,7 +32,11 @@ function getGrokLastMessageScript(): string {
 }
 
 function getDeepSeekLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('.ds-markdown');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getDouBaoLastMessageScript(): string {
