@@ -36,7 +36,11 @@ function getDeepSeekLastMessageScript(): string {
 }
 
 function getDouBaoLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('[data-testid="receive_message"]');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getQwenLastMessageScript(): string {
