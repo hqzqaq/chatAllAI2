@@ -25,7 +25,11 @@ export function getSendMessageScript(providerId: string): string {
 }
 
 function getKimiLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('.markdown-container');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getGrokLastMessageScript(): string {
