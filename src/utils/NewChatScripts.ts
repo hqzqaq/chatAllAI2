@@ -619,7 +619,7 @@ function getMimoNewChatScript(): string {
   return `
     (function() {
       try {
-        const newButton = document.querySelector('[aria-label="开始新对话"]');
+        const newButton = document.querySelector('[aria-label="新对话"]');
         
         if (newButton) {
           newButton.click();
