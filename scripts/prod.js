@@ -17,7 +17,7 @@ process.env.NODE_ENV = 'production'
 
 // 使用不同的输出目录避免文件锁定问题
 console.log('📦 构建前端资源到临时目录...')
-const viteBuild = spawn('npx', ['vite', 'build', '--outDir', 'dist-prod'], {
+const viteBuild = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['exec', '--no', 'vite', 'build', '--outDir', 'dist-prod'], {
   stdio: 'inherit',
   shell: true,
   cwd: process.cwd()
@@ -33,7 +33,7 @@ viteBuild.on('close', (code) => {
 
   // 启动Electron应用
   console.log('🔧 启动Electron应用...')
-  const electronProcess = spawn('npx', ['electron', '.'], {
+  const electronProcess = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['exec', '--no', 'electron', '.'], {
     stdio: 'inherit',
     shell: true,
     cwd: process.cwd(),
