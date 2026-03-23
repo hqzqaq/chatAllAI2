@@ -730,6 +730,11 @@ const handleSend = async(): Promise<void> => {
   }
 
   try {
+    // 收起输入框
+    if (!isCollapsed.value) {
+      isCollapsed.value = true
+    }
+
     // 获取已登录的提供商
     const { loggedInProviders } = chatStore
     const messageContent = currentMessage.value
