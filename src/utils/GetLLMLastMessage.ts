@@ -17,6 +17,7 @@ export function getSendMessageScript(providerId: string): string {
     gemini: () => getGeminiLastMessageScript(),
     chatgpt: () => getChatGPTLastMessageScript(),
     mimo: () => getMimoLastMessageScript(),
+    minimax: () => getMinimaxLastMessageScript(),
   }
 
   const scriptGenerator = scripts[providerId]
@@ -89,4 +90,12 @@ function getChatGPTLastMessageScript(): string {
 
 function getMimoLastMessageScript(): string {
   return ''
+}
+
+function getMinimaxLastMessageScript(): string {
+  return `(() => {
+    const messages = document.querySelectorAll('.message-content');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
