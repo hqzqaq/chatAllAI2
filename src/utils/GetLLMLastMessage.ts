@@ -68,7 +68,11 @@ function getYuanBaoLastMessageScript(): string {
 }
 
 function getMiromindLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('.report-container');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getGeminiLastMessageScript(): string {
