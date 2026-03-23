@@ -99,7 +99,7 @@ export class SessionManager extends EventEmitter {
   /**
    * 创建AI提供商会话
    */
-  async createProviderSession(providerId: string): Promise<Session> {
+  async createProviderSession(providerId: string, proxyRules?: string): Promise<Session> {
     if (this.electronSessions.has(providerId)) {
       return this.electronSessions.get(providerId)!
     }
@@ -110,6 +110,13 @@ export class SessionManager extends EventEmitter {
 
     // 配置会话
     await this.configureSession(electronSession, providerId)
+
+    // 如果提供了代理配置，立即设置
+    if (proxyRules) {
+      console.log(`[Gemini Fix] Setting proxy for ${providerId}: ${proxyRules}`)
+      await electronSession.setProxy({ proxyRules })
+      console.log(`[Gemini Fix] Proxy set successfully for ${providerId}`)
+    }
 
     // 存储会话
     this.electronSessions.set(providerId, electronSession)
@@ -193,7 +200,8 @@ export class SessionManager extends EventEmitter {
       deepseek: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       doubao: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       qwen: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      copilot: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      copilot: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      gemini: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
 
     return userAgents[providerId]
