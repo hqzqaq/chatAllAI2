@@ -29,7 +29,11 @@ function getKimiLastMessageScript(): string {
 }
 
 function getGrokLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('.response-content-markdown');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getDeepSeekLastMessageScript(): string {
