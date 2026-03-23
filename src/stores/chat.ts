@@ -209,7 +209,7 @@ export const useChatStore = defineStore('chat', () => {
     {
       id: 'mimo',
       name: 'mimo',
-      url: 'https://aistudio.xiaomimimo.com/#/',
+      url: 'https://aistudio.xiaomimimo.com/#/c',
       icon: './icons/mimo.ico',
       isLoggedIn: false,
       sessionData: {
