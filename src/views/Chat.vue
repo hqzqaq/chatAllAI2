@@ -3,7 +3,7 @@
     <div class="chat-container">
       <!-- 统一输入区域 -->
       <div class="input-section">
-        <UnifiedInput />
+        <UnifiedInput @summary="handleSummaryClick" />
       </div>
 
       <!-- AI卡片网格 -->
@@ -11,6 +11,7 @@
         class="cards-grid"
         :style="gridStyle"
       >
+        <!-- 普通AI卡片 -->
         <AICard
           v-for="provider in visibleProviders"
           :key="provider.id"
@@ -20,17 +21,128 @@
         />
       </div>
     </div>
+
+    <!-- 模型选择对话框 -->
+    <ModelSelectDialog
+      v-model:visible="modelSelectVisible"
+      :providers="allProviders"
+      :is-loading="summaryStore.isSummarizing"
+      :loading-text="summaryStore.progress.message"
+      :progress-percentage="summaryProgressPercentage"
+      @confirm="handleModelSelectConfirm"
+      @cancel="handleModelSelectCancel"
+    />
+
+    <!-- 总结侧边栏 - 嵌入独立的AI卡片 -->
+    <SummarySidebar
+      v-model:visible="sidebarVisible"
+      :original-provider-id="selectedSummaryProvider?.id || ''"
+      :original-provider-name="selectedSummaryProvider?.name || ''"
+      :original-provider="selectedSummaryProvider"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
-import { useChatStore, useLayoutStore } from '../stores'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useChatStore, useLayoutStore, useSummaryStore } from '../stores'
+import { summaryService } from '../services/SummaryService'
 import UnifiedInput from '../components/chat/UnifiedInput.vue'
 import AICard from '../components/chat/AICard.vue'
+import ModelSelectDialog from '../components/summary/ModelSelectDialog.vue'
+import SummarySidebar from '../components/summary/SummarySidebar.vue'
+import { ElMessage } from 'element-plus'
+import type { AIProvider } from '../types'
 
 const chatStore = useChatStore()
 const layoutStore = useLayoutStore()
+const summaryStore = useSummaryStore()
+
+// 对话框显示状态
+const modelSelectVisible = ref(false)
+const sidebarVisible = ref(false)
+
+// 选中的总结模型
+const selectedSummaryProvider = ref<AIProvider | null>(null)
+
+// 已登录的AI提供商
+const loggedInProviders = computed(() => chatStore.loggedInProviders)
+
+// 所有AI提供商（用于选择总结模型）
+const allProviders = computed(() => chatStore.providers)
+
+// 总结进度百分比
+const summaryProgressPercentage = computed(() => {
+  const { collectedCount, totalCount } = summaryStore.progress
+  if (totalCount === 0) return 0
+  return Math.round((collectedCount / totalCount) * 100)
+})
+
+/**
+ * 处理总结按钮点击
+ */
+const handleSummaryClick = (): void => {
+  // 检查是否有AI完成回答
+  const hasCompletedAI = loggedInProviders.value.some(provider => {
+    // 这里简化处理，实际应该检查AI状态
+    return true
+  })
+
+  if (!hasCompletedAI) {
+    ElMessage.warning('至少需要一个AI完成回答才能进行总结')
+    return
+  }
+
+  // 打开模型选择对话框
+  modelSelectVisible.value = true
+}
+
+/**
+ * 处理模型选择确认
+ * @param providerId 选中的AI提供商ID
+ */
+const handleModelSelectConfirm = async (providerId: string): Promise<void> => {
+  // 获取当前消息作为原始问题
+  const originalQuery = chatStore.currentMessage || '总结各AI的回答'
+
+  // 获取选中的AI提供商信息
+  const selectedProvider = chatStore.providers.find(p => p.id === providerId)
+  if (!selectedProvider) {
+    ElMessage.error('未找到选中的AI模型')
+    return
+  }
+
+  // 保存选中的总结模型
+  selectedSummaryProvider.value = selectedProvider
+
+  // 关闭模型选择对话框
+  modelSelectVisible.value = false
+
+  // 打开侧边栏
+  sidebarVisible.value = true
+
+  // 执行总结（传入所有已登录的提供商，使用summary-{providerId}作为目标）
+  const success = await summaryService.executeSummary(
+    {
+      summaryProviderId: `summary-${providerId}`,
+      originalQuery
+    },
+    loggedInProviders.value
+  )
+
+  if (success) {
+    ElMessage.success(`已创建 ${selectedProvider.name} (总结) 选项卡，请在侧边栏中查看`)
+  }
+}
+
+/**
+ * 处理模型选择取消
+ */
+const handleModelSelectCancel = (): void => {
+  modelSelectVisible.value = false
+}
+
+
 
 // 计算属性
 const providers = computed(() => chatStore.providers)

@@ -277,7 +277,11 @@ const checkLoginStatus = async(): Promise<void> => {
       // chatgpt 有较强的脚本执行检测，频繁执行脚本会导致页面不可用，这里默认设置为已登录
       isLoggedIn = true
     } else {
-      const loginCheckScript = getLoginCheckScript(props.provider.id)
+      // 对于总结模式的provider（id格式为summary-{originalId}），使用原始provider的登录检测脚本
+      const providerId = props.provider.id.startsWith('summary-')
+        ? props.provider.id.replace('summary-', '')
+        : props.provider.id
+      const loginCheckScript = getLoginCheckScript(providerId)
       const result = await webviewElement.value.executeJavaScript(loginCheckScript)
       isLoggedIn = Boolean(result)
     }

@@ -170,6 +170,16 @@
                 新建对话
               </el-button>
               <el-button
+                type="info"
+                :icon="DocumentChecked"
+                :disabled="!canSummarize"
+                title="总结各AI的回答"
+                data-testid="summary-button"
+                @click="handleSummary"
+              >
+                总结
+              </el-button>
+              <el-button
                 type="primary"
                 :icon="Position"
                 :loading="hasSendingMessages"
@@ -207,7 +217,7 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank, Lightning
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank, Lightning, DocumentChecked
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
@@ -217,6 +227,11 @@ import type { AIProvider } from '@/types'
 import PromptManager from './PromptManager.vue'
 
 const chatStore = useChatStore()
+
+// 组件事件
+const emit = defineEmits<{
+  (e: 'summary'): void
+}>()
 
 const draggedProvider = ref<AIProvider | null>(null)
 
@@ -480,6 +495,15 @@ const hasSendingMessages = computed(() => messageDispatcher.hasSendingMessages()
 const hasRespondingAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'responding'))
 
 const respondingAICount = computed(() => Object.values(aiStatusMap.value).filter((status) => status === 'responding').length)
+
+// 是否有AI已完成回答（用于判断是否可以总结）
+const hasCompletedAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'completed'))
+
+// 是否可以进行总结
+const canSummarize = computed(() => {
+  // 至少有一个AI已完成回答，且没有AI正在回答中
+  return hasCompletedAI.value && !hasRespondingAI.value && loggedInCount.value > 0
+})
 
 const inputPlaceholder = computed(() => {
   if (loggedInCount.value === 0) {
@@ -906,6 +930,23 @@ const handleMessageSent = (data: { messageId: string; results: MessageSendResult
   console.log('Message sent:', data)
 }
 
+/**
+ * 处理总结按钮点击
+ */
+const handleSummary = (): void => {
+  if (!canSummarize.value) {
+    if (hasRespondingAI.value) {
+      ElMessage.warning('请等待AI回答完成后再进行总结')
+    } else if (!hasCompletedAI.value) {
+      ElMessage.warning('至少需要一个AI完成回答才能进行总结')
+    }
+    return
+  }
+
+  // 触发总结事件，由父组件处理
+  emit('summary')
+}
+
 let unsubscribeAIStatusChange: (() => void) | null = null
 
 /**
@@ -921,7 +962,7 @@ onMounted(() => {
   }
 
   // 监听登录状态变化事件
-  window.addEventListener('login-status-changed', handleLoginStatusChanged)
+  window.addEventListener('login-status-changed', handleLoginStatusChanged as EventListener)
 
   // 组件挂载后，加载用户偏好的高度
   nextTick(() => {
@@ -981,6 +1022,10 @@ const startAIStatusMonitoringForProvider = async(providerId: string): Promise<vo
       console.warn('electronAPI不可用，无法启动AI状态监控')
       return
     }
+    if(providerId.includes('summary')) {
+      console.warn('总结模型不支持AI状态监控')
+      return
+    }
 
     const provider = chatStore.providers.find((p) => p.id === providerId)
     if (!provider) {
@@ -1030,6 +1075,9 @@ const stopAIStatusMonitoringForProvider = async(providerId: string): Promise<voi
   try {
     if (!window.electronAPI) {
       console.warn('electronAPI不可用，无法停止AI状态监控')
+      return
+    }
+    if(providerId.includes('summary')) {
       return
     }
 

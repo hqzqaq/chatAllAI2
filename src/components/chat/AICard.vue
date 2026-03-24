@@ -43,21 +43,21 @@
           @click="openDevTools"
         />
         <el-button
-          v-if="!config?.isMaximized"
+          v-if="!(isSummaryCard ? localIsMaximized : config?.isMaximized)"
           :icon="FullScreen"
           size="small"
           circle
           @click="toggleMaximized"
         />
         <el-button
-          v-if="config?.isMaximized"
+          v-if="isSummaryCard ? localIsMaximized : config?.isMaximized"
           :icon="Close"
           size="small"
           circle
           @click="toggleMaximized"
         />
         <el-button
-          :icon="config?.isMinimized ? ArrowUp : ArrowDown"
+          :icon="(isSummaryCard ? localIsMinimized : config?.isMinimized) ? ArrowUp : ArrowDown"
           size="small"
           circle
           @click="toggleMinimized"
@@ -74,7 +74,7 @@
 
     <!-- WebView容器 -->
     <div
-      v-show="!config?.isMinimized"
+      v-show="!(isSummaryCard ? localIsMinimized : config?.isMinimized)"
       class="webview-container"
       :style="webviewStyle"
     >
@@ -275,6 +275,11 @@ const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
 const proxyDialogVisible = ref(false)
 const proxyFormRef = ref()
 
+// 总结卡片的本地状态（因为 layoutStore 中没有对应的 cardConfig）
+const isSummaryCard = computed(() => props.provider.id.startsWith('summary-'))
+const localIsMinimized = ref(false)
+const localIsMaximized = ref(false)
+
 // 代理配置
 const proxyConfig = ref({
   enabled: false,
@@ -292,11 +297,24 @@ const cardStyle = computed(() => {
   // 如果卡片被隐藏（最大化时），使用visibility和opacity隐藏
   const isHidden = props.config.isHidden === true
 
+  // 对于总结卡片，使用本地状态；对于普通卡片，使用 config 中的状态
+  const isMinimized = isSummaryCard.value ? localIsMinimized.value : props.config.isMinimized
+
+  // 处理 width 和 height，支持字符串（如 "100%"）和数字
+  const width = typeof props.config.size.width === 'string'
+    ? props.config.size.width
+    : `${props.config.size.width}px`
+  const height = isMinimized
+    ? 'auto'
+    : (typeof props.config.size.height === 'string'
+      ? props.config.size.height
+      : `${props.config.size.height}px`)
+
   return {
-    width: `${props.config.size.width}px`,
+    width,
     // 修复输入法问题：使用min-height而不是固定height，避免影响输入框
-    height: props.config.isMinimized ? 'auto' : `${props.config.size.height}px`,
-    minHeight: props.config.isMinimized ? 'auto' : '0',
+    height,
+    minHeight: isMinimized ? 'auto' : '0',
     zIndex: props.config.zIndex,
     transition: 'all 0.3s ease',
     visibility: isHidden ? 'hidden' : 'visible',
@@ -305,7 +323,12 @@ const cardStyle = computed(() => {
 })
 
 const webviewStyle = computed(() => {
-  if (!props.config || props.config.isMinimized) return {}
+  if (!props.config) return {}
+
+  // 对于总结卡片，使用本地状态；对于普通卡片，使用 config 中的状态
+  const isMinimized = isSummaryCard.value ? localIsMinimized.value : props.config.isMinimized
+
+  if (isMinimized) return {}
 
   return {
     height: `${props.config.size.height - 120}px` // 减去头部和状态栏高度
@@ -318,11 +341,33 @@ const shouldShowWebView = computed(
     props.provider.isEnabled && props.provider.loadingState !== 'idle'
 )
 
-const webviewWidth = computed(() => props.config?.size.width || 800)
+const webviewWidth = computed(() => {
+  const width = props.config?.size.width
+  // 如果 width 是字符串（如 "100%"），返回默认值
+  if (typeof width === 'string') {
+    // 对于总结卡片，使用容器实际宽度
+    if (isSummaryCard.value) {
+      const container = document.querySelector('.ai-card-container')
+      return container?.clientWidth || 800
+    }
+    return 800
+  }
+  return width || 800
+})
 
-const webviewHeight = computed(
-  () => (props.config?.size.height || 800) - 120 // 增加默认高度到800px，减去头部高度
-)
+const webviewHeight = computed(() => {
+  const height = props.config?.size.height
+  // 如果 height 是字符串（如 "100%"），返回默认值
+  if (typeof height === 'string') {
+    // 对于总结卡片，使用容器实际高度减去头部高度
+    if (isSummaryCard.value) {
+      const container = document.querySelector('.ai-card-container')
+      return (container?.clientHeight || 800) - 120
+    }
+    return 680 // 800 - 120
+  }
+  return (height || 800) - 120 // 增加默认高度到800px，减去头部高度
+})
 
 /**
  * 获取状态图标
@@ -360,14 +405,30 @@ const getStatusText = (): string => {
  * 切换最小化状态
  */
 const toggleMinimized = (): void => {
-  layoutStore.toggleCardMinimized(props.provider.id)
+  console.log(`[AICard] toggleMinimized called for ${props.provider.name}, isSummaryCard:`, isSummaryCard.value)
+  if (isSummaryCard.value) {
+    // 总结卡片使用本地状态
+    const newValue = !localIsMinimized.value
+    localIsMinimized.value = newValue
+    console.log(`[AICard] 总结卡片 ${props.provider.name} 最小化状态变更为:`, newValue)
+  } else {
+    // 普通卡片使用 layoutStore
+    layoutStore.toggleCardMinimized(props.provider.id)
+  }
 }
 
 /**
  * 切换最大化状态
  */
 const toggleMaximized = (): void => {
-  layoutStore.toggleCardMaximized(props.provider.id)
+  if (isSummaryCard.value) {
+    // 总结卡片使用本地状态
+    localIsMaximized.value = !localIsMaximized.value
+    console.log(`总结卡片 ${props.provider.name} 最大化状态:`, localIsMaximized.value)
+  } else {
+    // 普通卡片使用 layoutStore
+    layoutStore.toggleCardMaximized(props.provider.id)
+  }
 }
 
 /**

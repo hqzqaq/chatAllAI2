@@ -4,7 +4,7 @@
  */
 
 import {
-  ipcMain, IpcMainEvent, IpcMainInvokeEvent, BrowserWindow
+  ipcMain, IpcMainEvent, IpcMainInvokeEvent
 } from 'electron'
 import { EventEmitter } from 'events'
 import { WindowManager } from './WindowManager'
@@ -226,7 +226,7 @@ export class IPCHandler extends EventEmitter {
       const { providerId, status, details } = data
 
       // 转换状态为统一格式
-      const statusMap = {
+      const statusMap: Record<string, string> = {
         ai_responding: 'responding',
         ai_completed: 'completed',
         waiting_input: 'waiting_input'
@@ -250,7 +250,7 @@ export class IPCHandler extends EventEmitter {
       this.log(`Internal AI status changed for ${providerId}:`, statusData)
 
       // 转换状态为统一格式
-      const statusMap = {
+      const statusMap: Record<string, string> = {
         ai_responding: 'responding',
         ai_completed: 'completed',
         waiting_input: 'waiting_input'
@@ -416,7 +416,13 @@ export class IPCHandler extends EventEmitter {
       }
 
       // 从webviewId推断providerId（webview-webview-kimi -> kimi）
-      const providerId = data.webviewId.replace('webview-', '')
+      let providerId = data.webviewId.replace('webview-', '')
+
+      // 对于总结模式的provider（id格式为summary-{originalId}），使用原始provider的发送脚本
+      if (providerId.startsWith('summary-')) {
+        providerId = providerId.replace('summary-', '')
+        this.log('[IPC] Detected summary provider, using original provider:', providerId)
+      }
 
       this.log('[IPC] Provider ID:', providerId)
 
@@ -425,17 +431,19 @@ export class IPCHandler extends EventEmitter {
 
       this.log('[IPC] Generated send script:', sendScript)
 
+      const webviewId = data.webviewId.includes('webview-') ? data.webviewId + '-element' : 'webview-' + data.webviewId + '-element'
+
       // 避免两层转义：直接将sendScript作为字符串传递给WebView
       const script = `
         (async function() {
           try {
             console.log('[IPC] Starting message send process...');
             
-            const webviewElement = document.querySelector('#${data.webviewId}-element');
+            const webviewElement = document.querySelector('#${webviewId}');
             console.log('[IPC] WebView element:', webviewElement);
             
             if (!webviewElement) {
-              console.error('[IPC] WebView element not found:', '${data.webviewId}');
+              console.error('[IPC] WebView element not found:', '${webviewId}');
               return false;
             }
             
@@ -723,6 +731,7 @@ export class IPCHandler extends EventEmitter {
       if (!mainWindow || mainWindow.isDestroyed()) {
         throw new Error('Main window not available')
       }
+      const webviewId = data.webviewId.includes('webview-') ? data.webviewId + '-element' : 'webview-' + data.webviewId + '-element'
 
       // 执行JavaScript代码
       const script = `
@@ -730,11 +739,11 @@ export class IPCHandler extends EventEmitter {
           try {
             console.log('[IPC] Starting script execution process...');
             
-            const webviewElement = document.querySelector('#${data.webviewId}-element');
+            const webviewElement = document.querySelector('#${webviewId}');
             console.log('[IPC] WebView element:', webviewElement);
             
             if (!webviewElement) {
-              console.error('[IPC] WebView element not found:', '${data.webviewId}');
+              console.error('[IPC] WebView element not found:', '${webviewId}');
               return false;
             }
             
@@ -938,15 +947,15 @@ export class IPCHandler extends EventEmitter {
    */
   private async handlePerformanceGetMetrics(): Promise<PerformanceMetricsResponse> {
     const { app } = require('electron')
-    const metrics = app.getAppMetrics()
+    const metrics: ProcessMetric[] = app.getAppMetrics()
 
     return {
       cpu: {
-        usage: metrics.reduce((sum, metric) => sum + (metric.cpu?.percentCPUUsage || 0), 0),
+        usage: metrics.reduce((sum: number, metric: ProcessMetric) => sum + (metric.cpu?.percentCPUUsage || 0), 0),
         timestamp: new Date()
       },
       memory: {
-        used: metrics.reduce((sum, metric) => sum + (metric.memory?.workingSetSize || 0), 0),
+        used: metrics.reduce((sum: number, metric: ProcessMetric) => sum + (metric.memory?.workingSetSize || 0), 0),
         total: require('os').totalmem(),
         percentage: 0,
         timestamp: new Date()
@@ -1092,10 +1101,13 @@ export class IPCHandler extends EventEmitter {
         Object.keys(this.aiStatusMonitorListeners).forEach((webviewId) => {
           if (webviewId.includes(data.providerId)) {
             const mainWindow = this.windowManager.getMainWindow()
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.off('ipc-message', this.aiStatusMonitorListeners[webviewId])
+            const listener = this.aiStatusMonitorListeners?.[webviewId]
+            if (mainWindow && !mainWindow.isDestroyed() && listener) {
+              mainWindow.webContents.off('ipc-message', listener)
             }
-            delete this.aiStatusMonitorListeners[webviewId]
+            if (this.aiStatusMonitorListeners) {
+              delete this.aiStatusMonitorListeners[webviewId]
+            }
           }
         })
       }
