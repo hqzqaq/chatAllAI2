@@ -26,7 +26,7 @@ export function getSendMessageScript(providerId: string): string {
 
 function getKimiLastMessageScript(): string {
   return `(() => {
-    const messages = document.querySelectorAll('.markdown-container');
+    const messages = document.querySelectorAll('.segment-content');
     const lastMessage = messages[messages.length - 1];
     return lastMessage ? lastMessage.textContent || '' : '';
   })()`
