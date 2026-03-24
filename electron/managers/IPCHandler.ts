@@ -167,6 +167,47 @@ export class IPCHandler extends EventEmitter {
       // __dirname 在主进程中指向 dist-electron 目录
       return path.resolve(__dirname, preloadName)
     })
+
+    // 新增：清除指定provider的存储数据（用于解决Gemini登录问题）
+    ipcMain.handle('clear-provider-storage', async (event, providerId: string) => {
+      try {
+        console.log(`[IPCHandler] Clearing storage for provider: ${providerId}`)
+
+        // 获取provider对应的session
+        let electronSession = this.sessionManager.getElectronSession(providerId)
+
+        if (!electronSession) {
+          // 如果session不存在，尝试从partition创建
+          const { session } = require('electron')
+          electronSession = session.fromPartition(`persist:${providerId}`)
+        }
+
+        if (electronSession) {
+          // 清除所有存储数据
+          await electronSession.clearStorageData({
+            storages: [
+              'cookies',
+              'filesystem',
+              'indexdb',
+              'localstorage',
+              'shadercache',
+              'websql',
+              'serviceworkers',
+              'cachestorage'
+            ]
+          })
+          console.log(`[IPCHandler] Storage cleared successfully for ${providerId}`)
+          return { success: true }
+        } else {
+          console.warn(`[IPCHandler] No session found for ${providerId}`)
+          return { success: false, error: 'Session not found' }
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error(`[IPCHandler] Failed to clear storage for ${providerId}:`, errorMessage)
+        return { success: false, error: errorMessage }
+      }
+    })
   }
 
   /**
@@ -241,7 +282,7 @@ export class IPCHandler extends EventEmitter {
   ): void {
     this.invokeHandlers.set(channel, handler)
 
-    ipcMain.handle(channel, async(event: IpcMainInvokeEvent, data: T) => {
+    ipcMain.handle(channel, async (event: IpcMainInvokeEvent, data: T) => {
       try {
         this.log(`Handling invoke: ${channel}`, data)
         const result = await handler(data, event)
@@ -689,7 +730,7 @@ export class IPCHandler extends EventEmitter {
           try {
             console.log('[IPC] Starting script execution process...');
             
-            const webviewElement = document.querySelector('#webview-${data.webviewId}-element');
+            const webviewElement = document.querySelector('#${data.webviewId}-element');
             console.log('[IPC] WebView element:', webviewElement);
             
             if (!webviewElement) {
@@ -997,8 +1038,8 @@ export class IPCHandler extends EventEmitter {
         throw new Error('Main window not available')
       }
       // chatgpt网页有较强的爬虫检测机制，不宜频繁执行js
-      if(data.providerId === 'chatgpt'){
-         return { success: false }
+      if (data.providerId === 'chatgpt') {
+        return { success: false }
       }
       // 获取为特定provider定制的状态监控脚本
       const statusMonitorScript = getStatusMonitorScript(data.providerId)

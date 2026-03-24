@@ -165,12 +165,19 @@ export class SessionManager extends EventEmitter {
 
   /**
    * 配置会话
+   * 针对Gemini添加特殊的请求头拦截和Cookie处理
    */
   private async configureSession(electronSession: Session, providerId: string): Promise<void> {
     // 设置用户代理
     const userAgent = this.getUserAgent(providerId)
     if (userAgent) {
       electronSession.setUserAgent(userAgent)
+      console.log(`[SessionManager] Set User-Agent for ${providerId}: ${userAgent}`)
+    }
+
+    // 针对Gemini的特殊配置
+    if (providerId === 'gemini') {
+      this.configureGeminiSession(electronSession)
     }
 
     // 设置权限处理
@@ -191,20 +198,149 @@ export class SessionManager extends EventEmitter {
   }
 
   /**
+   * 配置Gemini会话的特殊设置
+   * 解决"此浏览器或应用可能不安全"问题
+   */
+  private configureGeminiSession(electronSession: Session): void {
+    console.log('[SessionManager] Configuring Gemini session with security bypasses')
+
+    const userAgent = this.getUserAgent('gemini') || ''
+    const secChUa = this.getSecChUa()
+
+    // 拦截请求头，确保所有发往Google的请求都带有正确的UA和平台信息
+    electronSession.webRequest.onBeforeSendHeaders(
+      {
+        urls: ['*://*.google.com/*', '*://*.googleusercontent.com/*', '*://gemini.google.com/*', '*://accounts.google.com/*']
+      },
+      (details, callback) => {
+        // 强制修改User-Agent，移除Electron标识
+        details.requestHeaders['User-Agent'] = userAgent
+
+        // 添加Chrome特有的请求头，增强伪装
+        details.requestHeaders['Sec-Ch-Ua'] = secChUa
+        details.requestHeaders['Sec-Ch-Ua-Mobile'] = '?0'
+        details.requestHeaders['Sec-Ch-Ua-Platform'] = '"Windows"'
+        details.requestHeaders['Sec-Ch-Ua-Arch'] = '"x86_64"'
+        details.requestHeaders['Sec-Ch-Ua-Bitness'] = '"64"'
+        details.requestHeaders['Sec-Ch-Ua-Full-Version'] = '"134.0.0.0"'
+        details.requestHeaders['Sec-Ch-Ua-Full-Version-List'] = secChUa
+        details.requestHeaders['Sec-Fetch-Dest'] = 'document'
+        details.requestHeaders['Sec-Fetch-Mode'] = 'navigate'
+        details.requestHeaders['Sec-Fetch-Site'] = 'none'
+        details.requestHeaders['Sec-Fetch-User'] = '?1'
+        details.requestHeaders['Upgrade-Insecure-Requests'] = '1'
+
+        // 添加Accept-Language和Accept头
+        if (!details.requestHeaders['Accept-Language']) {
+          details.requestHeaders['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8'
+        }
+        if (!details.requestHeaders['Accept']) {
+          details.requestHeaders['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        }
+
+        // 移除可能暴露Electron身份的请求头
+        delete details.requestHeaders['X-Electron-Version']
+        delete details.requestHeaders['X-Electron-Build']
+        delete details.requestHeaders['X-DevTools-Request-Id']
+
+        callback({ requestHeaders: details.requestHeaders })
+      }
+    )
+
+    // 拦截响应头，处理Cookie和CSP策略
+    electronSession.webRequest.onHeadersReceived(
+      {
+        urls: ['*://*.google.com/*', '*://*.googleusercontent.com/*', '*://gemini.google.com/*', '*://accounts.google.com/*']
+      },
+      (details, callback) => {
+        const responseHeaders: Record<string, string | string[]> = {}
+
+        // 复制原始响应头
+        for (const [key, value] of Object.entries(details.responseHeaders || {})) {
+          if (value !== undefined) {
+            responseHeaders[key] = value
+          }
+        }
+
+        // 处理Set-Cookie头，确保SameSite=None且Secure
+        if (responseHeaders['set-cookie']) {
+          const cookies = Array.isArray(responseHeaders['set-cookie'])
+            ? responseHeaders['set-cookie']
+            : [responseHeaders['set-cookie']]
+          responseHeaders['set-cookie'] = cookies.map((cookie: string) => {
+            // 确保Cookie包含SameSite=None; Secure
+            if (!cookie.includes('SameSite')) {
+              return `${cookie}; SameSite=None; Secure`
+            }
+            return cookie
+          })
+        }
+
+        // 移除阻止嵌入的X-Frame-Options头
+        delete responseHeaders['x-frame-options']
+        delete responseHeaders['X-Frame-Options']
+
+        // 修改Permissions-Policy头，移除ch-ua-form-factors
+        if (responseHeaders['permissions-policy']) {
+          const policies = Array.isArray(responseHeaders['permissions-policy'])
+            ? responseHeaders['permissions-policy']
+            : [responseHeaders['permissions-policy']]
+          responseHeaders['permissions-policy'] = policies.map((policy: string) => {
+            // 移除ch-ua-form-factors相关的策略
+            return policy.replace(/ch-ua-form-factors[^,]*,?/g, '').replace(/,,/g, ',').replace(/,$/, '')
+          })
+        }
+
+        // 修改CSP策略，允许嵌入
+        if (responseHeaders['content-security-policy']) {
+          const policies = Array.isArray(responseHeaders['content-security-policy'])
+            ? responseHeaders['content-security-policy']
+            : [responseHeaders['content-security-policy']]
+          responseHeaders['content-security-policy'] = policies.map((policy: string) => {
+            return policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;')
+          })
+        }
+        if (responseHeaders['Content-Security-Policy']) {
+          const policies = Array.isArray(responseHeaders['Content-Security-Policy'])
+            ? responseHeaders['Content-Security-Policy']
+            : [responseHeaders['Content-Security-Policy']]
+          responseHeaders['Content-Security-Policy'] = policies.map((policy: string) => {
+            return policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;')
+          })
+        }
+
+        callback({ cancel: false, responseHeaders })
+      }
+    )
+
+    console.log('[SessionManager] Gemini session configured successfully')
+  }
+
+  /**
    * 获取用户代理字符串
+   * 针对Gemini使用更完善的UA伪装，包含Windows Chrome的完整标识
    */
   private getUserAgent(providerId: string): string | undefined {
     const userAgents: Record<string, string> = {
-      kimi: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      grok: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      deepseek: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      doubao: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      qwen: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      copilot: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      gemini: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      kimi: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      grok: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      deepseek: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      doubao: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      qwen: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      copilot: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      // Gemini使用Windows Chrome UA，更不容易被识别为Electron
+      gemini: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
     }
 
     return userAgents[providerId]
+  }
+
+  /**
+   * 获取Sec-Ch-Ua头信息
+   * 用于完善浏览器伪装
+   */
+  private getSecChUa(): string {
+    return '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"'
   }
 
   /**
@@ -523,7 +659,7 @@ export class SessionManager extends EventEmitter {
 
     const decipher = crypto.createDecipheriv(this.encryptionConfig.algorithm, this.encryptionKey, iv)
 
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8')
+    let decrypted = decipher.update(encrypted.toString('hex'), 'hex', 'utf8')
     decrypted += decipher.final('utf8')
 
     return JSON.parse(decrypted)
