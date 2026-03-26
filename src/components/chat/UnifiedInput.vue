@@ -198,8 +198,8 @@
     <div
       class="collapse-toggle"
       :class="{ collapsed: isCollapsed }"
-      @click="toggleCollapse"
       :title="isCollapsed ? '展开输入框' : '收起输入框'"
+      @click="toggleCollapse"
     >
       <div class="collapse-arrow" />
     </div>
@@ -229,8 +229,7 @@ import PromptManager from './PromptManager.vue'
 const chatStore = useChatStore()
 
 // 组件事件
-const emit = defineEmits<{
-  (e: 'summary'): void
+const emit = defineEmits<{(e: 'summary'): void
 }>()
 
 const draggedProvider = ref<AIProvider | null>(null)
@@ -399,13 +398,13 @@ const handleDragEnd = (): void => {
 
 const handleDrop = (event: DragEvent, targetProvider: AIProvider): void => {
   event.preventDefault()
-  
+
   const target = event.target as HTMLElement
   const checkbox = target.closest('.provider-checkbox')
   if (checkbox) {
     checkbox.classList.remove('drag-over')
   }
-  
+
   if (!draggedProvider.value || draggedProvider.value.id === targetProvider.id) {
     draggedProvider.value = null
     return
@@ -500,10 +499,9 @@ const respondingAICount = computed(() => Object.values(aiStatusMap.value).filter
 const hasCompletedAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'completed'))
 
 // 是否可以进行总结
-const canSummarize = computed(() => {
+const canSummarize = computed(() =>
   // 至少有一个AI已完成回答，且没有AI正在回答中
-  return hasCompletedAI.value && !hasRespondingAI.value && loggedInCount.value > 0
-})
+  hasCompletedAI.value && !hasRespondingAI.value && loggedInCount.value > 0)
 
 const inputPlaceholder = computed(() => {
   if (loggedInCount.value === 0) {
@@ -879,7 +877,9 @@ const handleApplyPrompt = (prompt: any, userInput?: string): void => {
 
   const now = new Date()
   const date = now.toISOString().split('T')[0]
-  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  const datetime = now.toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
@@ -907,7 +907,9 @@ const handleApplyQuickPrompt = (): void => {
 
   const now = new Date()
   const date = now.toISOString().split('T')[0]
-  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  const datetime = now.toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
@@ -1022,7 +1024,7 @@ const startAIStatusMonitoringForProvider = async(providerId: string): Promise<vo
       console.warn('electronAPI不可用，无法启动AI状态监控')
       return
     }
-    if(providerId.includes('summary')) {
+    if (providerId.includes('summary')) {
       console.warn('总结模型不支持AI状态监控')
       return
     }
@@ -1077,7 +1079,7 @@ const stopAIStatusMonitoringForProvider = async(providerId: string): Promise<voi
       console.warn('electronAPI不可用，无法停止AI状态监控')
       return
     }
-    if(providerId.includes('summary')) {
+    if (providerId.includes('summary')) {
       return
     }
 

@@ -2,7 +2,7 @@
  * WebView Preload Script
  * This script is injected into the <webview> tag.
  * It exposes a secure API for the guest page to communicate with the main process.
- * 
+ *
  * 针对Gemini登录问题的特殊处理：
  * 1. 隐藏navigator.webdriver标志
  * 2. 模拟正常浏览器环境
@@ -14,7 +14,7 @@ console.log('[WebView Preload] Script loaded.')
 
 // 检测是否在Gemini或Google域名
 const isGoogleDomain = () => {
-  const hostname = window.location.hostname
+  const { hostname } = window.location
   return hostname.includes('google.com') || hostname.includes('googleusercontent.com')
 }
 
@@ -51,11 +51,9 @@ if (isGoogleDomain()) {
   try {
     const originalNotification = window.Notification
     Object.defineProperty(window, 'Notification', {
-      get: () => {
-        return class extends originalNotification {
-          static get permission() {
-            return 'default'
-          }
+      get: () => class extends originalNotification {
+        static get permission() {
+          return 'default'
         }
       },
       configurable: true
@@ -74,15 +72,23 @@ if (isGoogleDomain()) {
     // @ts-ignore
     window.chrome.runtime = {
       // @ts-ignore
-      OnInstalledReason: { CHROME_UPDATE: 'chrome_update', EXTENSION_UPDATE: 'extension_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update' },
+      OnInstalledReason: {
+        CHROME_UPDATE: 'chrome_update', EXTENSION_UPDATE: 'extension_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update'
+      },
       // @ts-ignore
       OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
       // @ts-ignore
-      PlatformArch: { ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64' },
+      PlatformArch: {
+        ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64'
+      },
       // @ts-ignore
-      PlatformNaclArch: { ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', MIPS64EL: 'mips64el', MIPSEL: 'mipsel', X86_32: 'x86-32', X86_64: 'x86-64' },
+      PlatformNaclArch: {
+        ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', MIPS64EL: 'mips64el', MIPSEL: 'mipsel', X86_32: 'x86-32', X86_64: 'x86-64'
+      },
       // @ts-ignore
-      PlatformOs: { ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win' },
+      PlatformOs: {
+        ANDROID: 'android', CROS: 'cros', LINUX: 'linux', MAC: 'mac', OPENBSD: 'openbsd', WIN: 'win'
+      },
       // @ts-ignore
       RequestUpdateCheckStatus: { NO_UPDATE: 'no_update', THROTTLED: 'throttled', UPDATE_AVAILABLE: 'update_available' }
     }

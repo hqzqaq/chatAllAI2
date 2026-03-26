@@ -22,34 +22,27 @@
       </div>
     </div>
 
-    <!-- 模型选择对话框 -->
-    <ModelSelectDialog
-      v-model:visible="modelSelectVisible"
-      :providers="allProviders"
-      :is-loading="summaryStore.isSummarizing"
-      :loading-text="summaryStore.progress.message"
-      :progress-percentage="summaryProgressPercentage"
-      @confirm="handleModelSelectConfirm"
-      @cancel="handleModelSelectCancel"
-    />
-
     <!-- 总结侧边栏 - 嵌入独立的AI卡片 -->
     <SummarySidebar
       v-model:visible="sidebarVisible"
       :original-provider-id="selectedSummaryProvider?.id || ''"
       :original-provider-name="selectedSummaryProvider?.name || ''"
       :original-provider="selectedSummaryProvider"
+      :available-providers="allProviders"
+      :selected-provider-id="selectedSummaryProviderId"
+      @model-change="handleSummaryModelChange"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {
+  computed, onMounted, onUnmounted, ref, watch
+} from 'vue'
 import { useChatStore, useLayoutStore, useSummaryStore } from '../stores'
 import { summaryService } from '../services/SummaryService'
 import UnifiedInput from '../components/chat/UnifiedInput.vue'
 import AICard from '../components/chat/AICard.vue'
-import ModelSelectDialog from '../components/summary/ModelSelectDialog.vue'
 import SummarySidebar from '../components/summary/SummarySidebar.vue'
 import { ElMessage } from 'element-plus'
 import type { AIProvider } from '../types'
@@ -58,12 +51,14 @@ const chatStore = useChatStore()
 const layoutStore = useLayoutStore()
 const summaryStore = useSummaryStore()
 
-// 对话框显示状态
-const modelSelectVisible = ref(false)
+// 总结侧边栏显示状态
 const sidebarVisible = ref(false)
 
 // 选中的总结模型
 const selectedSummaryProvider = ref<AIProvider | null>(null)
+
+// 默认总结模型ID
+const selectedSummaryProviderId = ref<string>('deepseek')
 
 // 已登录的AI提供商
 const loggedInProviders = computed(() => chatStore.loggedInProviders)
@@ -71,63 +66,49 @@ const loggedInProviders = computed(() => chatStore.loggedInProviders)
 // 所有AI提供商（用于选择总结模型）
 const allProviders = computed(() => chatStore.providers)
 
-// 总结进度百分比
-const summaryProgressPercentage = computed(() => {
-  const { collectedCount, totalCount } = summaryStore.progress
-  if (totalCount === 0) return 0
-  return Math.round((collectedCount / totalCount) * 100)
-})
-
 /**
  * 处理总结按钮点击
  */
 const handleSummaryClick = (): void => {
-  // 检查是否有AI完成回答
-  const hasCompletedAI = loggedInProviders.value.some(provider => {
-    // 这里简化处理，实际应该检查AI状态
-    return true
-  })
+  const providerId = selectedSummaryProviderId.value
+  const selectedProvider = chatStore.providers.find((p) => p.id === providerId)
 
-  if (!hasCompletedAI) {
-    ElMessage.warning('至少需要一个AI完成回答才能进行总结')
+  if (!selectedProvider) {
+    ElMessage.error('未找到默认总结模型')
     return
   }
 
-  // 打开模型选择对话框
-  modelSelectVisible.value = true
+  selectedSummaryProvider.value = selectedProvider
+  sidebarVisible.value = true
+
+  executeSummary(providerId)
 }
 
 /**
- * 处理模型选择确认
- * @param providerId 选中的AI提供商ID
+ * 执行总结
+ * @param providerId 总结模型ID
  */
-const handleModelSelectConfirm = async (providerId: string): Promise<void> => {
-  // 获取当前消息作为原始问题
+const executeSummary = async(providerId: string): Promise<void> => {
   const originalQuery = chatStore.currentMessage || '总结各AI的回答'
 
-  // 获取选中的AI提供商信息
-  const selectedProvider = chatStore.providers.find(p => p.id === providerId)
+  const selectedProvider = chatStore.providers.find((p) => p.id === providerId)
   if (!selectedProvider) {
     ElMessage.error('未找到选中的AI模型')
     return
   }
 
-  // 保存选中的总结模型
-  selectedSummaryProvider.value = selectedProvider
+  // 构建providers列表：已登录的模型 + 选中的总结模型（如果不在已登录列表中）
+  const providersForSummary = [...loggedInProviders.value]
+  if (!providersForSummary.find((p) => p.id === providerId)) {
+    providersForSummary.push(selectedProvider)
+  }
 
-  // 关闭模型选择对话框
-  modelSelectVisible.value = false
-
-  // 打开侧边栏
-  sidebarVisible.value = true
-
-  // 执行总结（传入所有已登录的提供商，使用summary-{providerId}作为目标）
   const success = await summaryService.executeSummary(
     {
       summaryProviderId: `summary-${providerId}`,
       originalQuery
     },
-    loggedInProviders.value
+    providersForSummary
   )
 
   if (success) {
@@ -136,13 +117,16 @@ const handleModelSelectConfirm = async (providerId: string): Promise<void> => {
 }
 
 /**
- * 处理模型选择取消
+ * 处理总结模型切换
+ * @param providerId 新的模型ID
  */
-const handleModelSelectCancel = (): void => {
-  modelSelectVisible.value = false
+const handleSummaryModelChange = (providerId: string): void => {
+  selectedSummaryProviderId.value = providerId
+  const selectedProvider = chatStore.providers.find((p) => p.id === providerId)
+  if (selectedProvider) {
+    selectedSummaryProvider.value = selectedProvider
+  }
 }
-
-
 
 // 计算属性
 const providers = computed(() => chatStore.providers)
@@ -229,6 +213,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
 onMounted(() => {
   // 初始化聊天数据
   chatStore.initializeConversations()
+
+  // 初始化总结侧边栏 - 默认使用 deepseek
+  const defaultProvider = chatStore.providers.find((p) => p.id === 'deepseek')
+  if (defaultProvider) {
+    selectedSummaryProvider.value = defaultProvider
+    sidebarVisible.value = true
+  }
 
   // 立即更新窗口大小，确保初始布局计算正确
   layoutStore.updateWindowSize(window.innerWidth, window.innerHeight)

@@ -61,7 +61,7 @@ export function exportToMarkdown(result: SummaryResult, config: ExportConfig = {
   lines.push(`- **原始问题**: ${result.originalQuery}`)
   lines.push(`- **总结模型**: ${result.summaryProviderName}`)
   lines.push(`- **生成时间**: ${result.timestamp.toLocaleString('zh-CN')}`)
-  lines.push(`- **参与AI数量**: ${result.responses.filter(r => r.success).length}`)
+  lines.push(`- **参与AI数量**: ${result.responses.filter((r) => r.success).length}`)
   lines.push('')
 
   // 总结内容
@@ -90,13 +90,13 @@ export function exportToMarkdown(result: SummaryResult, config: ExportConfig = {
   }
 
   // 失败的AI列表
-  const failedResponses = result.responses.filter(r => !r.success)
+  const failedResponses = result.responses.filter((r) => !r.success)
   if (failedResponses.length > 0) {
     lines.push('---')
     lines.push('')
     lines.push('## 未能获取回答的AI')
     lines.push('')
-    failedResponses.forEach(response => {
+    failedResponses.forEach((response) => {
       lines.push(`- **${response.providerName}**: ${response.error || '获取失败'}`)
     })
     lines.push('')
@@ -112,8 +112,8 @@ export function exportToMarkdown(result: SummaryResult, config: ExportConfig = {
  * @returns HTML 内容
  */
 export function exportToHTML(result: SummaryResult, config: ExportConfig = { format: 'html' }): string {
-  const failedResponses = result.responses.filter(r => !r.success)
-  const successfulResponses = result.responses.filter(r => r.success)
+  const failedResponses = result.responses.filter((r) => !r.success)
+  const successfulResponses = result.responses.filter((r) => r.success)
 
   const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -290,7 +290,7 @@ export function exportToHTML(result: SummaryResult, config: ExportConfig = { for
     ${failedResponses.length > 0 ? `
     <hr>
     <h2>未能获取回答的AI</h2>
-    ${failedResponses.map(response => `
+    ${failedResponses.map((response) => `
     <div class="error-item">
       <strong>${escapeHtml(response.providerName)}:</strong> ${escapeHtml(response.error || '获取失败')}
     </div>

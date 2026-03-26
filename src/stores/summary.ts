@@ -181,7 +181,7 @@ export const useSummaryStore = defineStore('summary', () => {
     const historyItem: SummaryHistoryItem = {
       id: result.id,
       querySummary: result.originalQuery.length > 50
-        ? result.originalQuery.substring(0, 50) + '...'
+        ? `${result.originalQuery.substring(0, 50)}...`
         : result.originalQuery,
       summaryProviderName: result.summaryProviderName,
       timestamp: result.timestamp,
@@ -205,18 +205,17 @@ export const useSummaryStore = defineStore('summary', () => {
    * @param id 总结ID
    * @returns 是否成功加载
    */
-  const loadSummaryFromHistory = (id: string): boolean => {
+  const loadSummaryFromHistory = (id: string): boolean =>
     // 这里可以实现从本地存储加载完整总结的逻辑
     // 目前仅返回false，表示需要从服务重新获取
-    return false
-  }
+    false
 
   /**
    * 删除历史记录项
    * @param id 总结ID
    */
   const removeFromHistory = (id: string): void => {
-    const index = history.value.findIndex(item => item.id === id)
+    const index = history.value.findIndex((item) => item.id === id)
     if (index > -1) {
       history.value.splice(index, 1)
       saveHistoryToStorage()
@@ -279,7 +278,7 @@ export const useSummaryStore = defineStore('summary', () => {
     if (!currentSummary.value) return
 
     const existingIndex = currentSummary.value.responses.findIndex(
-      r => r.providerId === providerId
+      (r) => r.providerId === providerId
     )
 
     const response: AIResponse = {

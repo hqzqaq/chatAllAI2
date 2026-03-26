@@ -17,7 +17,7 @@ export function getSendMessageScript(providerId: string): string {
     gemini: () => getGeminiLastMessageScript(),
     chatgpt: () => getChatGPTLastMessageScript(),
     mimo: () => getMimoLastMessageScript(),
-    minimax: () => getMinimaxLastMessageScript(),
+    minimax: () => getMinimaxLastMessageScript()
   }
 
   const scriptGenerator = scripts[providerId]

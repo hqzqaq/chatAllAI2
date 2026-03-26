@@ -7,8 +7,8 @@
     <div
       class="collapse-toggle"
       :class="{ collapsed: isCollapsed }"
-      @click="toggleCollapse"
       :title="isCollapsed ? '展开总结面板' : '收起总结面板'"
+      @click="toggleCollapse"
     >
       <div class="toggle-button">
         <div class="collapse-arrow" />
@@ -16,11 +16,42 @@
     </div>
 
     <!-- 侧边栏内容 -->
-    <div v-show="!isCollapsed" class="sidebar-content">
+    <div
+      v-show="!isCollapsed"
+      class="sidebar-content"
+    >
+      <!-- 侧边栏头部 - 模型选择 -->
+      <div class="sidebar-header">
+        <span class="header-title">AI 总结</span>
+        <el-select
+          v-model="selectedModelId"
+          size="small"
+          class="model-select"
+          @change="handleModelChange"
+        >
+          <el-option
+            v-for="p in availableProviders"
+            :key="p.id"
+            :label="p.name"
+            :value="p.id"
+          >
+            <div class="provider-option">
+              <img
+                :src="p.icon"
+                class="provider-icon-small"
+                @error="handleIconError"
+              >
+              <span>{{ p.name }}</span>
+            </div>
+          </el-option>
+        </el-select>
+      </div>
+
       <!-- AI卡片区域 -->
       <div class="ai-card-container">
         <AICard
           v-if="provider"
+          :key="summaryProviderId"
           :provider="provider"
           :config="cardConfig"
           class="summary-ai-card"
@@ -47,6 +78,10 @@ interface Props {
   originalProvider: AIProvider | null
   /** 是否显示 */
   visible: boolean
+  /** 可用模型列表 */
+  availableProviders: AIProvider[]
+  /** 当前选中的模型ID */
+  selectedProviderId: string
 }
 
 const props = defineProps<Props>()
@@ -57,6 +92,8 @@ const props = defineProps<Props>()
 interface Emits {
   /** 更新显示状态 */
   (e: 'update:visible', visible: boolean): void
+  /** 模型切换事件 */
+  (e: 'model-change', providerId: string): void
 }
 
 const emit = defineEmits<Emits>()
@@ -64,9 +101,23 @@ const emit = defineEmits<Emits>()
 // 折叠状态
 const isCollapsed = ref(false)
 
+// 选中的模型ID
+const selectedModelId = ref(props.selectedProviderId)
+
 // 切换折叠
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
+}
+
+// 处理模型切换
+const handleModelChange = (providerId: string) => {
+  emit('model-change', providerId)
+}
+
+// 处理图标加载错误
+const handleIconError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.src = '/icons/default.svg'
 }
 
 // 总结模型的providerId（加summary后缀）
@@ -85,8 +136,8 @@ const provider = computed((): AIProvider | null => {
     name: `${props.originalProviderName} (总结)`,
     webviewId: `webview-${summaryProviderId.value}`,
     isEnabled: true,
-    isLoggedIn: true, // 设置为已登录，让AICard直接加载WebView
-    loadingState: 'loading' // 设置为loading状态，让WebView开始加载
+    isLoggedIn: props.originalProvider.isLoggedIn,
+    loadingState: props.originalProvider.isLoggedIn ? 'loaded' : 'loading'
   }
 })
 
@@ -109,6 +160,11 @@ watch(() => props.visible, (newVisible) => {
   if (newVisible) {
     isCollapsed.value = false
   }
+})
+
+// 监听selectedProviderId变化
+watch(() => props.selectedProviderId, (newId) => {
+  selectedModelId.value = newId
 })
 </script>
 
@@ -183,6 +239,7 @@ watch(() => props.visible, (newVisible) => {
   padding: 0 16px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   border-bottom: 1px solid var(--el-border-color);
   background: var(--el-fill-color-light);
 }
@@ -191,6 +248,23 @@ watch(() => props.visible, (newVisible) => {
   font-weight: 600;
   font-size: 16px;
   color: var(--el-text-color-primary);
+}
+
+.model-select {
+  width: 150px;
+}
+
+.provider-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-icon-small {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  object-fit: contain;
 }
 
 .ai-card-container {

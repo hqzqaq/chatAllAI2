@@ -26,7 +26,7 @@ export function getStatusMonitorScript(providerId: string): string {
     gemini: getGeminiStatusMonitorScript,
     chatgpt: getChatGPTStatusMonitorScript,
     mimo: getMimoStatusMonitorScript,
-    minimax: getMinimaxStatusMonitorScript,
+    minimax: getMinimaxStatusMonitorScript
   }
 
   const scriptGenerator = scripts[providerId]
@@ -443,7 +443,7 @@ export function getSupportedProviders(): string[] {
     'gemini',
     'chatgpt',
     'mimo',
-    'minimax',
+    'minimax'
   ]
 }
 

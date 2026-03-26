@@ -138,7 +138,7 @@ export function generateSummaryPrompt(
   const prompt = customPrompt || DEFAULT_SUMMARY_PROMPT
 
   const formattedResponses = responses
-    .filter(r => r.success && r.content.trim())
+    .filter((r) => r.success && r.content.trim())
     .map((r, index) => `### AI ${index + 1}: ${r.providerName}\n${r.content}`)
     .join('\n\n')
 
@@ -192,14 +192,14 @@ export function generateComparisonPrompt(
  * @returns 格式化的失败AI列表文本
  */
 export function getFailedResponsesText(responses: AIResponse[]): string {
-  const failedResponses = responses.filter(r => !r.success)
+  const failedResponses = responses.filter((r) => !r.success)
 
   if (failedResponses.length === 0) {
     return ''
   }
 
   const failedList = failedResponses
-    .map(r => `- ${r.providerName}${r.error ? `: ${r.error}` : ''}`)
+    .map((r) => `- ${r.providerName}${r.error ? `: ${r.error}` : ''}`)
     .join('\n')
 
   return `\n\n## 未能获取回答的AI\n以下AI的回答未能成功获取：\n${failedList}`

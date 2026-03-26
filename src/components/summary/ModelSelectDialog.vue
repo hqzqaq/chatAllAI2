@@ -49,7 +49,10 @@
         </div>
       </div>
 
-      <div v-if="selectedProviderInfo" class="selected-info">
+      <div
+        v-if="selectedProviderInfo"
+        class="selected-info"
+      >
         <el-alert
           :title="`将使用 ${selectedProviderInfo.name} 进行总结`"
           type="info"
@@ -64,13 +67,18 @@
         </el-alert>
       </div>
 
-      <div v-if="isLoading" class="loading-section">
+      <div
+        v-if="isLoading"
+        class="loading-section"
+      >
         <el-progress
           :percentage="progressPercentage"
           :status="progressStatus"
           :stroke-width="8"
         />
-        <p class="loading-text">{{ loadingText }}</p>
+        <p class="loading-text">
+          {{ loadingText }}
+        </p>
       </div>
     </div>
 
@@ -151,14 +159,10 @@ const dialogVisible = computed({
 })
 
 // 所有AI提供商列表（显示所有模型，包括未登录的）
-const availableProviders = computed(() => {
-  return props.providers
-})
+const availableProviders = computed(() => props.providers)
 
 // 选中的AI提供商信息
-const selectedProviderInfo = computed(() => {
-  return availableProviders.value.find(p => p.id === selectedProvider.value)
-})
+const selectedProviderInfo = computed(() => availableProviders.value.find((p) => p.id === selectedProvider.value))
 
 /**
  * 选择AI提供商
@@ -201,7 +205,7 @@ watch(() => props.visible, (newVisible) => {
     selectedProvider.value = ''
 
     // 如果有推荐的且可用，自动选中
-    const recommended = availableProviders.value.find(p => p.id === recommendedProvider.value)
+    const recommended = availableProviders.value.find((p) => p.id === recommendedProvider.value)
     if (recommended) {
       selectedProvider.value = recommended.id
     } else if (availableProviders.value.length > 0) {

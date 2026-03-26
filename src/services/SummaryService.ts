@@ -36,6 +36,7 @@ interface SendMessageResult {
  */
 export class SummaryService {
   private static instance: SummaryService
+
   private abortController: AbortController | null = null
 
   /**
@@ -61,7 +62,7 @@ export class SummaryService {
     console.log(`开始收集 ${providers.length} 个AI的回答`)
 
     // 并发收集所有AI的回答
-    const collectPromises = providers.map(async (provider, index) => {
+    const collectPromises = providers.map(async(provider, index) => {
       try {
         console.log(`正在收集 ${provider.name} 的回答...`)
         const content = await this.fetchResponseFromProvider(provider)
@@ -107,18 +108,16 @@ export class SummaryService {
     await Promise.all(collectPromises)
 
     // 按原始顺序排序
-    const sortedResponses = providers.map(provider =>
-      responses.find(r => r.providerId === provider.id) || {
-        providerId: provider.id,
-        providerName: provider.name,
-        content: '',
-        timestamp: new Date(),
-        success: false,
-        error: '未找到响应'
-      }
-    )
+    const sortedResponses = providers.map((provider) => responses.find((r) => r.providerId === provider.id) || {
+      providerId: provider.id,
+      providerName: provider.name,
+      content: '',
+      timestamp: new Date(),
+      success: false,
+      error: '未找到响应'
+    })
 
-    const successResponses = sortedResponses.filter(r => r.success && typeof r.content === 'string' && r.content.trim())
+    const successResponses = sortedResponses.filter((r) => r.success && typeof r.content === 'string' && r.content.trim())
 
     console.log(`收集完成: ${successResponses.length}/${providers.length} 个AI回答成功`)
 
@@ -162,9 +161,7 @@ export class SummaryService {
         // 执行脚本获取回答
         const result = await Promise.race([
           window.electronAPI.executeScriptInWebView(provider.webviewId, script),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('获取回答超时')), 10000)
-          )
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('获取回答超时')), 10000))
         ])
 
         if (typeof result === 'string') {
@@ -302,14 +299,14 @@ export class SummaryService {
       : options.summaryProviderId
 
     // 获取执行总结的AI提供商
-    const summaryProvider = providers.find(p => p.id === originalProviderId)
+    const summaryProvider = providers.find((p) => p.id === originalProviderId)
     if (!summaryProvider) {
       ElMessage.error('未找到选中的总结模型')
       return false
     }
 
     // 获取所有已激活的AI模型（包括执行总结的模型本身）
-    const targetProviders = providers.filter(p => p.isLoggedIn)
+    const targetProviders = providers.filter((p) => p.isLoggedIn)
 
     if (targetProviders.length === 0) {
       ElMessage.warning('至少需要有一个已登录的AI模型才能进行总结')
@@ -396,7 +393,7 @@ export class SummaryService {
    * @returns Promise
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }
 

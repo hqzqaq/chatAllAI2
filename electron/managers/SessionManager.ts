@@ -234,8 +234,8 @@ export class SessionManager extends EventEmitter {
         if (!details.requestHeaders['Accept-Language']) {
           details.requestHeaders['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8'
         }
-        if (!details.requestHeaders['Accept']) {
-          details.requestHeaders['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        if (!details.requestHeaders.Accept) {
+          details.requestHeaders.Accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         }
 
         // 移除可能暴露Electron身份的请求头
@@ -285,10 +285,9 @@ export class SessionManager extends EventEmitter {
           const policies = Array.isArray(responseHeaders['permissions-policy'])
             ? responseHeaders['permissions-policy']
             : [responseHeaders['permissions-policy']]
-          responseHeaders['permissions-policy'] = policies.map((policy: string) => {
+          responseHeaders['permissions-policy'] = policies.map((policy: string) =>
             // 移除ch-ua-form-factors相关的策略
-            return policy.replace(/ch-ua-form-factors[^,]*,?/g, '').replace(/,,/g, ',').replace(/,$/, '')
-          })
+            policy.replace(/ch-ua-form-factors[^,]*,?/g, '').replace(/,,/g, ',').replace(/,$/, ''))
         }
 
         // 修改CSP策略，允许嵌入
@@ -296,17 +295,13 @@ export class SessionManager extends EventEmitter {
           const policies = Array.isArray(responseHeaders['content-security-policy'])
             ? responseHeaders['content-security-policy']
             : [responseHeaders['content-security-policy']]
-          responseHeaders['content-security-policy'] = policies.map((policy: string) => {
-            return policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;')
-          })
+          responseHeaders['content-security-policy'] = policies.map((policy: string) => policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
         }
         if (responseHeaders['Content-Security-Policy']) {
           const policies = Array.isArray(responseHeaders['Content-Security-Policy'])
             ? responseHeaders['Content-Security-Policy']
             : [responseHeaders['Content-Security-Policy']]
-          responseHeaders['Content-Security-Policy'] = policies.map((policy: string) => {
-            return policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;')
-          })
+          responseHeaders['Content-Security-Policy'] = policies.map((policy: string) => policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
         }
 
         callback({ cancel: false, responseHeaders })

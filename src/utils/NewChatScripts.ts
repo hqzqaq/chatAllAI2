@@ -26,7 +26,7 @@ export function getNewChatScript(providerId: string): string {
     gemini: getGeminiNewChatScript(),
     chatgpt: getChatGPTNewChatScript(),
     mimo: getMimoNewChatScript(),
-    minimax: getMinimaxNewChatScript(),
+    minimax: getMinimaxNewChatScript()
   }
 
   return scripts[providerId] || getGenericNewChatScript()
@@ -610,7 +610,6 @@ function getChatGPTNewChatScript(): string {
     })()
   `
 }
-
 
 /**
  * mimo新建对话脚本

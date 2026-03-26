@@ -95,6 +95,19 @@ const currentUrl = ref('')
 // 计算属性
 const webviewId = computed(() => `webview-${props.provider.id}`)
 
+// 计算原始 providerId（处理 summary- 前缀）
+const originalProviderId = computed(() => {
+  let providerId = props.provider.id
+  // 对于总结模型，使用原模型的 providerId
+  if (providerId.startsWith('summary-')) {
+    providerId = providerId.replace('summary-', '')
+  }
+  return providerId
+})
+
+// 计算 partition - 对于总结模型，使用原模型的 partition
+const partition = computed(() => `persist:${originalProviderId.value}`)
+
 /**
  * 创建WebView元素
  */
@@ -127,7 +140,7 @@ const createWebView = async(): Promise<void> => {
   webview.setAttribute('websecurity', 'true')
   webview.setAttribute('allowpopups', 'true')
   webview.setAttribute('useragent', getUserAgent())
-  webview.setAttribute('partition', `persist:${props.provider.id}`)
+  webview.setAttribute('partition', partition.value)
 
   // 设置preload脚本
   if (window.electronAPI) {
@@ -305,7 +318,7 @@ const saveSession = async(): Promise<void> => {
   if (!window.electronAPI) return
 
   try {
-    await window.electronAPI.saveSession({ providerId: props.provider.id })
+    await window.electronAPI.saveSession({ providerId: originalProviderId.value })
     console.log(`Session saved for ${props.provider.name}`)
   } catch (error) {
     console.warn(`Failed to save session for ${props.provider.name}:`, error)
@@ -321,7 +334,7 @@ const loadSession = async(): Promise<void> => {
   sessionLoaded.value = true
 
   try {
-    const response = await window.electronAPI.loadSession({ providerId: props.provider.id })
+    const response = await window.electronAPI.loadSession({ providerId: originalProviderId.value })
     if (response.exists && response.sessionData) {
       console.log(`Session loaded for ${props.provider.name}`)
       // 会话数据已经在后端恢复，这里只需要检查登录状态

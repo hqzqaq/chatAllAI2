@@ -169,7 +169,7 @@ export class IPCHandler extends EventEmitter {
     })
 
     // 新增：清除指定provider的存储数据（用于解决Gemini登录问题）
-    ipcMain.handle('clear-provider-storage', async (event, providerId: string) => {
+    ipcMain.handle('clear-provider-storage', async(event, providerId: string) => {
       try {
         console.log(`[IPCHandler] Clearing storage for provider: ${providerId}`)
 
@@ -198,10 +198,9 @@ export class IPCHandler extends EventEmitter {
           })
           console.log(`[IPCHandler] Storage cleared successfully for ${providerId}`)
           return { success: true }
-        } else {
-          console.warn(`[IPCHandler] No session found for ${providerId}`)
-          return { success: false, error: 'Session not found' }
         }
+        console.warn(`[IPCHandler] No session found for ${providerId}`)
+        return { success: false, error: 'Session not found' }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         console.error(`[IPCHandler] Failed to clear storage for ${providerId}:`, errorMessage)
@@ -282,7 +281,7 @@ export class IPCHandler extends EventEmitter {
   ): void {
     this.invokeHandlers.set(channel, handler)
 
-    ipcMain.handle(channel, async (event: IpcMainInvokeEvent, data: T) => {
+    ipcMain.handle(channel, async(event: IpcMainInvokeEvent, data: T) => {
       try {
         this.log(`Handling invoke: ${channel}`, data)
         const result = await handler(data, event)
@@ -431,7 +430,7 @@ export class IPCHandler extends EventEmitter {
 
       this.log('[IPC] Generated send script:', sendScript)
 
-      const webviewId = data.webviewId.includes('webview-') ? data.webviewId + '-element' : 'webview-' + data.webviewId + '-element'
+      const webviewId = data.webviewId.includes('webview-') ? `${data.webviewId}-element` : `webview-${data.webviewId}-element`
 
       // 避免两层转义：直接将sendScript作为字符串传递给WebView
       const script = `
@@ -731,7 +730,7 @@ export class IPCHandler extends EventEmitter {
       if (!mainWindow || mainWindow.isDestroyed()) {
         throw new Error('Main window not available')
       }
-      const webviewId = data.webviewId.includes('webview-') ? data.webviewId + '-element' : 'webview-' + data.webviewId + '-element'
+      const webviewId = data.webviewId.includes('webview-') ? `${data.webviewId}-element` : `webview-${data.webviewId}-element`
 
       // 执行JavaScript代码
       const script = `
@@ -999,7 +998,13 @@ export class IPCHandler extends EventEmitter {
 
       // 获取webview对应的session - 使用providerId而不是webviewId
       // 首先需要从webviewId映射到providerId
-      const providerId = data.webviewId.replace('webview-', '')
+      let providerId = data.webviewId.replace('webview-', '')
+
+      // 对于总结模式的provider（id格式为summary-{originalId}），使用原始provider的session
+      if (providerId.startsWith('summary-')) {
+        providerId = providerId.replace('summary-', '')
+        this.log('[IPC] Detected summary provider, using original provider session:', providerId)
+      }
 
       // 检查会话是否存在，如果不存在则创建
       let session = this.sessionManager.getSession(providerId)
