@@ -41,7 +41,7 @@ export function getLoginCheckScript(providerId: string): string {
       // 检查Copilot的登录状态
       !(document.querySelector('[alt="Profile image"]'))
     `,
-    glm: `!document.querySelector(".login-btn")`,
+    glm: '!document.querySelector(".login-btn")',
     yuanbao: `
       // 检查yuanbao的登录状态
       !(document.querySelector('.agent-dialogue__tool__login') && 
