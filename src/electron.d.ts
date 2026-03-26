@@ -33,7 +33,7 @@ interface ElectronAPI {
   // AI状态监控
   startAIStatusMonitoring(data: { webviewId: string; providerId: string }): Promise<{ success: boolean; error?: string }>
   stopAIStatusMonitoring(data: { providerId: string }): Promise<{ success: boolean; error?: string }>
-  onAIStatusChange(callback: (data: any) => void): void
+  onAIStatusChange(callback: (data: any) => void): () => void
   removeAllListeners(channel: string): void
 }
 

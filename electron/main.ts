@@ -4,6 +4,28 @@ import { SessionManager } from './managers/SessionManager'
 import { IPCHandler } from './managers/IPCHandler'
 
 /**
+ * 配置Electron命令行开关
+ * 解决Gemini登录的Cookie和第三方Cookie拦截问题
+ */
+function configureCommandLineSwitches(): void {
+  console.log('[Main] Configuring command line switches for Gemini compatibility')
+
+  // 禁用第三方Cookie拦截 - 解决Google登录的Cookie问题
+  app.commandLine.appendSwitch('disable-features', 'ThirdPartyCookieBlocking')
+
+  // 禁用站点隔离试验 - 减少跨域限制
+  app.commandLine.appendSwitch('disable-site-isolation-trials')
+
+  // 允许所有Cookie - 确保Google登录流程正常
+  app.commandLine.appendSwitch('disable-features', 'SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure')
+
+  console.log('[Main] Command line switches configured')
+}
+
+// 在应用ready之前配置命令行开关
+configureCommandLineSwitches()
+
+/**
  * 应用管理器实例
  */
 let windowManager: WindowManager | null = null
@@ -76,7 +98,6 @@ function setupEventListeners(): void {
  */
 app.whenReady().then(() => {
   initializeApp()
-
   app.on('activate', async() => {
     // 在 macOS 上，当点击 dock 图标并且没有其他窗口打开时，
     // 通常在应用程序中重新创建一个窗口。

@@ -243,3 +243,4 @@ export interface PerformanceMetrics {
 export * from './errors'
 export * from './events'
 export * from './ipc'
+export * from './summary'

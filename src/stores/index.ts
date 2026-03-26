@@ -4,3 +4,4 @@
 export { useAppStore } from './app'
 export { useChatStore } from './chat'
 export { useLayoutStore } from './layout'
+export { useSummaryStore } from './summary'

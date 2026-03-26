@@ -95,6 +95,19 @@ const currentUrl = ref('')
 // 计算属性
 const webviewId = computed(() => `webview-${props.provider.id}`)
 
+// 计算原始 providerId（处理 summary- 前缀）
+const originalProviderId = computed(() => {
+  let providerId = props.provider.id
+  // 对于总结模型，使用原模型的 providerId
+  if (providerId.startsWith('summary-')) {
+    providerId = providerId.replace('summary-', '')
+  }
+  return providerId
+})
+
+// 计算 partition - 对于总结模型，使用原模型的 partition
+const partition = computed(() => `persist:${originalProviderId.value}`)
+
 /**
  * 创建WebView元素
  */
@@ -127,7 +140,7 @@ const createWebView = async(): Promise<void> => {
   webview.setAttribute('websecurity', 'true')
   webview.setAttribute('allowpopups', 'true')
   webview.setAttribute('useragent', getUserAgent())
-  webview.setAttribute('partition', `persist:${props.provider.id}`)
+  webview.setAttribute('partition', partition.value)
 
   // 设置preload脚本
   if (window.electronAPI) {
@@ -160,132 +173,12 @@ const getUserAgent = (): string => {
 }
 
 /**
- * 判断是否是重要的导航（需要显示加载状态）
- */
-const isSignificantNavigation = (newUrl: string): boolean => {
-  if (!currentUrl.value) return true // 首次加载
-
-  try {
-    const current = new URL(currentUrl.value)
-    const next = new URL(newUrl)
-
-    // 如果域名不同，认为是重要导航
-    if (current.hostname !== next.hostname) {
-      return true
-    }
-
-    // 针对不同AI网站的特殊处理
-    const { hostname } = current
-
-    // kimi - 对话ID变化不算重要导航
-    if (hostname.includes('kimi.com')) {
-      const currentPath = current.pathname
-      const nextPath = next.pathname
-
-      // /c/xxx 到 /c/yyy 的变化不重要
-      if (/^\/c\/[a-f0-9-]+/.test(currentPath) && /^\/c\/[a-f0-9-]+/.test(nextPath)) {
-        return false
-      }
-      return false
-    }
-
-    // 豆包 - 聊天相关的导航不重要
-    if (hostname.includes('doubao.com')) {
-      const currentPath = current.pathname
-      const nextPath = next.pathname
-
-      // 聊天页面内的导航不重要
-      if (currentPath.includes('/chat') && nextPath.includes('/chat')) {
-        return false
-      }
-
-      // 对话ID变化不重要
-      if (/\/chat\/[a-f0-9-]+/.test(currentPath) && /\/chat\/[a-f0-9-]+/.test(nextPath)) {
-        return false
-      }
-      return false
-    }
-
-    // Grok - 对话页面内导航不重要，但其他导航重要
-    if (hostname.includes('grok.com')) {
-      const currentPath = current.pathname
-      const nextPath = next.pathname
-
-      // 对话页面内导航不重要（不需要显示加载状态）
-      if (currentPath.includes('/c/') && nextPath.includes('/c/')) {
-        return false
-      }
-
-      return false
-    }
-
-    // DeepSeek - 聊天导航不重要
-    if (hostname.includes('deepseek.com')) {
-      const currentPath = current.pathname
-      const nextPath = next.pathname
-
-      if (currentPath.includes('/chat') && nextPath.includes('/chat')) {
-        return false
-      }
-      return false
-    }
-
-    // Qwen - 对话导航不重要
-    if (hostname.includes('tongyi.aliyun.com')) {
-      const currentPath = current.pathname
-      const nextPath = next.pathname
-
-      if (currentPath.includes('/qianwen') && nextPath.includes('/qianwen')) {
-        return false
-      }
-    }
-
-    // Copilot - 聊天导航不重要，但登录相关页面是重要导航
-    if (hostname.includes('copilot.microsoft.com')) {
-      const currentPath = current.pathname
-      const nextPath = next.pathname
-
-      // 如果导航到登录页面或Microsoft认证页面，这是重要导航
-      if (nextPath.includes('/login') || next.hostname.includes('login.microsoftonline.com')) {
-        return false
-      }
-
-      // 只有聊天页面之间的导航才不重要
-      if (currentPath.includes('/chats') && nextPath.includes('/chats')) {
-        return false
-      }
-    }
-
-    // yuanbao - 聊天导航不重要
-    if (hostname.includes('yuanbao.tencent.com')) {
-      return false
-    }
-
-    // GLM - 聊天导航不重要
-    if (hostname.includes('chatglm.cn')) {
-      return false
-    }
-
-    // 通用规则：查询参数或锚点变化不重要
-    if (current.origin + current.pathname === next.origin + next.pathname) {
-      return false
-    }
-
-    return false // 其他情况认为是重要导航
-  } catch (error) {
-    console.warn(`Failed to parse URLs for navigation check: ${error}`)
-    // URL解析失败，保守起见认为是重要导航
-    return false
-  }
-}
-
-/**
  * 绑定WebView事件
  */
 const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
   // 页面开始加载
   webview.addEventListener('did-start-loading', () => {
-    const isSignificant = isInitialLoad.value || isSignificantNavigation(webview.src)
+    const isSignificant = isInitialLoad.value
     console.log(`${props.provider.name} did-start-loading, significant: ${isSignificant}, URL: ${webview.src}`)
 
     // 只有在初始加载或URL发生重大变化时才显示加载状态
@@ -304,7 +197,7 @@ const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
     // 更新当前URL
     currentUrl.value = newUrl
 
-    const isSignificant = wasInitialLoad || isSignificantNavigation(newUrl)
+    const isSignificant = wasInitialLoad
     console.log(`${props.provider.name} did-finish-load, significant: ${isSignificant}, URL: ${newUrl}`)
 
     // 只有在初始加载或重大导航时才更新加载状态
@@ -397,7 +290,11 @@ const checkLoginStatus = async(): Promise<void> => {
       // chatgpt 有较强的脚本执行检测，频繁执行脚本会导致页面不可用，这里默认设置为已登录
       isLoggedIn = true
     } else {
-      const loginCheckScript = getLoginCheckScript(props.provider.id)
+      // 对于总结模式的provider（id格式为summary-{originalId}），使用原始provider的登录检测脚本
+      const providerId = props.provider.id.startsWith('summary-')
+        ? props.provider.id.replace('summary-', '')
+        : props.provider.id
+      const loginCheckScript = getLoginCheckScript(providerId)
       const result = await webviewElement.value.executeJavaScript(loginCheckScript)
       isLoggedIn = Boolean(result)
     }
@@ -421,7 +318,7 @@ const saveSession = async(): Promise<void> => {
   if (!window.electronAPI) return
 
   try {
-    await window.electronAPI.saveSession({ providerId: props.provider.id })
+    await window.electronAPI.saveSession({ providerId: originalProviderId.value })
     console.log(`Session saved for ${props.provider.name}`)
   } catch (error) {
     console.warn(`Failed to save session for ${props.provider.name}:`, error)
@@ -437,7 +334,7 @@ const loadSession = async(): Promise<void> => {
   sessionLoaded.value = true
 
   try {
-    const response = await window.electronAPI.loadSession({ providerId: props.provider.id })
+    const response = await window.electronAPI.loadSession({ providerId: originalProviderId.value })
     if (response.exists && response.sessionData) {
       console.log(`Session loaded for ${props.provider.name}`)
       // 会话数据已经在后端恢复，这里只需要检查登录状态

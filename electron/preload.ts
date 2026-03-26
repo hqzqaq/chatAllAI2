@@ -72,9 +72,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 获取预加载脚本路径
   getPreloadPath: (preloadName: string) => ipcRenderer.invoke('get-preload-path', preloadName),
 
+  // 清除指定provider的存储数据（用于解决Gemini登录问题）
+  clearProviderStorage: (providerId: string) => ipcRenderer.invoke('clear-provider-storage', providerId),
+
   // 事件监听
   onAIStatusChange: (callback: (data: any) => void) => {
-    const handler = (event, data) => callback(data)
+    const handler = (event: Electron.IpcRendererEvent, data: any) => callback(data)
     ipcRenderer.on(IPCChannel.AI_STATUS_CHANGE, handler)
     // 返回一个取消订阅函数
     return () => {
@@ -168,6 +171,12 @@ declare global {
       // AI状态监控
       startAIStatusMonitoring: (data: any) => Promise<any>
       stopAIStatusMonitoring: (data: any) => Promise<any>
+
+      // 获取预加载脚本路径
+      getPreloadPath: (preloadName: string) => Promise<string>
+
+      // 清除指定provider的存储数据（用于解决Gemini登录问题）
+      clearProviderStorage: (providerId: string) => Promise<{ success: boolean; error?: string }>
 
       // 事件监听
       onMessageReceived: (callback: (data: any) => void) => void

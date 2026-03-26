@@ -46,7 +46,7 @@ export function getSendMessageScript(providerId: string, message: string): strin
     gemini: getGeminiScript(escapedMessage),
     chatgpt: getChatGPTScript(escapedMessage),
     mimo: getMimoScript(escapedMessage),
-    minimax: getMinimaxScript(escapedMessage),
+    minimax: getMinimaxScript(escapedMessage)
   }
 
   return scripts[providerId] || getGenericScript(escapedMessage)
@@ -626,7 +626,7 @@ function getMimoScript(escapedMessage: string): string {
  * Minimax发送脚本
  */
 function getMinimaxScript(escapedMessage: string): string {
-    return `
+  return `
     (function() {
       // --- Configuration ---
       const CHAT_INPUT_SELECTOR = '[contenteditable="true"]';
@@ -687,8 +687,6 @@ function getMinimaxScript(escapedMessage: string): string {
     })()
   `
 }
-
-
 
 /**
  * 获取所有支持的提供商列表

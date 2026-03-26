@@ -1,5 +1,8 @@
 <template>
-  <div class="unified-input">
+  <div
+    class="unified-input"
+    :class="{ collapsed: isCollapsed }"
+  >
     <el-card class="input-card">
       <div class="input-header">
         <div class="header-left">
@@ -20,166 +23,186 @@
         </div>
       </div>
 
-      <!-- 模型选择器 -->
-      <div class="model-selector">
-        <div class="selector-header">
-          <el-icon class="selector-icon">
-            <Select />
-          </el-icon>
-          <span class="selector-title">选择AI模型</span>
-        </div>
-        <el-checkbox-group
-          v-model="selectedProviders"
-          class="provider-checkboxes"
-          @change="handleProviderSelection"
-        >
-          <el-checkbox
-            v-for="provider in sortedProviders"
-            :key="provider.id"
-            :label="provider.id"
-            :disabled="provider.loadingState === 'loading'"
-            class="provider-checkbox"
-            draggable="true"
-            @dragstart="handleDragStart($event, provider)"
-            @dragover="handleDragOver($event)"
-            @dragleave="handleDragLeave($event)"
-            @drop="handleDrop($event, provider)"
-            @dragend="handleDragEnd"
+      <div class="input-body">
+        <!-- 模型选择器 -->
+        <div class="model-selector">
+          <div class="selector-header">
+            <el-icon class="selector-icon">
+              <Select />
+            </el-icon>
+            <span class="selector-title">选择AI模型</span>
+          </div>
+          <el-checkbox-group
+            v-model="selectedProviders"
+            class="provider-checkboxes"
+            @change="handleProviderSelection"
           >
-            <div class="provider-option">
-              <img
-                :src="provider.icon"
-                :alt="provider.name"
-                class="provider-icon-small"
-                @error="handleIconError"
-              >
-              <span class="provider-name">{{ provider.name }}</span>
-              <!-- AI状态显示 -->
-              <el-tag
-                v-if="getProviderAIStatus(provider.id) === 'responding'"
-                type="warning"
-                size="small"
-                class="ai-status-tag"
-              >
-                回答中
-              </el-tag>
-              <el-tag
-                v-else-if="provider.isLoggedIn && selectedProviders.includes(provider.id)"
-                type="success"
-                size="small"
-                class="status-tag"
-              >
-                已登录
-              </el-tag>
-              <el-icon
-                v-if="provider.loadingState === 'loading'"
-                class="loading-icon"
-              >
-                <Loading />
-              </el-icon>
+            <el-checkbox
+              v-for="provider in sortedProviders"
+              :key="provider.id"
+              :label="provider.id"
+              :disabled="provider.loadingState === 'loading'"
+              class="provider-checkbox"
+              draggable="true"
+              @dragstart="handleDragStart($event, provider)"
+              @dragover="handleDragOver($event)"
+              @dragleave="handleDragLeave($event)"
+              @drop="handleDrop($event, provider)"
+              @dragend="handleDragEnd"
+            >
+              <div class="provider-option">
+                <img
+                  :src="provider.icon"
+                  :alt="provider.name"
+                  class="provider-icon-small"
+                  @error="handleIconError"
+                >
+                <span class="provider-name">{{ provider.name }}</span>
+                <el-tag
+                  v-if="getProviderAIStatus(provider.id) === 'responding'"
+                  type="warning"
+                  size="small"
+                  class="ai-status-tag"
+                >
+                  回答中
+                </el-tag>
+                <el-tag
+                  v-else-if="provider.isLoggedIn && selectedProviders.includes(provider.id)"
+                  type="success"
+                  size="small"
+                  class="status-tag"
+                >
+                  已登录
+                </el-tag>
+                <el-icon
+                  v-if="provider.loadingState === 'loading'"
+                  class="loading-icon"
+                >
+                  <Loading />
+                </el-icon>
+              </div>
+            </el-checkbox>
+          </el-checkbox-group>
+        </div>
+
+        <div class="input-content">
+          <div class="textarea-container">
+            <el-input
+              ref="textareaRef"
+              v-model="currentMessage"
+              type="textarea"
+              :rows="textareaRows"
+              :placeholder="inputPlaceholder"
+              :disabled="loggedInCount === 0"
+              class="message-input"
+              data-testid="message-input"
+              @keydown.ctrl.enter="handleSend"
+              @keydown.meta.enter="handleSend"
+              @input="handleInput"
+              @focus="handleFocus"
+              @blur="handleBlur"
+            />
+            <div
+              class="textarea-resize-handle"
+              title="拖拽调整大小"
+              @mousedown="startResize"
+              @touchstart="startResize"
+            />
+            <div
+              class="textarea-expand-button"
+              :title="isExpanded ? '收起输入框' : '全屏输入'"
+              @click="toggleExpand"
+            >
+              <el-icon>{{ isExpanded ? 'Minus' : 'Plus' }}</el-icon>
             </div>
-          </el-checkbox>
-        </el-checkbox-group>
-      </div>
-
-      <div class="input-content">
-        <div class="textarea-container">
-          <el-input
-            ref="textareaRef"
-            v-model="currentMessage"
-            type="textarea"
-            :rows="textareaRows"
-            :placeholder="inputPlaceholder"
-            :disabled="loggedInCount === 0"
-            class="message-input"
-            data-testid="message-input"
-            @keydown.ctrl.enter="handleSend"
-            @keydown.meta.enter="handleSend"
-            @input="handleInput"
-            @focus="handleFocus"
-            @blur="handleBlur"
-          />
-          <div
-            class="textarea-resize-handle"
-            title="拖拽调整大小"
-            @mousedown="startResize"
-            @touchstart="startResize"
-          />
-          <div
-            class="textarea-expand-button"
-            :title="isExpanded ? '收起输入框' : '全屏输入'"
-            @click="toggleExpand"
-          >
-            <el-icon>{{ isExpanded ? 'Minus' : 'Plus' }}</el-icon>
-          </div>
-        </div>
-
-        <div class="input-actions">
-          <div class="actions-left">
-            <el-button
-              :icon="Refresh"
-              size="small"
-              :disabled="hasSendingMessages"
-              data-testid="refresh-button"
-              @click="handleRefresh"
-            >
-              刷新连接
-            </el-button>
-
-            <el-button
-              :icon="Delete"
-              size="small"
-              :disabled="!currentMessage"
-              data-testid="clear-button"
-              @click="handleClear"
-            >
-              清空
-            </el-button>
           </div>
 
-          <div class="actions-right">
-            <el-button
-              type="info"
-              :icon="Document"
-              :disabled="loggedInCount === 0"
-              data-testid="prompt-manager-button"
-              @click="handleOpenPromptManager"
-            >
-              Prompt 管理
-            </el-button>
-            <el-button
-              type="warning"
-              :icon="Lightning"
-              :disabled="loggedInCount === 0 || !quickPrompt"
-              :title="quickPrompt || '暂无快捷 Prompt'"
-              data-testid="quick-prompt-button"
-              @click="handleApplyQuickPrompt"
-            >
-              快捷 Prompt
-            </el-button>
-            <el-button
-              type="success"
-              :icon="Plus"
-              :disabled="loggedInCount === 0"
-              data-testid="new-chat-button"
-              @click="handleNewChat"
-            >
-              新建对话
-            </el-button>
-            <el-button
-              type="primary"
-              :icon="Position"
-              :loading="hasSendingMessages"
-              :disabled="!currentMessage || loggedInCount === 0 || hasRespondingAI"
-              data-testid="send-button"
-              @click="handleSend"
-            >
-              发送到所有AI (Ctrl+Enter)
-            </el-button>
+          <div class="input-actions">
+            <div class="actions-left">
+              <el-button
+                :icon="Refresh"
+                size="small"
+                :disabled="hasSendingMessages"
+                data-testid="refresh-button"
+                @click="handleRefresh"
+              >
+                刷新连接
+              </el-button>
+
+              <el-button
+                :icon="Delete"
+                size="small"
+                :disabled="!currentMessage"
+                data-testid="clear-button"
+                @click="handleClear"
+              >
+                清空
+              </el-button>
+            </div>
+
+            <div class="actions-right">
+              <el-button
+                type="info"
+                :icon="Document"
+                :disabled="loggedInCount === 0"
+                data-testid="prompt-manager-button"
+                @click="handleOpenPromptManager"
+              >
+                Prompt 管理
+              </el-button>
+              <el-button
+                type="warning"
+                :icon="Lightning"
+                :disabled="loggedInCount === 0 || !quickPrompt"
+                :title="quickPrompt || '暂无快捷 Prompt'"
+                data-testid="quick-prompt-button"
+                @click="handleApplyQuickPrompt"
+              >
+                快捷 Prompt
+              </el-button>
+              <el-button
+                type="success"
+                :icon="Plus"
+                :disabled="loggedInCount === 0"
+                data-testid="new-chat-button"
+                @click="handleNewChat"
+              >
+                新建对话
+              </el-button>
+              <el-button
+                type="info"
+                :icon="DocumentChecked"
+                :disabled="!canSummarize"
+                title="总结各AI的回答"
+                data-testid="summary-button"
+                @click="handleSummary"
+              >
+                总结
+              </el-button>
+              <el-button
+                type="primary"
+                :icon="Position"
+                :loading="hasSendingMessages"
+                :disabled="!currentMessage || loggedInCount === 0 || hasRespondingAI"
+                data-testid="send-button"
+                @click="handleSend"
+              >
+                发送到所有AI (Ctrl+Enter)
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
     </el-card>
+
+    <div
+      class="collapse-toggle"
+      :class="{ collapsed: isCollapsed }"
+      :title="isCollapsed ? '展开输入框' : '收起输入框'"
+      @click="toggleCollapse"
+    >
+      <div class="collapse-arrow" />
+    </div>
 
     <PromptManager
       v-model="promptManagerVisible"
@@ -194,7 +217,7 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank, Lightning
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank, Lightning, DocumentChecked
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
@@ -204,6 +227,10 @@ import type { AIProvider } from '@/types'
 import PromptManager from './PromptManager.vue'
 
 const chatStore = useChatStore()
+
+// 组件事件
+const emit = defineEmits<{(e: 'summary'): void
+}>()
 
 const draggedProvider = ref<AIProvider | null>(null)
 
@@ -222,6 +249,42 @@ const promptManagerVisible = ref<boolean>(false)
 
 // 快捷 Prompt 管理
 const quickPrompt = ref<string>('')
+
+// 折叠状态管理
+const isCollapsed = ref<boolean>(false)
+
+/**
+ * 加载折叠状态
+ */
+const loadCollapsedState = (): void => {
+  try {
+    const stored = localStorage.getItem('unified-input-collapsed')
+    if (stored !== null) {
+      isCollapsed.value = JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('加载折叠状态失败:', error)
+  }
+}
+
+/**
+ * 保存折叠状态
+ */
+const saveCollapsedState = (): void => {
+  try {
+    localStorage.setItem('unified-input-collapsed', JSON.stringify(isCollapsed.value))
+  } catch (error) {
+    console.error('保存折叠状态失败:', error)
+  }
+}
+
+/**
+ * 切换折叠状态
+ */
+const toggleCollapse = (): void => {
+  isCollapsed.value = !isCollapsed.value
+  saveCollapsedState()
+}
 
 // 默认 Prompt
 const DEFAULT_PROMPT = '请帮我分析以下内容，并提供详细的建议和解决方案。'
@@ -335,13 +398,13 @@ const handleDragEnd = (): void => {
 
 const handleDrop = (event: DragEvent, targetProvider: AIProvider): void => {
   event.preventDefault()
-  
+
   const target = event.target as HTMLElement
   const checkbox = target.closest('.provider-checkbox')
   if (checkbox) {
     checkbox.classList.remove('drag-over')
   }
-  
+
   if (!draggedProvider.value || draggedProvider.value.id === targetProvider.id) {
     draggedProvider.value = null
     return
@@ -431,6 +494,14 @@ const hasSendingMessages = computed(() => messageDispatcher.hasSendingMessages()
 const hasRespondingAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'responding'))
 
 const respondingAICount = computed(() => Object.values(aiStatusMap.value).filter((status) => status === 'responding').length)
+
+// 是否有AI已完成回答（用于判断是否可以总结）
+const hasCompletedAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'completed'))
+
+// 是否可以进行总结
+const canSummarize = computed(() =>
+  // 至少有一个AI已完成回答，且没有AI正在回答中
+  hasCompletedAI.value && !hasRespondingAI.value && loggedInCount.value > 0)
 
 const inputPlaceholder = computed(() => {
   if (loggedInCount.value === 0) {
@@ -681,6 +752,11 @@ const handleSend = async(): Promise<void> => {
   }
 
   try {
+    // 收起输入框
+    if (!isCollapsed.value) {
+      isCollapsed.value = true
+    }
+
     // 获取已登录的提供商
     const { loggedInProviders } = chatStore
     const messageContent = currentMessage.value
@@ -801,7 +877,9 @@ const handleApplyPrompt = (prompt: any, userInput?: string): void => {
 
   const now = new Date()
   const date = now.toISOString().split('T')[0]
-  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  const datetime = now.toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
@@ -829,7 +907,9 @@ const handleApplyQuickPrompt = (): void => {
 
   const now = new Date()
   const date = now.toISOString().split('T')[0]
-  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  const datetime = now.toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
@@ -852,6 +932,23 @@ const handleMessageSent = (data: { messageId: string; results: MessageSendResult
   console.log('Message sent:', data)
 }
 
+/**
+ * 处理总结按钮点击
+ */
+const handleSummary = (): void => {
+  if (!canSummarize.value) {
+    if (hasRespondingAI.value) {
+      ElMessage.warning('请等待AI回答完成后再进行总结')
+    } else if (!hasCompletedAI.value) {
+      ElMessage.warning('至少需要一个AI完成回答才能进行总结')
+    }
+    return
+  }
+
+  // 触发总结事件，由父组件处理
+  emit('summary')
+}
+
 let unsubscribeAIStatusChange: (() => void) | null = null
 
 /**
@@ -867,7 +964,7 @@ onMounted(() => {
   }
 
   // 监听登录状态变化事件
-  window.addEventListener('login-status-changed', handleLoginStatusChanged)
+  window.addEventListener('login-status-changed', handleLoginStatusChanged as EventListener)
 
   // 组件挂载后，加载用户偏好的高度
   nextTick(() => {
@@ -876,6 +973,9 @@ onMounted(() => {
 
   // 加载快捷 Prompt
   loadQuickPrompt()
+
+  // 加载折叠状态
+  loadCollapsedState()
 
   // 初始检查：为当前已登录的提供商启动AI状态监控
   startAIStatusMonitoringForLoggedInProviders()
@@ -922,6 +1022,10 @@ const startAIStatusMonitoringForProvider = async(providerId: string): Promise<vo
   try {
     if (!window.electronAPI) {
       console.warn('electronAPI不可用，无法启动AI状态监控')
+      return
+    }
+    if (providerId.includes('summary')) {
+      console.warn('总结模型不支持AI状态监控')
       return
     }
 
@@ -975,6 +1079,9 @@ const stopAIStatusMonitoringForProvider = async(providerId: string): Promise<voi
       console.warn('electronAPI不可用，无法停止AI状态监控')
       return
     }
+    if (providerId.includes('summary')) {
+      return
+    }
 
     const provider = chatStore.providers.find((p) => p.id === providerId)
     if (!provider) {
@@ -1021,10 +1128,57 @@ onUnmounted(() => {
 <style scoped>
 .unified-input {
   width: 100%;
+  transition: all 0.3s ease;
+}
+
+.unified-input.collapsed .input-card {
+  display: none;
 }
 
 .input-card {
   box-shadow: var(--el-box-shadow-light);
+}
+
+.input-body {
+  transition: all 0.3s ease;
+}
+
+.collapse-toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 32px;
+  cursor: pointer;
+  background: var(--el-bg-color);
+  border-top: 1px solid var(--el-border-color);
+  transition: all 0.3s ease;
+}
+
+.collapse-toggle:hover {
+  background: var(--el-fill-color-light);
+}
+
+.collapse-arrow {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 10px solid var(--el-text-color-placeholder);
+  transition: transform 0.3s ease;
+}
+
+.collapse-toggle.collapsed .collapse-arrow {
+  border-bottom: none;
+  border-top: 10px solid var(--el-text-color-placeholder);
+}
+
+.collapse-toggle:hover .collapse-arrow {
+  border-bottom-color: var(--el-color-primary);
+}
+
+.collapse-toggle.collapsed:hover .collapse-arrow {
+  border-top-color: var(--el-color-primary);
+  border-bottom-color: transparent;
 }
 
 .input-header {

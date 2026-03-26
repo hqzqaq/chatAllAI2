@@ -27,46 +27,46 @@
           </div>
 
           <div class="category-filter">
-          <div class="category-header">
-            <el-radio-group
-              v-model="selectedCategory"
-              size="small"
-            >
-              <el-radio-button label="all">
-                全部
-              </el-radio-button>
-              <el-radio-button label="favorite">
-                收藏
-              </el-radio-button>
-              <el-radio-button
-                v-for="category in categories"
-                :key="category"
-                :label="category"
-              >
-                {{ category }}
-              </el-radio-button>
-            </el-radio-group>
-            <div class="category-actions">
-              <el-button
-                type="primary"
-                :icon="Plus"
+            <div class="category-header">
+              <el-radio-group
+                v-model="selectedCategory"
                 size="small"
-                @click="handleCreateCategory"
               >
-                新建分类
-              </el-button>
-              <el-button
-                v-if="selectedCategory !== 'all' && selectedCategory !== 'favorite'"
-                type="danger"
-                :icon="Delete"
-                size="small"
-                @click="handleDeleteCategory"
-              >
-                删除分类
-              </el-button>
+                <el-radio-button label="all">
+                  全部
+                </el-radio-button>
+                <el-radio-button label="favorite">
+                  收藏
+                </el-radio-button>
+                <el-radio-button
+                  v-for="category in categories"
+                  :key="category"
+                  :label="category"
+                >
+                  {{ category }}
+                </el-radio-button>
+              </el-radio-group>
+              <div class="category-actions">
+                <el-button
+                  type="primary"
+                  :icon="Plus"
+                  size="small"
+                  @click="handleCreateCategory"
+                >
+                  新建分类
+                </el-button>
+                <el-button
+                  v-if="selectedCategory !== 'all' && selectedCategory !== 'favorite'"
+                  type="danger"
+                  :icon="Delete"
+                  size="small"
+                  @click="handleDeleteCategory"
+                >
+                  删除分类
+                </el-button>
+              </div>
             </div>
           </div>
-        </div>
 
           <div class="prompt-list">
             <div
@@ -473,7 +473,9 @@ const categoryFormData = ref({
 const categoryFormRules: FormRules = {
   name: [
     { required: true, message: '请输入分类名称', trigger: 'blur' },
-    { min: 1, max: 20, message: '分类名称长度在 1 到 20 个字符', trigger: 'blur' }
+    {
+      min: 1, max: 20, message: '分类名称长度在 1 到 20 个字符', trigger: 'blur'
+    }
   ]
 }
 
@@ -730,7 +732,9 @@ const handleApplyPrompt = (prompt: Prompt): void => {
 
   const now = new Date()
   const date = now.toISOString().split('T')[0]
-  const datetime = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')
+  const datetime = now.toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
@@ -883,7 +887,7 @@ const insertVariable = (variableName: string): void => {
   const before = text.substring(0, start)
   const after = text.substring(end)
   formData.value.content = `${before}${variableName}${after}`
-  
+
   nextTick(() => {
     textarea.focus()
     textarea.selectionStart = textarea.selectionEnd = start + variableName.length
