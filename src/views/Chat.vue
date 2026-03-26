@@ -51,8 +51,8 @@ const chatStore = useChatStore()
 const layoutStore = useLayoutStore()
 const summaryStore = useSummaryStore()
 
-// 总结侧边栏显示状态
-const sidebarVisible = ref(false)
+// 总结侧边栏显示状态 - 默认显示（收起状态）
+const sidebarVisible = ref(true)
 
 // 选中的总结模型
 const selectedSummaryProvider = ref<AIProvider | null>(null)
@@ -79,7 +79,16 @@ const handleSummaryClick = (): void => {
   }
 
   selectedSummaryProvider.value = selectedProvider
-  sidebarVisible.value = true
+
+  // 先设置为 false，再设置为 true，触发 SummarySidebar 中的 watch
+  if (sidebarVisible.value) {
+    sidebarVisible.value = false
+    setTimeout(() => {
+      sidebarVisible.value = true
+    }, 0)
+  } else {
+    sidebarVisible.value = true
+  }
 
   executeSummary(providerId)
 }
@@ -215,10 +224,10 @@ onMounted(() => {
   chatStore.initializeConversations()
 
   // 初始化总结侧边栏 - 默认使用 deepseek
+  // sidebarVisible 默认为 true，但 SummarySidebar 中的 isCollapsed 默认为 true（收起状态）
   const defaultProvider = chatStore.providers.find((p) => p.id === 'deepseek')
   if (defaultProvider) {
     selectedSummaryProvider.value = defaultProvider
-    sidebarVisible.value = true
   }
 
   // 立即更新窗口大小，确保初始布局计算正确

@@ -98,8 +98,8 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
-// 折叠状态
-const isCollapsed = ref(false)
+// 折叠状态 - 默认收起
+const isCollapsed = ref(true)
 
 // 选中的模型ID
 const selectedModelId = ref(props.selectedProviderId)
