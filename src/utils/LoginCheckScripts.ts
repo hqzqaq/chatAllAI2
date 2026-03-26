@@ -41,12 +41,7 @@ export function getLoginCheckScript(providerId: string): string {
       // 检查Copilot的登录状态
       !(document.querySelector('[alt="Profile image"]'))
     `,
-    glm: `
-      // 检查GLM的登录状态
-      !((document.querySelector(".login-btn") && 
-      document.querySelector(".login-btn").textContent === '登录') ||
-      (document.querySelector(".submit-btn") && document.querySelector(".submit-btn").textContent === '登录'))
-      `,
+    glm: `!document.querySelector(".login-btn")`,
     yuanbao: `
       // 检查yuanbao的登录状态
       !(document.querySelector('.agent-dialogue__tool__login') && 
@@ -69,7 +64,7 @@ export function getLoginCheckScript(providerId: string): string {
     minimax: `
       !Array.from(document.querySelectorAll('button'))
         .some(btn => btn.textContent.trim() === '登 录')
-    `,
+    `
   }
 
   return scripts[providerId] || 'false'
