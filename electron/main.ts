@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { WindowManager } from './managers/WindowManager'
 import { SessionManager } from './managers/SessionManager'
+import { BrowserViewManager } from './managers/BrowserViewManager'
 import { IPCHandler } from './managers/IPCHandler'
 
 /**
@@ -30,6 +31,7 @@ configureCommandLineSwitches()
  */
 let windowManager: WindowManager | null = null
 let sessionManager: SessionManager | null = null
+let browserViewManager: BrowserViewManager | null = null
 let ipcHandler: IPCHandler | null = null
 
 /**
@@ -40,10 +42,19 @@ async function initializeApp(): Promise<void> {
     // 创建管理器实例
     windowManager = new WindowManager()
     sessionManager = new SessionManager()
-    ipcHandler = new IPCHandler(windowManager, sessionManager)
 
     // 创建主窗口
     await windowManager.createMainWindow()
+
+    // 创建 BrowserViewManager (需要在主窗口创建之后)
+    const mainWindow = windowManager.getMainWindow()
+    if (!mainWindow) {
+      throw new Error('Failed to create main window')
+    }
+    browserViewManager = new BrowserViewManager(mainWindow, sessionManager)
+
+    // 创建 IPC 处理器
+    ipcHandler = new IPCHandler(windowManager, sessionManager, browserViewManager)
 
     // 设置事件监听
     setupEventListeners()
@@ -127,6 +138,11 @@ app.on('before-quit', async() => {
   console.log('Application is quitting, performing cleanup...')
 
   try {
+    // 销毁所有 BrowserView
+    if (browserViewManager) {
+      browserViewManager.destroyAllBrowserViews()
+    }
+
     // 保存所有会话
     if (sessionManager) {
       await sessionManager.destroy()

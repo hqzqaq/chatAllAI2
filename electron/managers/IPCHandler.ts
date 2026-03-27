@@ -9,6 +9,7 @@ import {
 import { EventEmitter } from 'events'
 import { WindowManager } from './WindowManager'
 import { SessionManager } from './SessionManager'
+import { BrowserViewManager } from './BrowserViewManager'
 import { getSendMessageScript } from '../../src/utils/MessageScripts'
 import { getStatusMonitorScript } from '../../src/utils/StatusMonitorScripts'
 import {
@@ -34,7 +35,12 @@ import {
   AIStatusStartMonitoringRequest,
   AIStatusStartMonitoringResponse,
   AIStatusInfo,
-  AIStatusChangeEvent
+  AIStatusChangeEvent,
+  BrowserViewCreateRequest,
+  BrowserViewCreateResponse,
+  BrowserViewExecuteScriptRequest,
+  BrowserViewExecuteScriptResponse,
+  BrowserViewBounds
 } from '../../src/types/ipc'
 
 /**
@@ -54,6 +60,8 @@ export class IPCHandler extends EventEmitter {
 
   private sessionManager: SessionManager
 
+  private browserViewManager: BrowserViewManager
+
   private config: IPCHandlerConfig
 
   private requestMap: Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }> = new Map()
@@ -67,11 +75,13 @@ export class IPCHandler extends EventEmitter {
   constructor(
     windowManager: WindowManager,
     sessionManager: SessionManager,
+    browserViewManager: BrowserViewManager,
     config: IPCHandlerConfig = {}
   ) {
     super()
     this.windowManager = windowManager
     this.sessionManager = sessionManager
+    this.browserViewManager = browserViewManager
     this.config = {
       enableLogging: true,
       requestTimeout: 30000,
@@ -207,6 +217,21 @@ export class IPCHandler extends EventEmitter {
         return { success: false, error: errorMessage }
       }
     })
+
+    // BrowserView 管理 (新增)
+    this.handleInvoke(IPCChannel.BROWSERVIEW_CREATE, this.handleBrowserViewCreate.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_DESTROY, this.handleBrowserViewDestroy.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_SET_BOUNDS, this.handleBrowserViewSetBounds.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_SHOW, this.handleBrowserViewShow.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_HIDE, this.handleBrowserViewHide.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_EXECUTE_SCRIPT, this.handleBrowserViewExecuteScript.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_SEND_MESSAGE, this.handleBrowserViewSendMessage.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_RELOAD, this.handleBrowserViewReload.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_NAVIGATE, this.handleBrowserViewNavigate.bind(this))
+    this.handleInvoke(IPCChannel.BROWSERVIEW_OPEN_DEVTOOLS, this.handleBrowserViewOpenDevTools.bind(this))
+
+    // 监听 BrowserViewManager 事件并转发到渲染进程
+    this.setupBrowserViewEventForwarding()
   }
 
   /**
@@ -946,6 +971,10 @@ export class IPCHandler extends EventEmitter {
    */
   private async handlePerformanceGetMetrics(): Promise<PerformanceMetricsResponse> {
     const { app } = require('electron')
+    type ProcessMetric = {
+      cpu?: { percentCPUUsage: number }
+      memory?: { workingSetSize: number }
+    }
     const metrics: ProcessMetric[] = app.getAppMetrics()
 
     return {
@@ -1164,6 +1193,193 @@ export class IPCHandler extends EventEmitter {
   private log(message: string, data?: any): void {
     if (this.config.enableLogging) {
       console.log(`[IPCHandler] ${message}`, data || '')
+    }
+  }
+
+  // ==================== BrowserView 处理器 (新增) ====================
+
+  /**
+   * 设置 BrowserView 事件转发
+   */
+  private setupBrowserViewEventForwarding(): void {
+    // 监听 BrowserViewManager 的事件并转发到渲染进程
+    this.browserViewManager.on('browser-view-ready', (data: { providerId: string }) => {
+      this.sendToRenderer(IPCChannel.BROWSERVIEW_CREATE, { providerId: data.providerId, success: true })
+    })
+
+    this.browserViewManager.on('browser-view-loading', (data: { providerId: string; loading: boolean }) => {
+      this.sendToRenderer(IPCChannel.BROWSERVIEW_SHOW, { providerId: data.providerId, loading: data.loading })
+    })
+
+    this.browserViewManager.on('browser-view-error', (data: { providerId: string; error: string }) => {
+      this.sendToRenderer(IPCChannel.BROWSERVIEW_HIDE, { providerId: data.providerId, error: data.error })
+    })
+
+    this.browserViewManager.on('browser-view-title-updated', (data: { providerId: string; title: string }) => {
+      this.sendToRenderer(IPCChannel.BROWSERVIEW_CREATE, { providerId: data.providerId, title: data.title, event: 'title-changed' })
+    })
+
+    this.browserViewManager.on('browser-view-navigated', (data: { providerId: string; url: string }) => {
+      this.sendToRenderer(IPCChannel.BROWSERVIEW_CREATE, { providerId: data.providerId, url: data.url, event: 'url-changed' })
+    })
+  }
+
+  /**
+   * 处理 BrowserView 创建
+   */
+  private async handleBrowserViewCreate(
+    data: BrowserViewCreateRequest
+  ): Promise<BrowserViewCreateResponse> {
+    try {
+      this.log(`Creating BrowserView for provider: ${data.providerId}`)
+      await this.browserViewManager.createBrowserView(
+        data.providerId,
+        data.url,
+        data.partition,
+        { preload: data.preload }
+      )
+      return { providerId: data.providerId, success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      this.log(`Failed to create BrowserView for ${data.providerId}:`, errorMessage)
+      return { providerId: data.providerId, success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 销毁
+   */
+  private async handleBrowserViewDestroy(
+    data: { providerId: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.log(`Destroying BrowserView for provider: ${data.providerId}`)
+      this.browserViewManager.destroyBrowserView(data.providerId)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      this.log(`Failed to destroy BrowserView for ${data.providerId}:`, errorMessage)
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 设置边界
+   */
+  private async handleBrowserViewSetBounds(
+    data: { providerId: string; bounds: BrowserViewBounds }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.browserViewManager.setBounds(data.providerId, data.bounds)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 显示
+   */
+  private async handleBrowserViewShow(
+    data: { providerId: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.browserViewManager.showBrowserView(data.providerId)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 隐藏
+   */
+  private async handleBrowserViewHide(
+    data: { providerId: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.browserViewManager.hideBrowserView(data.providerId)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 执行脚本
+   */
+  private async handleBrowserViewExecuteScript(
+    data: BrowserViewExecuteScriptRequest
+  ): Promise<BrowserViewExecuteScriptResponse> {
+    try {
+      const result = await this.browserViewManager.executeScript(data.providerId, data.script)
+      return { result }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { result: null, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 发送消息
+   */
+  private async handleBrowserViewSendMessage(
+    data: { providerId: string; message: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const success = await this.browserViewManager.sendMessage(data.providerId, data.message)
+      return { success }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 重新加载
+   */
+  private async handleBrowserViewReload(
+    data: { providerId: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.browserViewManager.reloadBrowserView(data.providerId)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 导航
+   */
+  private async handleBrowserViewNavigate(
+    data: { providerId: string; url: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.browserViewManager.navigateTo(data.providerId, data.url)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * 处理 BrowserView 打开开发者工具
+   */
+  private async handleBrowserViewOpenDevTools(
+    data: { providerId: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.browserViewManager.openDevTools(data.providerId)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: errorMessage }
     }
   }
 

@@ -78,7 +78,7 @@
       class="webview-container"
       :style="webviewStyle"
     >
-      <WebView
+      <BrowserViewContainer
         v-if="shouldShowWebView"
         ref="webViewRef"
         :provider="props.provider"
@@ -253,7 +253,7 @@ import {
   Monitor
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import WebView from '../webview/WebView.vue'
+import BrowserViewContainer from '../webview/BrowserViewContainer.vue'
 import type { AIProvider, CardConfig } from '../../types'
 import { useChatStore, useLayoutStore } from '../../stores'
 
@@ -271,7 +271,7 @@ const layoutStore = useLayoutStore()
 // 响应式数据
 const isRefreshing = ref(false)
 const isLoading = ref(false)
-const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
+const webViewRef = ref<InstanceType<typeof BrowserViewContainer> | null>(null)
 const proxyDialogVisible = ref(false)
 const proxyFormRef = ref()
 
@@ -291,7 +291,7 @@ const proxyConfig = ref({
 // 计算属性
 const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] || 'idle')
 
-const cardStyle = computed(() => {
+const cardStyle = computed((): Record<string, string | number> => {
   if (!props.config) return {}
 
   // 如果卡片被隐藏（最大化时），使用visibility和opacity隐藏
@@ -535,7 +535,7 @@ const handleWebViewReady = (): void => {
 /**
  * WebView加载状态处理
  */
-const handleWebViewLoading = (loading: boolean): void => {
+const handleWebViewLoading = (providerId: string, loading: boolean): void => {
   isLoading.value = loading
   const provider = chatStore.getProvider(props.provider.id)
   if (provider && provider.loadingState !== (loading ? 'loading' : 'loaded')) {
@@ -546,7 +546,7 @@ const handleWebViewLoading = (loading: boolean): void => {
 /**
  * WebView错误处理
  */
-const handleWebViewError = (error: string): void => {
+const handleWebViewError = (providerId: string, error: string): void => {
   isLoading.value = false
   const provider = chatStore.getProvider(props.provider.id)
   if (provider) {
@@ -559,7 +559,7 @@ const handleWebViewError = (error: string): void => {
 /**
  * 登录状态变化处理
  */
-const handleLoginStatusChanged = (isLoggedIn: boolean): void => {
+const handleLoginStatusChanged = (providerId: string, isLoggedIn: boolean): void => {
   // 只有在状态真正发生变化时才更新
   if (props.provider.isLoggedIn !== isLoggedIn) {
     chatStore.updateProviderLoginStatus(props.provider.id, isLoggedIn)
@@ -740,8 +740,7 @@ const applyProxyConfig = async(): Promise<void> => {
       // 通过IPC通知主进程设置代理
       await window.electronAPI.setProxy({
         webviewId: props.provider.webviewId,
-        proxyRules: proxyUrl,
-        enabled: true
+        proxy: proxyUrl
       })
 
       console.log(`已为 ${props.provider.name} 设置代理: ${proxyUrl}`)
@@ -749,8 +748,7 @@ const applyProxyConfig = async(): Promise<void> => {
       // 禁用代理
       await window.electronAPI.setProxy({
         webviewId: props.provider.webviewId,
-        proxyRules: 'direct://',
-        enabled: false
+        proxy: 'direct://'
       })
 
       console.log(`已为 ${props.provider.name} 禁用代理`)

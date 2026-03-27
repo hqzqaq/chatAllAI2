@@ -3,6 +3,63 @@
  */
 
 /**
+ * BrowserView 边界类型
+ */
+export interface BrowserViewBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * BrowserView 创建请求
+ */
+export interface BrowserViewCreateRequest {
+  providerId: string
+  url: string
+  partition: string
+  preload?: string
+}
+
+/**
+ * BrowserView 创建响应
+ */
+export interface BrowserViewCreateResponse {
+  providerId: string
+  success: boolean
+  error?: string
+}
+
+/**
+ * BrowserView 脚本执行请求
+ */
+export interface BrowserViewExecuteScriptRequest {
+  providerId: string
+  script: string
+}
+
+/**
+ * BrowserView 脚本执行响应
+ */
+export interface BrowserViewExecuteScriptResponse {
+  result: any
+  error?: string
+}
+
+/**
+ * BrowserView 事件类型
+ */
+export enum BrowserViewEvent {
+  READY = 'browserview:ready',
+  LOADING = 'browserview:loading',
+  ERROR = 'browserview:error',
+  TITLE_CHANGED = 'browserview:title-changed',
+  URL_CHANGED = 'browserview:url-changed',
+  LOGIN_STATUS_CHANGED = 'browserview:login-status-changed'
+}
+
+/**
  * IPC通道枚举
  */
 export enum IPCChannel {
@@ -19,7 +76,7 @@ export enum IPCChannel {
   MESSAGE_RECEIVED = 'message:received',
   MESSAGE_ERROR = 'message:error',
 
-  // WebView管理
+  // WebView管理 (保留向后兼容)
   WEBVIEW_CREATE = 'webview:create',
   WEBVIEW_DESTROY = 'webview:destroy',
   WEBVIEW_RELOAD = 'webview:reload',
@@ -27,6 +84,18 @@ export enum IPCChannel {
   WEBVIEW_EXECUTE_SCRIPT = 'webview:execute-script',
   WEBVIEW_INSERT_CSS = 'webview:insert-css',
   WEBVIEW_SET_PROXY = 'webview:set-proxy',
+
+  // BrowserView管理 (新增)
+  BROWSERVIEW_CREATE = 'browserview:create',
+  BROWSERVIEW_DESTROY = 'browserview:destroy',
+  BROWSERVIEW_SET_BOUNDS = 'browserview:set-bounds',
+  BROWSERVIEW_SHOW = 'browserview:show',
+  BROWSERVIEW_HIDE = 'browserview:hide',
+  BROWSERVIEW_EXECUTE_SCRIPT = 'browserview:execute-script',
+  BROWSERVIEW_SEND_MESSAGE = 'browserview:send-message',
+  BROWSERVIEW_RELOAD = 'browserview:reload',
+  BROWSERVIEW_NAVIGATE = 'browserview:navigate',
+  BROWSERVIEW_OPEN_DEVTOOLS = 'browserview:open-devtools',
 
   // 会话管理
   SESSION_SAVE = 'session:save',
@@ -386,4 +455,16 @@ export interface IPCEventDataMap {
   [IPCChannel.AI_STATUS_STOP_MONITORING]: { providerId: string }
   [IPCChannel.AI_STATUS_GET_CURRENT]: { providerId: string }
   [IPCChannel.AI_STATUS_CHANGE]: AIStatusChangeEvent
+
+  // BrowserView 事件
+  [IPCChannel.BROWSERVIEW_CREATE]: BrowserViewCreateRequest
+  [IPCChannel.BROWSERVIEW_DESTROY]: { providerId: string }
+  [IPCChannel.BROWSERVIEW_SET_BOUNDS]: { providerId: string; bounds: BrowserViewBounds }
+  [IPCChannel.BROWSERVIEW_SHOW]: { providerId: string }
+  [IPCChannel.BROWSERVIEW_HIDE]: { providerId: string }
+  [IPCChannel.BROWSERVIEW_EXECUTE_SCRIPT]: BrowserViewExecuteScriptRequest
+  [IPCChannel.BROWSERVIEW_SEND_MESSAGE]: { providerId: string; message: string }
+  [IPCChannel.BROWSERVIEW_RELOAD]: { providerId: string }
+  [IPCChannel.BROWSERVIEW_NAVIGATE]: { providerId: string; url: string }
+  [IPCChannel.BROWSERVIEW_OPEN_DEVTOOLS]: { providerId: string }
 }

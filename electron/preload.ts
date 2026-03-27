@@ -69,6 +69,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_START_MONITORING, data),
   stopAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_STOP_MONITORING, data),
 
+  // BrowserView 管理 (新增)
+  createBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_CREATE, data),
+  destroyBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_DESTROY, data),
+  setBrowserViewBounds: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_SET_BOUNDS, data),
+  showBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_SHOW, data),
+  hideBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_HIDE, data),
+  executeScriptInBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_EXECUTE_SCRIPT, data),
+  sendMessageToBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_SEND_MESSAGE, data),
+  reloadBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_RELOAD, data),
+  navigateBrowserView: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_NAVIGATE, data),
+  openBrowserViewDevTools: (data: any) => ipcRenderer.invoke(IPCChannel.BROWSERVIEW_OPEN_DEVTOOLS, data),
+
   // 获取预加载脚本路径
   getPreloadPath: (preloadName: string) => ipcRenderer.invoke('get-preload-path', preloadName),
 
@@ -172,6 +184,18 @@ declare global {
       startAIStatusMonitoring: (data: any) => Promise<any>
       stopAIStatusMonitoring: (data: any) => Promise<any>
 
+      // BrowserView 管理 (新增)
+      createBrowserView: (data: any) => Promise<any>
+      destroyBrowserView: (data: any) => Promise<any>
+      setBrowserViewBounds: (data: any) => Promise<any>
+      showBrowserView: (data: any) => Promise<any>
+      hideBrowserView: (data: any) => Promise<any>
+      executeScriptInBrowserView: (data: any) => Promise<any>
+      sendMessageToBrowserView: (data: any) => Promise<any>
+      reloadBrowserView: (data: any) => Promise<any>
+      navigateBrowserView: (data: any) => Promise<any>
+      openBrowserViewDevTools: (data: any) => Promise<any>
+
       // 获取预加载脚本路径
       getPreloadPath: (preloadName: string) => Promise<string>
 
@@ -188,6 +212,9 @@ declare global {
 
       // 移除监听器
       removeAllListeners: (channel: string) => void
+
+      // 通用发送方法
+      send: (channel: string, data: any) => void
     }
   }
 }
