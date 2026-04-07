@@ -496,7 +496,7 @@ function getGeminiScript(escapedMessage: string): string {
   return `
       (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = '[data-placeholder="Ask Gemini 3"]';
+      const CHAT_INPUT_SELECTOR = '[data-placeholder="Ask Gemini"]';
       const SEND_BUTTON_SELECTOR = '[aria-label="Send message"]';
       const INPUT_SEND_DELAY_MS = 500;
 
