@@ -74,7 +74,7 @@ function getGLMLastMessageScript(): string {
 
 function getYuanBaoLastMessageScript(): string {
   return `(() => {
-    const messages = document.querySelectorAll('.agent-chat__speech-text');
+    const messages = document.querySelectorAll('.agent-chat__list__item__content');
     const lastMessage = messages[messages.length - 1];
     return lastMessage ? lastMessage.textContent || '' : '';
   })()`
