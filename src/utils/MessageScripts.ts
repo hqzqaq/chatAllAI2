@@ -252,14 +252,16 @@ function getDouBaoScript(escapedMessage: string): string {
   return `
     (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = '[data-testid="chat_input_input"]';
+      const CHAT_INPUT_SELECTOR = 'textarea';
       const INPUT_SEND_DELAY_MS = 200;
 
       // --- Input Handling ---
       function findChatInput() {
-        const element = document.querySelector(CHAT_INPUT_SELECTOR);
-        if (element && element.tagName === 'TEXTAREA') {
-          return element;
+        const elements = document.querySelectorAll(CHAT_INPUT_SELECTOR);
+        for (const element of elements) {
+          if (element.tagName === 'TEXTAREA' && element.hasAttribute('placeholder')) {
+            return element;
+          }
         }
         return null;
       }
