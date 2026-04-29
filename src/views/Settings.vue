@@ -122,6 +122,14 @@
             </div>
           </el-tab-pane>
 
+          <!-- 脚本配置 -->
+          <el-tab-pane
+            label="脚本配置"
+            name="scripts"
+          >
+            <ScriptEditor />
+          </el-tab-pane>
+
           <!-- 关于 -->
           <el-tab-pane
             label="关于"
@@ -173,6 +181,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Setting, ChatDotRound } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import SessionStatus from '../components/session/SessionStatus.vue'
+import ScriptEditor from '../components/settings/ScriptEditor.vue'
 import { useAppStore, useLayoutStore, useChatStore } from '../stores'
 
 const appStore = useAppStore()
