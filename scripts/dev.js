@@ -15,7 +15,7 @@ console.log('')
 process.env.NODE_ENV = 'development'
 
 // 启动 Vite 开发服务器
-const viteProcess = spawn('npx', ['vite'], {
+const viteProcess = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['exec', '--no', 'vite'], {
   stdio: 'inherit',
   shell: true,
   cwd: process.cwd()

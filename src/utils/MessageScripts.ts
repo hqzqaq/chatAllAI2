@@ -12,6 +12,33 @@
  * @param str 要转义的字符串
  * @returns 转义后的安全字符串
  */
+import { useScriptConfigStore } from '../stores/scriptConfig'
+import type { ScriptType } from '../types'
+
+function resolveScript(
+  providerId: string,
+  scriptType: ScriptType,
+  defaultScript: string,
+  params?: Record<string, string>
+): string {
+  try {
+    const store = useScriptConfigStore()
+    const custom = store.getCustomScript(providerId, scriptType)
+    if (custom) {
+      let result = custom
+      if (params) {
+        Object.keys(params).forEach((key) => {
+          result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), params[key])
+        })
+      }
+      return result
+    }
+  } catch {
+    // Store not available, use default
+  }
+  return defaultScript
+}
+
 function escapeJavaScriptString(str: string): string {
   // 使用更安全的转义方式，确保字符串在JavaScript中安全使用
   return str
@@ -49,7 +76,8 @@ export function getSendMessageScript(providerId: string, message: string): strin
     minimax: getMinimaxScript(escapedMessage)
   }
 
-  return scripts[providerId] || getGenericScript(escapedMessage)
+  const defaultScript = scripts[providerId] || getGenericScript(escapedMessage)
+  return resolveScript(providerId, 'sendMessage', defaultScript, { message: escapedMessage })
 }
 
 /**
@@ -252,14 +280,16 @@ function getDouBaoScript(escapedMessage: string): string {
   return `
     (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = '[data-testid="chat_input_input"]';
+      const CHAT_INPUT_SELECTOR = 'textarea';
       const INPUT_SEND_DELAY_MS = 200;
 
       // --- Input Handling ---
       function findChatInput() {
-        const element = document.querySelector(CHAT_INPUT_SELECTOR);
-        if (element && element.tagName === 'TEXTAREA') {
-          return element;
+        const elements = document.querySelectorAll(CHAT_INPUT_SELECTOR);
+        for (const element of elements) {
+          if (element.tagName === 'TEXTAREA' && element.hasAttribute('placeholder')) {
+            return element;
+          }
         }
         return null;
       }
@@ -496,7 +526,7 @@ function getGeminiScript(escapedMessage: string): string {
   return `
       (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = '[data-placeholder="Ask Gemini 3"]';
+      const CHAT_INPUT_SELECTOR = '[data-placeholder="Ask Gemini"]';
       const SEND_BUTTON_SELECTOR = '[aria-label="Send message"]';
       const INPUT_SEND_DELAY_MS = 500;
 

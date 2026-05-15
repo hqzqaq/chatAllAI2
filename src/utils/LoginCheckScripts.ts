@@ -12,6 +12,33 @@
  * @param providerId AI提供商ID
  * @returns 对应的JavaScript脚本字符串
  */
+import { useScriptConfigStore } from '../stores/scriptConfig'
+import type { ScriptType } from '../types'
+
+function resolveScript(
+  providerId: string,
+  scriptType: ScriptType,
+  defaultScript: string,
+  params?: Record<string, string>
+): string {
+  try {
+    const store = useScriptConfigStore()
+    const custom = store.getCustomScript(providerId, scriptType)
+    if (custom) {
+      let result = custom
+      if (params) {
+        Object.keys(params).forEach((key) => {
+          result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), params[key])
+        })
+      }
+      return result
+    }
+  } catch {
+    // Store not available, use default
+  }
+  return defaultScript
+}
+
 export function getLoginCheckScript(providerId: string): string {
   const scripts: Record<string, string> = {
     kimi: `
@@ -30,7 +57,9 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     doubao: `
       // 检查豆包的登录状态
-      !!(document.querySelector("[data-testid='chat_header_avatar_button']"))
+      // 如果 .semi-button-content 元素存在且文本包含"登录"，则认为未登录
+      !Array.from(document.querySelectorAll('.semi-button-content'))
+        .some(el => el.textContent && el.textContent.includes('登录'))
     `,
     qwen: `
       // 检查通义千问的登录状态
@@ -67,5 +96,5 @@ export function getLoginCheckScript(providerId: string): string {
     `
   }
 
-  return scripts[providerId] || 'false'
+  return resolveScript(providerId, 'loginCheck', scripts[providerId] || 'false')
 }

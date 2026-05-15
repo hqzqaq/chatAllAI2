@@ -15,7 +15,7 @@ process.env.NODE_ENV = 'production'
 
 // 构建Vite应用
 console.log('📦 构建前端资源...')
-const viteBuild = spawn('npx', ['vite', 'build'], {
+const viteBuild = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['exec', '--no', 'vite', 'build'], {
   stdio: 'inherit',
   shell: true,
   cwd: process.cwd()
@@ -31,7 +31,7 @@ viteBuild.on('close', (code) => {
 
   // 构建Electron应用
   console.log('🔧 构建Electron应用...')
-  const electronBuild = spawn('npx', ['electron-builder', '--publish=never'], {
+  const electronBuild = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['exec', '--no', 'electron-builder', '--publish=never'], {
     stdio: 'inherit',
     shell: true,
     cwd: process.cwd()
