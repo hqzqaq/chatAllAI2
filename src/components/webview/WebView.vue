@@ -51,7 +51,10 @@ import { Loading, Warning } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { AIProvider } from '@/types'
 import { getSendMessageScript } from '@/utils/MessageScripts.ts'
-import { getLoginCheckScript } from '@/utils/LoginCheckScripts.ts'
+import { buildWebViewElementId } from '@/utils/webviewHelper'
+import { useLoginCheck } from '@/composables/useLoginCheck'
+import { useSessionPersistence } from '@/composables/useSessionPersistence'
+import { useWebViewEvents } from '@/composables/useWebViewEvents'
 
 // Props
 interface Props {
@@ -79,6 +82,71 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+// 计算属性
+const webviewId = computed(() => buildWebViewElementId(props.provider.id))
+
+const originalProviderId = computed(() => {
+  let providerId = props.provider.id
+  if (providerId.startsWith('summary-')) {
+    providerId = providerId.replace('summary-', '')
+  }
+  return providerId
+})
+
+const partition = computed(() => `persist:${originalProviderId.value}`)
+
+// Composables
+const {
+  checkLoginStatus,
+  loginCheckTimer,
+  startLoginCheckTimer: startLoginTimer,
+  stopLoginCheckTimer
+} = useLoginCheck(props.provider)
+
+const {
+  sessionLoaded,
+  saveSessionTimer,
+  saveSession,
+  loadSession,
+  startSaveSessionTimer,
+  stopSaveSessionTimer
+} = useSessionPersistence(props.provider.name, () => originalProviderId.value)
+
+const {
+  isInitialLoad,
+  currentUrl,
+  bindEvents,
+  reset: resetEvents
+} = useWebViewEvents({
+  onLoadingStart: () => {
+    isLoading.value = true
+    hasError.value = false
+    emit('loading', true)
+  },
+  onLoadingFinish: () => {
+    isLoading.value = false
+    hasError.value = false
+    retryCount.value = 0
+    emit('loading', false)
+    emit('ready')
+  },
+  onError: () => {
+    isLoading.value = false
+    emit('loading', false)
+  },
+  onTitleChanged: (title) => emit('title-changed', title),
+  onUrlChanged: (url) => emit('url-changed', url),
+  onDidLoad: () => {
+    checkStatusAndNotify()
+    startSaveSessionTimer(() => props.provider.isLoggedIn)
+    startLoginTimer(
+      () => webviewElement.value,
+      isLoading,
+      async() => { await saveSession() }
+    )
+  }
+})
+
 // 响应式数据
 const isLoading = ref(false)
 const hasError = ref(false)
@@ -86,27 +154,16 @@ const errorMessage = ref('')
 const webviewElement = ref<Electron.WebviewTag | null>(null)
 const retryCount = ref(0)
 const maxRetries = 3
-const saveSessionTimer = ref<NodeJS.Timeout | null>(null)
-const loginCheckTimer = ref<NodeJS.Timeout | null>(null)
-const sessionLoaded = ref(false)
-const isInitialLoad = ref(true)
-const currentUrl = ref('')
 
-// 计算属性
-const webviewId = computed(() => `webview-${props.provider.id}`)
-
-// 计算原始 providerId（处理 summary- 前缀）
-const originalProviderId = computed(() => {
-  let providerId = props.provider.id
-  // 对于总结模型，使用原模型的 providerId
-  if (providerId.startsWith('summary-')) {
-    providerId = providerId.replace('summary-', '')
+async function checkStatusAndNotify(): Promise<void> {
+  const isLoggedIn = await checkLoginStatus(webviewElement.value)
+  if (isLoggedIn !== props.provider.isLoggedIn) {
+    emit('login-status-changed', isLoggedIn)
+    if (isLoggedIn && window.electronAPI) {
+      await saveSession()
+    }
   }
-  return providerId
-})
-
-// 计算 partition - 对于总结模型，使用原模型的 partition
-const partition = computed(() => `persist:${originalProviderId.value}`)
+}
 
 /**
  * 创建WebView元素
@@ -125,7 +182,7 @@ const createWebView = async(): Promise<void> => {
 
   // 创建webview元素
   const webview = document.createElement('webview') as Electron.WebviewTag
-  webview.id = `${webviewId.value}-element`
+  webview.id = webviewId.value
   webview.src = props.provider.url
   webview.style.width = '100%'
   webview.style.height = '100%'
@@ -160,7 +217,7 @@ const createWebView = async(): Promise<void> => {
   webviewElement.value = webview
 
   // 绑定事件
-  bindWebViewEvents(webview)
+  bindEvents(webview, props.provider.name)
 }
 
 /**
@@ -170,181 +227,6 @@ const getUserAgent = (): string => {
   const baseUA = navigator.userAgent
   // 添加自定义标识，避免被某些网站检测为自动化工具
   return baseUA.replace(/Electron\/[\d.]+\s/, '')
-}
-
-/**
- * 绑定WebView事件
- */
-const bindWebViewEvents = (webview: Electron.WebviewTag): void => {
-  // 页面开始加载
-  webview.addEventListener('did-start-loading', () => {
-    const isSignificant = isInitialLoad.value
-    console.log(`${props.provider.name} did-start-loading, significant: ${isSignificant}, URL: ${webview.src}`)
-
-    // 只有在初始加载或URL发生重大变化时才显示加载状态
-    if (isSignificant) {
-      isLoading.value = true
-      hasError.value = false
-      emit('loading', true)
-    }
-  })
-
-  // 页面加载完成
-  webview.addEventListener('did-finish-load', () => {
-    const newUrl = webview.src
-    const wasInitialLoad = isInitialLoad.value
-
-    // 更新当前URL
-    currentUrl.value = newUrl
-
-    const isSignificant = wasInitialLoad
-    console.log(`${props.provider.name} did-finish-load, significant: ${isSignificant}, URL: ${newUrl}`)
-
-    // 只有在初始加载或重大导航时才更新加载状态
-    if (isSignificant) {
-      isLoading.value = false
-      hasError.value = false
-      retryCount.value = 0
-      emit('loading', false)
-      emit('ready')
-
-      // 检查登录状态
-      checkLoginStatus()
-
-      // 设置定期保存会话（每15分钟），但只设置一次
-      if (!saveSessionTimer.value) {
-        saveSessionTimer.value = setInterval(
-          () => {
-            // 只有在登录状态下才保存会话
-            if (props.provider.isLoggedIn) {
-              saveSession()
-            }
-          },
-          15 * 60 * 1000
-        )
-      }
-
-      // 设置定期检查登录状态（每10秒）
-      if (!loginCheckTimer.value) {
-        loginCheckTimer.value = setInterval(() => {
-          if (webviewElement.value && !isLoading.value) {
-            checkLoginStatus()
-          }
-        }, 10 * 1000) // 10秒检查一次
-      }
-    }
-
-    // 标记初始加载完成
-    isInitialLoad.value = false
-  })
-
-  // 页面加载失败
-  webview.addEventListener('did-fail-load', (event) => {
-    if (event.errorCode === -3) return // 用户取消加载，忽略
-
-    isLoading.value = false
-    hasError.value = true
-    // errorMessage.value = `加载失败: ${event.errorDescription || '未知错误'}`
-    emit('loading', false)
-    // emit('error', errorMessage.value)
-  })
-
-  // 页面标题变化
-  webview.addEventListener('page-title-updated', (event) => {
-    emit('title-changed', event.title)
-  })
-
-  // URL变化
-  webview.addEventListener('will-navigate', (event) => {
-    console.log(`${props.provider.name} navigating to: ${event.url}`)
-    emit('url-changed', event.url)
-  })
-
-  // 新窗口请求
-  webview.addEventListener('new-window', (event) => {
-    // 在默认浏览器中打开新窗口
-    if (window.electronAPI) {
-      window.electronAPI.openExternal(event.url)
-    }
-  })
-
-  // 控制台消息（用于调试）
-  webview.addEventListener('console-message', (event) => {
-    if (event.level === 0) {
-      // 错误级别
-      console.error(`WebView Console [${props.provider.name}]:`, event.message)
-    }
-  })
-}
-
-/**
- * 检查登录状态
- */
-const checkLoginStatus = async(): Promise<void> => {
-  if (!webviewElement.value) return
-
-  try {
-    let isLoggedIn = false
-
-    if (props.provider.id === 'chatgpt') {
-      // chatgpt 有较强的脚本执行检测，频繁执行脚本会导致页面不可用，这里默认设置为已登录
-      isLoggedIn = true
-    } else {
-      // 对于总结模式的provider（id格式为summary-{originalId}），使用原始provider的登录检测脚本
-      const providerId = props.provider.id.startsWith('summary-')
-        ? props.provider.id.replace('summary-', '')
-        : props.provider.id
-      const loginCheckScript = getLoginCheckScript(providerId)
-      const result = await webviewElement.value.executeJavaScript(loginCheckScript)
-      isLoggedIn = Boolean(result)
-    }
-
-    if (isLoggedIn !== props.provider.isLoggedIn) {
-      emit('login-status-changed', isLoggedIn)
-
-      if (isLoggedIn && window.electronAPI) {
-        await saveSession()
-      }
-    }
-  } catch (error) {
-    console.warn(`Failed to check login status for ${props.provider.name}:`, error)
-  }
-}
-
-/**
- * 保存会话数据
- */
-const saveSession = async(): Promise<void> => {
-  if (!window.electronAPI) return
-
-  try {
-    await window.electronAPI.saveSession({ providerId: originalProviderId.value })
-    console.log(`Session saved for ${props.provider.name}`)
-  } catch (error) {
-    console.warn(`Failed to save session for ${props.provider.name}:`, error)
-  }
-}
-
-/**
- * 加载会话数据
- */
-const loadSession = async(): Promise<void> => {
-  if (!window.electronAPI || sessionLoaded.value) return
-
-  sessionLoaded.value = true
-
-  try {
-    const response = await window.electronAPI.loadSession({ providerId: originalProviderId.value })
-    if (response.exists && response.sessionData) {
-      console.log(`Session loaded for ${props.provider.name}`)
-      // 会话数据已经在后端恢复，这里只需要检查登录状态
-      setTimeout(() => {
-        checkLoginStatus()
-      }, 2000) // 等待页面加载完成后检查
-    }
-  } catch (error) {
-    console.warn(`Failed to load session for ${props.provider.name}:`, error)
-  }
 }
 
 /**
@@ -419,16 +301,8 @@ const sendMessage = async(message: string): Promise<void> => {
  * 销毁WebView
  */
 const destroy = (): void => {
-  // 清除定时器
-  if (saveSessionTimer.value) {
-    clearInterval(saveSessionTimer.value)
-    saveSessionTimer.value = null
-  }
-
-  if (loginCheckTimer.value) {
-    clearInterval(loginCheckTimer.value)
-    loginCheckTimer.value = null
-  }
+  stopSaveSessionTimer()
+  stopLoginCheckTimer()
 
   if (webviewElement.value) {
     const container = document.getElementById(webviewId.value)

@@ -49,12 +49,11 @@
 
       <!-- AI卡片区域 -->
       <div class="ai-card-container">
-        <AICard
+        <SummaryCard
           v-if="provider"
           :key="summaryProviderId"
           :provider="provider"
           :config="cardConfig"
-          class="summary-ai-card"
         />
       </div>
     </div>
@@ -63,7 +62,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import AICard from '../chat/AICard.vue'
+import SummaryCard from '../chat/SummaryCard.vue'
 import type { AIProvider } from '../../types'
 
 /**

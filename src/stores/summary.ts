@@ -15,6 +15,7 @@ import type {
   SummaryHistoryItem,
   AIResponse
 } from '../types/summary'
+import { storage } from '../utils/storage'
 
 /**
  * 总结状态管理
@@ -235,7 +236,7 @@ export const useSummaryStore = defineStore('summary', () => {
    */
   const saveHistoryToStorage = (): void => {
     try {
-      localStorage.setItem('summary-history', JSON.stringify(history.value))
+      storage.set('summary-history', history.value)
     } catch (error) {
       console.error('保存总结历史记录失败:', error)
     }
@@ -246,10 +247,8 @@ export const useSummaryStore = defineStore('summary', () => {
    */
   const loadHistoryFromStorage = (): void => {
     try {
-      const stored = localStorage.getItem('summary-history')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        // 转换日期字符串为Date对象
+      const parsed = storage.get<SummaryHistoryItem[]>('summary-history')
+      if (parsed) {
         history.value = parsed.map((item: SummaryHistoryItem) => ({
           ...item,
           timestamp: new Date(item.timestamp)

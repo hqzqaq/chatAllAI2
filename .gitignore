@@ -45,3 +45,4 @@ dist-prod
 /electron-cache/
 /.gemini/
 /.promptx/
+/ppt-output/

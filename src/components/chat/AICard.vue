@@ -43,21 +43,21 @@
           @click="openDevTools"
         />
         <el-button
-          v-if="!(isSummaryCard ? localIsMaximized : config?.isMaximized)"
+          v-if="!resolvedIsMaximized"
           :icon="FullScreen"
           size="small"
           circle
           @click="toggleMaximized"
         />
         <el-button
-          v-if="isSummaryCard ? localIsMaximized : config?.isMaximized"
+          v-if="resolvedIsMaximized"
           :icon="Close"
           size="small"
           circle
           @click="toggleMaximized"
         />
         <el-button
-          :icon="(isSummaryCard ? localIsMinimized : config?.isMinimized) ? ArrowUp : ArrowDown"
+          :icon="resolvedIsMinimized ? ArrowUp : ArrowDown"
           size="small"
           circle
           @click="toggleMinimized"
@@ -74,7 +74,7 @@
 
     <!-- WebView容器 -->
     <div
-      v-show="!(isSummaryCard ? localIsMinimized : config?.isMinimized)"
+      v-show="!resolvedIsMinimized"
       class="webview-container"
       :style="webviewStyle"
     >
@@ -256,14 +256,26 @@ import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
 import type { AIProvider, CardConfig } from '../../types'
 import { useChatStore, useLayoutStore } from '../../stores'
+import { storage } from '../../utils/storage'
 
 // Props
 interface Props {
   provider: AIProvider
   config?: CardConfig
+  minimized?: boolean
+  maximized?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  minimized: undefined,
+  maximized: undefined
+})
+
+// Emits
+const emit = defineEmits<{
+  (e: 'toggle-minimized'): void
+  (e: 'toggle-maximized'): void
+}>()
 
 const chatStore = useChatStore()
 const layoutStore = useLayoutStore()
@@ -275,10 +287,10 @@ const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
 const proxyDialogVisible = ref(false)
 const proxyFormRef = ref()
 
-// 总结卡片的本地状态（因为 layoutStore 中没有对应的 cardConfig）
-const isSummaryCard = computed(() => props.provider.id.startsWith('summary-'))
-const localIsMinimized = ref(false)
-const localIsMaximized = ref(false)
+// 使用props提供的minimized/maximized状态，或者回退到config中的状态
+const resolvedIsMinimized = computed(() => props.minimized ?? props.config?.isMinimized ?? false)
+const resolvedIsMaximized = computed(() => props.maximized ?? props.config?.isMaximized ?? false)
+const hasExternalMinimized = computed(() => props.minimized !== undefined)
 
 // 代理配置
 const proxyConfig = ref({
@@ -294,13 +306,9 @@ const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] 
 const cardStyle = computed(() => {
   if (!props.config) return {}
 
-  // 如果卡片被隐藏（最大化时），使用visibility和opacity隐藏
   const isHidden = props.config.isHidden === true
+  const isMinimized = resolvedIsMinimized.value
 
-  // 对于总结卡片，使用本地状态；对于普通卡片，使用 config 中的状态
-  const isMinimized = isSummaryCard.value ? localIsMinimized.value : props.config.isMinimized
-
-  // 处理 width 和 height，支持字符串（如 "100%"）和数字
   const width = typeof props.config.size.width === 'string'
     ? props.config.size.width
     : `${props.config.size.width}px`
@@ -312,7 +320,6 @@ const cardStyle = computed(() => {
 
   return {
     width,
-    // 修复输入法问题：使用min-height而不是固定height，避免影响输入框
     height,
     minHeight: isMinimized ? 'auto' : '0',
     zIndex: props.config.zIndex,
@@ -325,13 +332,10 @@ const cardStyle = computed(() => {
 const webviewStyle = computed(() => {
   if (!props.config) return {}
 
-  // 对于总结卡片，使用本地状态；对于普通卡片，使用 config 中的状态
-  const isMinimized = isSummaryCard.value ? localIsMinimized.value : props.config.isMinimized
-
-  if (isMinimized) return {}
+  if (resolvedIsMinimized.value) return {}
 
   return {
-    height: `${props.config.size.height - 120}px` // 减去头部和状态栏高度
+    height: `${props.config.size.height - 120}px`
   }
 })
 
@@ -343,10 +347,8 @@ const shouldShowWebView = computed(
 
 const webviewWidth = computed(() => {
   const width = props.config?.size.width
-  // 如果 width 是字符串（如 "100%"），返回默认值
   if (typeof width === 'string') {
-    // 对于总结卡片，使用容器实际宽度
-    if (isSummaryCard.value) {
+    if (hasExternalMinimized.value) {
       const container = document.querySelector('.ai-card-container')
       return container?.clientWidth || 800
     }
@@ -357,16 +359,14 @@ const webviewWidth = computed(() => {
 
 const webviewHeight = computed(() => {
   const height = props.config?.size.height
-  // 如果 height 是字符串（如 "100%"），返回默认值
   if (typeof height === 'string') {
-    // 对于总结卡片，使用容器实际高度减去头部高度
-    if (isSummaryCard.value) {
+    if (hasExternalMinimized.value) {
       const container = document.querySelector('.ai-card-container')
       return (container?.clientHeight || 800) - 120
     }
-    return 680 // 800 - 120
+    return 680
   }
-  return (height || 800) - 120 // 增加默认高度到800px，减去头部高度
+  return (height || 800) - 120
 })
 
 /**
@@ -405,14 +405,10 @@ const getStatusText = (): string => {
  * 切换最小化状态
  */
 const toggleMinimized = (): void => {
-  console.log(`[AICard] toggleMinimized called for ${props.provider.name}, isSummaryCard:`, isSummaryCard.value)
-  if (isSummaryCard.value) {
-    // 总结卡片使用本地状态
-    const newValue = !localIsMinimized.value
-    localIsMinimized.value = newValue
-    console.log(`[AICard] 总结卡片 ${props.provider.name} 最小化状态变更为:`, newValue)
+  console.log(`[AICard] toggleMinimized called for ${props.provider.name}`)
+  if (hasExternalMinimized.value) {
+    emit('toggle-minimized')
   } else {
-    // 普通卡片使用 layoutStore
     layoutStore.toggleCardMinimized(props.provider.id)
   }
 }
@@ -421,12 +417,9 @@ const toggleMinimized = (): void => {
  * 切换最大化状态
  */
 const toggleMaximized = (): void => {
-  if (isSummaryCard.value) {
-    // 总结卡片使用本地状态
-    localIsMaximized.value = !localIsMaximized.value
-    console.log(`总结卡片 ${props.provider.name} 最大化状态:`, localIsMaximized.value)
+  if (hasExternalMinimized.value) {
+    emit('toggle-maximized')
   } else {
-    // 普通卡片使用 layoutStore
     layoutStore.toggleCardMaximized(props.provider.id)
   }
 }
@@ -698,9 +691,8 @@ const saveProxyConfig = async(): Promise<void> => {
 const loadProxyConfig = (): void => {
   try {
     const key = `proxy-config-${props.provider.id}`
-    const storedConfig = localStorage.getItem(key)
-    if (storedConfig) {
-      const config = JSON.parse(storedConfig)
+    const config = storage.get<typeof proxyConfig.value>(key)
+    if (config) {
       proxyConfig.value = { ...proxyConfig.value, ...config }
       console.log(`Loaded proxy config for ${props.provider.name} from storage:`, config)
     } else {
@@ -717,7 +709,7 @@ const loadProxyConfig = (): void => {
 const saveProxyConfigToStorage = (): void => {
   try {
     const key = `proxy-config-${props.provider.id}`
-    localStorage.setItem(key, JSON.stringify(proxyConfig.value))
+    storage.set(key, proxyConfig.value)
     console.log(`Saved proxy config for ${props.provider.name} to storage:`, proxyConfig.value)
   } catch (error) {
     console.error(`Failed to save proxy config for ${props.provider.name} to storage:`, error)

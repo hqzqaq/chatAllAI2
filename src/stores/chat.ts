@@ -1,248 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AIProvider, Message, Session } from '../types'
+import { storage } from '../utils/storage'
+import { providerConfigs, createDefaultProvider } from '../config/providers'
 
 /**
  * 聊天状态管理
  */
 export const useChatStore = defineStore('chat', () => {
   // AI提供商列表
-  const providers = ref<AIProvider[]>([
-    {
-      id: 'deepseek',
-      name: 'DeepSeek',
-      url: 'https://chat.deepseek.com',
-      icon: './icons/deepseek.svg',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-deepseek',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'doubao',
-      name: '豆包',
-      url: 'https://www.doubao.com',
-      icon: './icons/doubao.png',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-doubao',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'qwen',
-      name: '通义千问',
-      url: 'https://qianwen.com',
-      icon: './icons/qwen.png',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-qwen',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'kimi',
-      name: 'Kimi',
-      url: 'https://www.kimi.com/',
-      icon: './icons/kimi.png',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-kimi',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'grok',
-      name: 'Grok',
-      url: 'https://grok.com/',
-      icon: './icons/grok.png',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-grok',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'copilot',
-      name: 'Copilot',
-      url: 'https://copilot.microsoft.com',
-      icon: './icons/copilot.svg',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-copilot',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'glm',
-      name: 'GLM',
-      url: 'https://chatglm.cn/',
-      icon: './icons/glm.svg',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-glm',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'yuanbao',
-      name: '元宝',
-      url: 'https://yuanbao.tencent.com/chat',
-      icon: './icons/yuanbao.svg',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-yuanbao',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'miromind',
-      name: 'MiroThinker',
-      url: 'https://dr.miromind.ai/',
-      icon: './icons/miromind.png',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-miromind',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'gemini',
-      name: 'Gemini',
-      url: 'https://gemini.google.com/',
-      icon: './icons/gemini.svg',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-gemini',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'chatgpt',
-      name: 'ChatGPT',
-      url: 'https://chatgpt.com/',
-      icon: './icons/chatgpt.png',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-chatgpt',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'mimo',
-      name: 'mimo',
-      url: 'https://aistudio.xiaomimimo.com/#/c',
-      icon: './icons/mimo.ico',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-mimo',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    },
-    {
-      id: 'minimax',
-      name: 'Minimax',
-      url: 'https://agent.minimax.io/',
-      icon: './icons/minimax.png',
-      isLoggedIn: false,
-      sessionData: {
-        cookies: [],
-        localStorage: {},
-        sessionStorage: {},
-        isActive: false,
-        lastActiveTime: new Date()
-      },
-      webviewId: 'webview-minimax',
-      isEnabled: false,
-      loadingState: 'idle',
-      retryCount: 0
-    }
-  ])
+  const providers = ref<AIProvider[]>(providerConfigs.map(createDefaultProvider))
 
   // 当前输入的消息
   const currentMessage = ref<string>('')
@@ -272,9 +39,9 @@ export const useChatStore = defineStore('chat', () => {
   const loadProxyConfigs = (): void => {
     try {
       providers.value.forEach((provider) => {
-        const storedConfig = localStorage.getItem(`proxy-config-${provider.id}`)
+        const storedConfig = storage.get(`proxy-config-${provider.id}`)
         if (storedConfig) {
-          console.log(`Loaded proxy config for ${provider.name}:`, JSON.parse(storedConfig))
+          console.log(`Loaded proxy config for ${provider.name}:`, storedConfig)
         }
       })
     } catch (error) {
@@ -287,9 +54,9 @@ export const useChatStore = defineStore('chat', () => {
    */
   const loadSelectedProviders = (): void => {
     try {
-      const stored = localStorage.getItem('selected-providers')
+      const stored = storage.get<string[]>('selected-providers')
       if (stored) {
-        selectedProviders.value = JSON.parse(stored)
+        selectedProviders.value = stored
       }
     } catch (error) {
       console.error('加载选中的提供商失败:', error)
@@ -301,7 +68,7 @@ export const useChatStore = defineStore('chat', () => {
    */
   const saveSelectedProviders = (): void => {
     try {
-      localStorage.setItem('selected-providers', JSON.stringify(selectedProviders.value))
+      storage.set('selected-providers', selectedProviders.value)
     } catch (error) {
       console.error('保存选中的提供商失败:', error)
     }

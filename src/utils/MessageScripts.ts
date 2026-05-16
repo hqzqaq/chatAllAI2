@@ -12,32 +12,7 @@
  * @param str 要转义的字符串
  * @returns 转义后的安全字符串
  */
-import { useScriptConfigStore } from '../stores/scriptConfig'
-import type { ScriptType } from '../types'
-
-function resolveScript(
-  providerId: string,
-  scriptType: ScriptType,
-  defaultScript: string,
-  params?: Record<string, string>
-): string {
-  try {
-    const store = useScriptConfigStore()
-    const custom = store.getCustomScript(providerId, scriptType)
-    if (custom) {
-      let result = custom
-      if (params) {
-        Object.keys(params).forEach((key) => {
-          result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), params[key])
-        })
-      }
-      return result
-    }
-  } catch {
-    // Store not available, use default
-  }
-  return defaultScript
-}
+import { resolveScript } from './ScriptResolver'
 
 function escapeJavaScriptString(str: string): string {
   // 使用更安全的转义方式，确保字符串在JavaScript中安全使用

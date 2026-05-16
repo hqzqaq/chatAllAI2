@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { CardConfig } from '../types'
+import { storage } from '../utils/storage'
 
 /**
  * 布局状态管理
@@ -291,7 +292,7 @@ export const useLayoutStore = defineStore('layout', () => {
         cardConfigs: cardConfigs.value,
         gridSettings: gridSettings.value
       }
-      localStorage.setItem('chatallai_layout_config', JSON.stringify(config))
+      storage.set('chatallai_layout_config', config)
     } catch (error) {
       console.error('Failed to save layout config:', error)
     }
@@ -302,9 +303,8 @@ export const useLayoutStore = defineStore('layout', () => {
    */
   const loadLayoutConfig = (): void => {
     try {
-      const saved = localStorage.getItem('chatallai_layout_config')
-      if (saved) {
-        const config = JSON.parse(saved)
+      const config = storage.get<any>('chatallai_layout_config')
+      if (config) {
         if (config.cardConfigs) {
           cardConfigs.value = config.cardConfigs
         }

@@ -11,24 +11,16 @@ import { WindowManager } from './WindowManager'
 import { SessionManager } from './SessionManager'
 import { getSendMessageScript } from '../../src/utils/MessageScripts'
 import { getStatusMonitorScript } from '../../src/utils/StatusMonitorScripts'
+import { buildWebViewElementId, parseProviderIdFromElementId } from '../../src/utils/webviewHelper'
 import {
   IPCChannel,
-  IPCRequest,
-  IPCResponse,
-  IPCEventDataMap,
   MessageSendRequest,
   MessageSendResponse,
-  WebViewCreateRequest,
-  WebViewCreateResponse,
   WebViewExecuteScriptRequest,
   WebViewExecuteScriptResponse,
   SessionSaveRequest,
   SessionLoadRequest,
   SessionLoadResponse,
-  StorageRequest,
-  StorageResponse,
-  SettingsRequest,
-  SettingsResponse,
   ErrorReportRequest,
   PerformanceMetricsResponse,
   AIStatusStartMonitoringRequest,
@@ -112,7 +104,6 @@ export class IPCHandler extends EventEmitter {
     // WebView管理
     ipcMain.handle('send-message-to-webview', (event, data) => this.handleSendMessageToWebView(data))
     ipcMain.handle('refresh-webview', (event, webviewId) => this.handleRefreshWebView(webviewId))
-    ipcMain.handle('refresh-all-webviews', () => this.handleRefreshAllWebViews())
     ipcMain.handle('load-webview', (event, data) => this.handleLoadWebView(data))
     ipcMain.handle('open-devtools', (event, webviewId) => this.handleOpenDevTools(webviewId))
 
@@ -128,12 +119,7 @@ export class IPCHandler extends EventEmitter {
     this.handleInvoke(IPCChannel.MESSAGE_SEND_ALL, this.handleMessageSendAll.bind(this))
 
     // WebView管理
-    this.handleInvoke(IPCChannel.WEBVIEW_CREATE, this.handleWebViewCreate.bind(this))
-    this.handleInvoke(IPCChannel.WEBVIEW_DESTROY, this.handleWebViewDestroy.bind(this))
-    this.handleInvoke(IPCChannel.WEBVIEW_RELOAD, this.handleWebViewReload.bind(this))
-    this.handleInvoke(IPCChannel.WEBVIEW_NAVIGATE, this.handleWebViewNavigate.bind(this))
     this.handleInvoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, this.handleWebViewExecuteScript.bind(this))
-    this.handleInvoke(IPCChannel.WEBVIEW_INSERT_CSS, this.handleWebViewInsertCSS.bind(this))
     this.handleInvoke(IPCChannel.WEBVIEW_SET_PROXY, this.handleWebViewSetProxy.bind(this))
 
     // 会话管理
@@ -141,17 +127,6 @@ export class IPCHandler extends EventEmitter {
     this.handleInvoke(IPCChannel.SESSION_LOAD, this.handleSessionLoad.bind(this))
     this.handleInvoke(IPCChannel.SESSION_CLEAR, this.handleSessionClear.bind(this))
     this.handleInvoke(IPCChannel.SESSION_CHECK, this.handleSessionCheck.bind(this))
-
-    // 存储操作
-    this.handleInvoke(IPCChannel.STORAGE_GET, this.handleStorageGet.bind(this))
-    this.handleInvoke(IPCChannel.STORAGE_SET, this.handleStorageSet.bind(this))
-    this.handleInvoke(IPCChannel.STORAGE_DELETE, this.handleStorageDelete.bind(this))
-    this.handleInvoke(IPCChannel.STORAGE_CLEAR, this.handleStorageClear.bind(this))
-
-    // 设置管理
-    this.handleInvoke(IPCChannel.SETTINGS_GET, this.handleSettingsGet.bind(this))
-    this.handleInvoke(IPCChannel.SETTINGS_SET, this.handleSettingsSet.bind(this))
-    this.handleInvoke(IPCChannel.SETTINGS_RESET, this.handleSettingsReset.bind(this))
 
     // 性能监控
     this.handleInvoke(IPCChannel.PERFORMANCE_GET_METRICS, this.handlePerformanceGetMetrics.bind(this))
@@ -403,66 +378,62 @@ export class IPCHandler extends EventEmitter {
   }
 
   /**
+   * 在WebView容器中执行脚本
+   */
+  private async executeInWebViewContainer(webviewId: string, innerScript: string, logPrefix: string): Promise<any> {
+    const mainWindow = this.windowManager.getMainWindow()
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      throw new Error('Main window not available')
+    }
+    const elementId = buildWebViewElementId(parseProviderIdFromElementId(webviewId))
+    const script = `
+      (async function() {
+        try {
+          console.log('[IPC] ${logPrefix}...');
+          const webviewElement = document.querySelector('webview[id="${elementId}"]');
+          if (!webviewElement) {
+            console.error('[IPC] WebView element not found: ${elementId}');
+            return null;
+          }
+          ${innerScript}
+        } catch (error) {
+          console.error('[IPC] Error in ${logPrefix}:', error);
+          return null;
+        }
+      })()
+    `
+    const result = await mainWindow.webContents.executeJavaScript(script)
+    this.log(`${logPrefix} result for ${webviewId}:`, result)
+    return result
+  }
+
+  /**
    * 发送消息到WebView
    */
   private async handleSendMessageToWebView(data: { webviewId: string; message: string }): Promise<void> {
     try {
       this.log(`Sending message to WebView ${data.webviewId}:`, data.message)
 
-      const mainWindow = this.windowManager.getMainWindow()
-      if (!mainWindow || mainWindow.isDestroyed()) {
-        throw new Error('Main window not available')
+      const extractedProviderId = parseProviderIdFromElementId(data.webviewId)
+
+      let scriptProviderId = extractedProviderId
+      if (scriptProviderId.startsWith('summary-')) {
+        scriptProviderId = scriptProviderId.replace('summary-', '')
+        this.log('[IPC] Detected summary provider, using original provider:', scriptProviderId)
       }
 
-      // 从webviewId推断providerId（webview-webview-kimi -> kimi）
-      let providerId = data.webviewId.replace('webview-', '')
+      this.log('[IPC] Provider ID:', scriptProviderId)
 
-      // 对于总结模式的provider（id格式为summary-{originalId}），使用原始provider的发送脚本
-      if (providerId.startsWith('summary-')) {
-        providerId = providerId.replace('summary-', '')
-        this.log('[IPC] Detected summary provider, using original provider:', providerId)
-      }
-
-      this.log('[IPC] Provider ID:', providerId)
-
-      // 使用MessageScripts工具类获取对应的发送脚本
-      const sendScript = getSendMessageScript(providerId, data.message)
+      const sendScript = getSendMessageScript(scriptProviderId, data.message)
 
       this.log('[IPC] Generated send script:', sendScript)
 
-      const webviewId = data.webviewId.includes('webview-') ? `${data.webviewId}-element` : `webview-${data.webviewId}-element`
-
-      // 避免两层转义：直接将sendScript作为字符串传递给WebView
-      const script = `
-        (async function() {
-          try {
-            console.log('[IPC] Starting message send process...');
-            
-            const webviewElement = document.querySelector('#${webviewId}');
-            console.log('[IPC] WebView element:', webviewElement);
-            
-            if (!webviewElement) {
-              console.error('[IPC] WebView element not found:', '${webviewId}');
-              return false;
-            }
-            
-            console.log('[IPC] Executing script in WebView...');
-            
-            // 直接执行sendScript，避免两层转义
-            const result = await webviewElement.executeJavaScript(${JSON.stringify(sendScript)});
-            
-            console.log('[IPC] Script result:', result);
-            return result;
-          } catch (error) {
-            console.error('[IPC] Error in script execution:', error);
-            return false;
-          }
-        })()
-      `
-
-      // 执行脚本
-      const result = await mainWindow.webContents.executeJavaScript(script)
-      this.log(`Message send script executed for ${data.webviewId}, result:`, result)
+      await this.executeInWebViewContainer(
+        data.webviewId,
+        `const result = await webviewElement.executeJavaScript(${JSON.stringify(sendScript)});
+        return result;`,
+        'Message send'
+      )
     } catch (error) {
       this.log(`Failed to send message to WebView ${data.webviewId}:`, error)
       throw error
@@ -475,35 +446,16 @@ export class IPCHandler extends EventEmitter {
   private async handleRefreshWebView(webviewId: string): Promise<void> {
     try {
       this.log(`Refreshing WebView: ${webviewId}`)
-
-      const mainWindow = this.windowManager.getMainWindow()
-      if (!mainWindow || mainWindow.isDestroyed()) {
-        throw new Error('Main window not available')
-      }
-
-      // 执行JavaScript代码来刷新WebView
-      const script = `
-        (function() {
-          try {
-            const webviewElement = document.querySelector('#${webviewId}-element');
-            if (webviewElement && webviewElement.reload) {
-              webviewElement.reload();
-              console.log('WebView reloaded successfully: ${webviewId}');
-              return true;
-            } else {
-              console.error('WebView element not found or does not support reload: ${webviewId}');
-              return false;
-            }
-          } catch (error) {
-            console.error('Error reloading WebView:', error);
-            return false;
-          }
-        })()
-      `
-
-      const result = await mainWindow.webContents.executeJavaScript(script)
-      this.log(`WebView refresh result for ${webviewId}:`, result)
-
+      const result = await this.executeInWebViewContainer(
+        webviewId,
+        `if (webviewElement && webviewElement.reload) {
+          webviewElement.reload();
+          console.log('WebView reloaded successfully');
+          return true;
+        }
+        return false;`,
+        'WebView refresh'
+      )
       if (!result) {
         throw new Error('Failed to refresh WebView - WebView may not be ready')
       }
@@ -511,14 +463,6 @@ export class IPCHandler extends EventEmitter {
       this.log(`Failed to refresh WebView ${webviewId}:`, error)
       throw error
     }
-  }
-
-  /**
-   * 刷新所有WebView
-   */
-  private async handleRefreshAllWebViews(): Promise<void> {
-    // 这里应该实现刷新所有WebView的逻辑
-    this.log('Refreshing all WebViews')
   }
 
   /**
@@ -535,35 +479,16 @@ export class IPCHandler extends EventEmitter {
   private async handleOpenDevTools(webviewId: string): Promise<void> {
     try {
       this.log(`Opening DevTools for WebView: ${webviewId}`)
-
-      const mainWindow = this.windowManager.getMainWindow()
-      if (!mainWindow || mainWindow.isDestroyed()) {
-        throw new Error('Main window not available')
-      }
-
-      // 执行JavaScript代码来打开WebView的控制台
-      const script = `
-        (function() {
-          try {
-            const webviewElement = document.querySelector('#${webviewId}-element');
-            if (webviewElement && webviewElement.openDevTools) {
-              webviewElement.openDevTools();
-              console.log('DevTools opened for WebView: ${webviewId}');
-              return true;
-            } else {
-              console.error('WebView element not found or does not support openDevTools: ${webviewId}');
-              return false;
-            }
-          } catch (error) {
-            console.error('Error opening DevTools:', error);
-            return false;
-          }
-        })()
-      `
-
-      const result = await mainWindow.webContents.executeJavaScript(script)
-      this.log(`DevTools open result for ${webviewId}:`, result)
-
+      const result = await this.executeInWebViewContainer(
+        webviewId,
+        `if (webviewElement && webviewElement.openDevTools) {
+          webviewElement.openDevTools();
+          console.log('DevTools opened');
+          return true;
+        }
+        return false;`,
+        'DevTools open'
+      )
       if (!result) {
         throw new Error('Failed to open DevTools - WebView may not be ready')
       }
@@ -670,118 +595,27 @@ export class IPCHandler extends EventEmitter {
   }
 
   /**
-   * 处理WebView创建
-   */
-  private async handleWebViewCreate(data: WebViewCreateRequest): Promise<WebViewCreateResponse> {
-    try {
-      const { providerId, url } = data
-      const webviewId = this.generateId()
-
-      // 创建会话
-      await this.sessionManager.createProviderSession(providerId)
-
-      return {
-        webviewId,
-        providerId,
-        success: true
-      }
-    } catch (error) {
-      return {
-        webviewId: '',
-        providerId: data.providerId,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * 处理WebView销毁
-   */
-  private async handleWebViewDestroy(data: { webviewId: string }): Promise<{ success: boolean }> {
-    // 实现WebView销毁逻辑
-    return { success: true }
-  }
-
-  /**
-   * 处理WebView重新加载
-   */
-  private async handleWebViewReload(data: { webviewId: string }): Promise<{ success: boolean }> {
-    // 实现WebView重新加载逻辑
-    return { success: true }
-  }
-
-  /**
-   * 处理WebView导航
-   */
-  private async handleWebViewNavigate(data: { webviewId: string; url: string }): Promise<{ success: boolean }> {
-    // 实现WebView导航逻辑
-    return { success: true }
-  }
-
-  /**
    * 处理WebView脚本执行
    */
   private async handleWebViewExecuteScript(data: WebViewExecuteScriptRequest): Promise<WebViewExecuteScriptResponse> {
     try {
       this.log(`Executing script in WebView ${data.webviewId}`)
-
-      const mainWindow = this.windowManager.getMainWindow()
-      if (!mainWindow || mainWindow.isDestroyed()) {
-        throw new Error('Main window not available')
-      }
-      const webviewId = data.webviewId.includes('webview-') ? `${data.webviewId}-element` : `webview-${data.webviewId}-element`
-
-      // 执行JavaScript代码
-      const script = `
-        (async function() {
-          try {
-            console.log('[IPC] Starting script execution process...');
-            
-            const webviewElement = document.querySelector('#${webviewId}');
-            console.log('[IPC] WebView element:', webviewElement);
-            
-            if (!webviewElement) {
-              console.error('[IPC] WebView element not found:', '${webviewId}');
-              return false;
-            }
-            
-            console.log('[IPC] Executing script in WebView...');
-            
-            // 直接执行传入的脚本
-            const result = await webviewElement.executeJavaScript(${JSON.stringify(data.script)});
-            
-            console.log('[IPC] Script result:', result);
-            return result;
-          } catch (error) {
-            console.error('[IPC] Error in script execution:', error);
-            return false;
-          }
-        })()
-      `
-
-      // 执行脚本
-      const result = await mainWindow.webContents.executeJavaScript(script)
-      this.log(`Script executed for ${data.webviewId}, result:`, result)
-
+      const result = await this.executeInWebViewContainer(
+        data.webviewId,
+        `const result = await webviewElement.executeJavaScript(${JSON.stringify(data.script)});
+        return result;`,
+        'Script execution'
+      )
       return {
+        success: result !== false && result !== null,
         result
       }
     } catch (error) {
-      this.log(`Failed to execute script in WebView ${data.webviewId}:`, error)
       return {
-        result: null,
+        success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
-  }
-
-  /**
-   * 处理WebView CSS插入
-   */
-  private async handleWebViewInsertCSS(data: { webviewId: string; css: string }): Promise<{ success: boolean }> {
-    // 实现CSS插入逻辑
-    return { success: true }
   }
 
   /**
@@ -818,127 +652,6 @@ export class IPCHandler extends EventEmitter {
     const exists = await this.sessionManager.hasSession(data.providerId)
     const active = await this.sessionManager.isSessionActive(data.providerId)
     return { exists, active }
-  }
-
-  /**
-   * 处理存储获取
-   */
-  private async handleStorageGet(data: StorageRequest): Promise<StorageResponse> {
-    try {
-      // 实现存储获取逻辑
-      return {
-        value: null,
-        success: true
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * 处理存储设置
-   */
-  private async handleStorageSet(data: StorageRequest): Promise<StorageResponse> {
-    try {
-      // 实现存储设置逻辑
-      return {
-        success: true
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * 处理存储删除
-   */
-  private async handleStorageDelete(data: StorageRequest): Promise<StorageResponse> {
-    try {
-      // 实现存储删除逻辑
-      return {
-        success: true
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * 处理存储清除
-   */
-  private async handleStorageClear(data: { namespace?: string }): Promise<StorageResponse> {
-    try {
-      // 实现存储清除逻辑
-      return {
-        success: true
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * 处理设置获取
-   */
-  private async handleSettingsGet(data: SettingsRequest): Promise<SettingsResponse> {
-    try {
-      // 实现设置获取逻辑
-      return {
-        settings: {},
-        success: true
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * 处理设置设置
-   */
-  private async handleSettingsSet(data: SettingsRequest): Promise<SettingsResponse> {
-    try {
-      // 实现设置设置逻辑
-      return {
-        success: true
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * 处理设置重置
-   */
-  private async handleSettingsReset(data: { section?: string }): Promise<SettingsResponse> {
-    try {
-      // 实现设置重置逻辑
-      return {
-        success: true
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
   }
 
   /**
@@ -1047,36 +760,17 @@ export class IPCHandler extends EventEmitter {
     try {
       this.log(`Starting AI status monitoring for webview ${data.webviewId}, provider ${data.providerId}`)
 
-      const mainWindow = this.windowManager.getMainWindow()
-      if (!mainWindow || mainWindow.isDestroyed()) {
-        throw new Error('Main window not available')
-      }
-      // chatgpt网页有较强的爬虫检测机制，不宜频繁执行js
       if (data.providerId === 'chatgpt') {
         return { success: false }
       }
-      // 获取为特定provider定制的状态监控脚本
       const statusMonitorScript = getStatusMonitorScript(data.providerId)
 
-      // 在webview中执行该脚本
-      const script = `
-        (async function() {
-          try {
-            const webviewElement = document.querySelector('#${data.webviewId}-element');
-            if (!webviewElement) {
-              console.error('[AI Status Monitor] WebView element not found:', '${data.webviewId}');
-              return false;
-            }
-            await webviewElement.executeJavaScript(${JSON.stringify(statusMonitorScript)});
-            return true;
-          } catch (error) {
-            console.error('[AI Status Monitor] Error in status monitoring script execution:', error);
-            return false;
-          }
-        })()
-      `
-
-      const result = await mainWindow.webContents.executeJavaScript(script)
+      const result = await this.executeInWebViewContainer(
+        data.webviewId,
+        `await webviewElement.executeJavaScript(${JSON.stringify(statusMonitorScript)});
+        return true;`,
+        'AI Status monitoring start'
+      )
 
       if (result) {
         this.log(`AI status monitoring started successfully for ${data.webviewId}`)

@@ -35,19 +35,7 @@ interface SendMessageResult {
  * 总结服务类
  */
 export class SummaryService {
-  private static instance: SummaryService
-
   private abortController: AbortController | null = null
-
-  /**
-   * 获取单例实例
-   */
-  static getInstance(): SummaryService {
-    if (!SummaryService.instance) {
-      SummaryService.instance = new SummaryService()
-    }
-    return SummaryService.instance
-  }
 
   /**
    * 收集各AI的回答
@@ -400,4 +388,4 @@ export class SummaryService {
 /**
  * 全局总结服务实例
  */
-export const summaryService = SummaryService.getInstance()
+export const summaryService = new SummaryService()
