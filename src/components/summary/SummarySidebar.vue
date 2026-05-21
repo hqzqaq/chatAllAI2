@@ -5,6 +5,7 @@
   >
     <!-- 折叠切换按钮 - 小圆点按钮 -->
     <div
+      v-show="!isMaximized"
       class="collapse-toggle"
       :class="{ collapsed: isCollapsed }"
       :title="isCollapsed ? '展开总结面板' : '收起总结面板'"
@@ -23,28 +24,37 @@
       <!-- 侧边栏头部 - 模型选择 -->
       <div class="sidebar-header">
         <span class="header-title">AI 总结</span>
-        <el-select
-          v-model="selectedModelId"
-          size="small"
-          class="model-select"
-          @change="handleModelChange"
-        >
-          <el-option
-            v-for="p in availableProviders"
-            :key="p.id"
-            :label="p.name"
-            :value="p.id"
+        <div class="header-actions">
+          <el-select
+            v-model="selectedModelId"
+            size="small"
+            class="model-select"
+            @change="handleModelChange"
           >
-            <div class="provider-option">
-              <img
-                :src="p.icon"
-                class="provider-icon-small"
-                @error="handleIconError"
-              >
-              <span>{{ p.name }}</span>
-            </div>
-          </el-option>
-        </el-select>
+            <el-option
+              v-for="p in availableProviders"
+              :key="p.id"
+              :label="p.name"
+              :value="p.id"
+            >
+              <div class="provider-option">
+                <img
+                  :src="p.icon"
+                  class="provider-icon-small"
+                  @error="handleIconError"
+                >
+                <span>{{ p.name }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <el-button
+            :icon="isMaximized ? Close : FullScreen"
+            size="small"
+            circle
+            :title="isMaximized ? '还原' : '最大化'"
+            @click="isMaximized = !isMaximized"
+          />
+        </div>
       </div>
 
       <!-- AI卡片区域 -->
@@ -54,6 +64,8 @@
           :key="summaryProviderId"
           :provider="provider"
           :config="cardConfig"
+          :maximized="isMaximized"
+          @toggle-maximized="isMaximized = !isMaximized"
         />
       </div>
     </div>
@@ -62,6 +74,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { FullScreen, Close } from '@element-plus/icons-vue'
 import SummaryCard from '../chat/SummaryCard.vue'
 import type { AIProvider } from '../../types'
 
@@ -99,6 +112,9 @@ const emit = defineEmits<Emits>()
 
 // 折叠状态 - 默认收起
 const isCollapsed = ref(true)
+
+// 最大化状态
+const isMaximized = ref(false)
 
 // 选中的模型ID
 const selectedModelId = ref(props.selectedProviderId)
@@ -247,6 +263,12 @@ watch(() => props.selectedProviderId, (newId) => {
   font-weight: 600;
   font-size: 16px;
   color: var(--el-text-color-primary);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .model-select {

@@ -2,26 +2,63 @@
   <AICard
     :provider="provider"
     :config="config"
-    :minimized="minimized"
-    :maximized="maximized"
+    :minimized="resolvedMinimized"
+    :maximized="resolvedMaximized"
     class="summary-ai-card"
-    @toggle-minimized="minimized = !minimized"
-    @toggle-maximized="maximized = !maximized"
+    @toggle-minimized="toggleMinimized"
+    @toggle-maximized="toggleMaximized"
   />
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import AICard from './AICard.vue'
 import type { AIProvider, CardConfig } from '../../types'
 
 interface Props {
   provider: AIProvider
   config?: CardConfig
+  maximized?: boolean
+  minimized?: boolean
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  maximized: undefined,
+  minimized: undefined
+})
 
-const minimized = ref(false)
-const maximized = ref(false)
+const emit = defineEmits<{
+  (e: 'toggle-minimized'): void
+  (e: 'toggle-maximized'): void
+}>()
+
+const internalMinimized = ref(false)
+const internalMaximized = ref(false)
+
+const hasExternalMaximized = computed(() => props.maximized !== undefined)
+const hasExternalMinimized = computed(() => props.minimized !== undefined)
+
+const resolvedMaximized = computed(() =>
+  hasExternalMaximized.value ? props.maximized : internalMaximized.value
+)
+
+const resolvedMinimized = computed(() =>
+  hasExternalMinimized.value ? props.minimized : internalMinimized.value
+)
+
+const toggleMinimized = () => {
+  if (hasExternalMinimized.value) {
+    emit('toggle-minimized')
+  } else {
+    internalMinimized.value = !internalMinimized.value
+  }
+}
+
+const toggleMaximized = () => {
+  if (hasExternalMaximized.value) {
+    emit('toggle-maximized')
+  } else {
+    internalMaximized.value = !internalMaximized.value
+  }
+}
 </script>

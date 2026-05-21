@@ -2,8 +2,8 @@
   <div
     class="ai-card"
     :class="{
-      minimized: config?.isMinimized,
-      maximized: config?.isMaximized,
+      minimized: resolvedIsMinimized,
+      maximized: resolvedIsMaximized,
       'logged-in': props.provider.isLoggedIn
     }"
     :style="cardStyle"

@@ -173,7 +173,7 @@
                   type="textarea"
                   :rows="10"
                   placeholder="输入 prompt 内容，可以使用 {{user_input}} 作为替换符..."
-                  @input="handleContentChange"
+                  disabled
                 />
               </div>
             </div>
@@ -749,13 +749,6 @@ const handleApplyPrompt = (prompt: Prompt): void => {
 
   emit('apply-prompt', prompt, props.userInput)
   ElMessage.success('Prompt 已应用到输入框')
-}
-
-const handleContentChange = (): void => {
-  if (selectedPrompt.value) {
-    selectedPrompt.value.updatedAt = new Date().toISOString()
-    savePrompts()
-  }
 }
 
 const handleCategoryChange = (value: string): void => {
