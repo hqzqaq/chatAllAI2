@@ -8,7 +8,11 @@
 
     <!-- 主内容区域 -->
     <main class="main-content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive>
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </main>
 
     <!-- 底部状态栏 -->
