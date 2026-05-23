@@ -85,6 +85,28 @@
           </el-checkbox-group>
         </div>
 
+        <div
+          v-if="attachedFiles.length > 0"
+          class="attached-files"
+        >
+          <div
+            v-for="(file, index) in attachedFiles"
+            :key="index"
+            class="file-chip"
+          >
+            <el-icon class="file-chip-icon">
+              <Document />
+            </el-icon>
+            <span class="file-chip-name">{{ file.name }}</span>
+            <el-icon
+              class="file-chip-close"
+              @click="removeFile(index)"
+            >
+              <Close />
+            </el-icon>
+          </div>
+        </div>
+
         <div class="input-content">
           <div class="textarea-container">
             <el-input
@@ -119,6 +141,15 @@
 
           <div class="input-actions">
             <div class="actions-left">
+              <el-button
+                :icon="Upload"
+                size="small"
+                data-testid="file-button"
+                @click="triggerFileSelect"
+              >
+                选择文件
+              </el-button>
+
               <el-button
                 :icon="Refresh"
                 size="small"
@@ -209,6 +240,15 @@
       :user-input="currentMessage"
       @apply-prompt="handleApplyPrompt"
     />
+
+    <input
+      ref="fileInputRef"
+      type="file"
+      multiple
+      :accept="ACCEPTED_FILE_EXTENSIONS"
+      style="display: none"
+      @change="handleFileInputChange"
+    >
   </div>
 </template>
 
@@ -217,7 +257,8 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank, Lightning, DocumentChecked
+  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank,
+  Lightning, DocumentChecked, Upload, Close
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
@@ -233,6 +274,22 @@ const emit = defineEmits<{(e: 'summary'): void
 }>()
 
 const draggedProvider = ref<AIProvider | null>(null)
+
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+interface AttachedFile {
+  name: string
+  content: string
+}
+
+const attachedFiles = ref<AttachedFile[]>([])
+
+const ACCEPTED_FILE_EXTENSIONS = [
+  '.txt', '.md', '.json', '.csv', '.py', '.js', '.ts', '.html', '.css',
+  '.xml', '.yaml', '.yml', '.log', '.sql', '.java', '.go', '.rs', '.c',
+  '.cpp', '.h', '.hpp', '.sh', '.bat', '.ps1', '.ini', '.cfg', '.conf',
+  '.toml', '.properties', '.env'
+].join(',')
 
 const selectedProviders = computed({
   get: () => chatStore.selectedProviders,
@@ -741,6 +798,8 @@ const loadQuickPrompt = (): void => {
  * 发送消息
  */
 const handleSend = async(): Promise<void> => {
+  appendFileContentToMessage()
+
   if (loggedInCount.value === 0) {
     ElMessage.warning('请先登录至少一个AI网站')
     return
@@ -763,6 +822,10 @@ const handleSend = async(): Promise<void> => {
 
     // 清空输入框（提前清空，避免重复发送）
     chatStore.clearCurrentMessage()
+    attachedFiles.value = []
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
+    }
 
     // 使用消息分发器发送消息
     const results = await messageDispatcher.sendMessage(messageContent, loggedInProviders)
@@ -823,6 +886,79 @@ const handleRefresh = async(): Promise<void> => {
  */
 const handleClear = (): void => {
   chatStore.clearCurrentMessage()
+  attachedFiles.value = []
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+const triggerFileSelect = (): void => {
+  fileInputRef.value?.click()
+}
+
+const handleFileInputChange = (event: Event): void => {
+  const input = event.target as HTMLInputElement
+  const { files } = input
+  if (!files || files.length === 0) return
+
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files[i]
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      attachedFiles.value.push({ name: file.name, content })
+    }
+
+    reader.onerror = () => {
+      ElMessage.error(`读取文件 ${file.name} 失败`)
+    }
+
+    reader.readAsText(file)
+  }
+
+  input.value = ''
+}
+
+const removeFile = (index: number): void => {
+  attachedFiles.value.splice(index, 1)
+}
+
+const appendFileContentToMessage = (): void => {
+  if (attachedFiles.value.length === 0) return
+
+  const fileContents = attachedFiles.value.map((file) => {
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    let lang = ''
+    switch (ext) {
+      case 'js': case 'ts': lang = ext; break
+      case 'py': lang = 'python'; break
+      case 'java': lang = 'java'; break
+      case 'go': lang = 'go'; break
+      case 'rs': lang = 'rust'; break
+      case 'sql': lang = 'sql'; break
+      case 'html': lang = 'html'; break
+      case 'css': lang = 'css'; break
+      case 'xml': lang = 'xml'; break
+      case 'yaml': case 'yml': lang = 'yaml'; break
+      case 'json': lang = 'json'; break
+      case 'sh': case 'bash': lang = 'bash'; break
+      case 'bat': case 'ps1': lang = 'powershell'; break
+      default: lang = ''
+    }
+
+    if (lang) {
+      return `### 文件: ${file.name}\n\`\`\`${lang}\n${file.content}\n\`\`\``
+    }
+    return `### 文件: ${file.name}\n\`\`\`\n${file.content}\n\`\`\``
+  }).join('\n\n')
+
+  const existing = currentMessage.value
+  if (existing.trim()) {
+    chatStore.currentMessage = `${existing}\n\n---\n\n${fileContents}`
+  } else {
+    chatStore.currentMessage = fileContents
+  }
 }
 
 /**
@@ -1461,6 +1597,58 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.attached-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color-light);
+}
+
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.file-chip:hover {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 1px 4px rgba(48, 165, 255, 0.2);
+}
+
+.file-chip-icon {
+  color: var(--el-color-primary);
+  font-size: 16px;
+}
+
+.file-chip-name {
+  color: var(--el-text-color-regular);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-chip-close {
+  color: var(--el-text-color-placeholder);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.file-chip-close:hover {
+  color: var(--el-color-danger);
 }
 
 /* 输入框容器样式 */
