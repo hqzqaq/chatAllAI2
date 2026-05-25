@@ -304,6 +304,10 @@ const destroy = (): void => {
   stopSaveSessionTimer()
   stopLoginCheckTimer()
 
+  if (window.electronAPI?.stopAIStatusMonitoring) {
+    window.electronAPI.stopAIStatusMonitoring({ providerId: props.provider.id }).catch(() => {})
+  }
+
   if (webviewElement.value) {
     const container = document.getElementById(webviewId.value)
     if (container) {

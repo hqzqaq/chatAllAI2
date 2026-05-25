@@ -64,13 +64,23 @@ export interface MessageSendResult {
 }
 
 /**
- * 消息分发配置
+ * 消息分发器配置
  */
 export interface MessageDispatcherConfig {
   timeout: number
   retryAttempts: number
   retryDelay: number
   enableLogging: boolean
+}
+
+/**
+ * 附件文件信息
+ */
+export interface AttachedFileInfo {
+  name: string
+  size: number
+  mimeType: string
+  base64: string
 }
 
 /**
@@ -226,6 +236,109 @@ export class MessageDispatcher extends BrowserEventEmitter {
       this.messageQueue.delete(finalMessageId)
       throw error
     }
+  }
+
+  /**
+   * 上传文件到指定的webview提供商
+   */
+  async sendFiles(files: AttachedFileInfo[], providers: AIProvider[]): Promise<MessageSendResult[]> {
+    const messageId = this.generateMessageId()
+    const results: MessageSendResult[] = []
+
+    this.log('[FileUpload:Dispatcher] ========== sendFiles START ==========')
+    this.log(`[FileUpload:Dispatcher] messageId=${messageId} providers=${providers.length} files=${files.length}`)
+    providers.forEach((p) => {
+      this.log(
+        `[FileUpload:Dispatcher]   provider: id=${p.id} name=${p.name} webviewId=${p.webviewId}`
+      )
+    })
+    files.forEach((f, i) => {
+      this.log(
+        `[FileUpload:Dispatcher]   file[${i}]: name=${f.name} `
+        + `size=${f.size} type=${f.mimeType} base64Len=${f.base64.length}`
+      )
+    })
+
+    const uploadPromises = providers.flatMap((provider) => (
+      files.map(async(file) => {
+        const taskLabel = `${provider.id}/${file.name}`
+        this.log(`[FileUpload:Dispatcher] Task START: ${taskLabel}`)
+        try {
+          this.setSendingStatus(provider.id, 'sending')
+          this.emit('status-changed', { providerId: provider.id, status: 'sending', messageId })
+
+          if (window.electronAPI) {
+            const result = await Promise.race([
+              window.electronAPI.uploadFileToWebView({
+                webviewId: provider.webviewId,
+                providerId: provider.id,
+                file: {
+                  name: file.name,
+                  size: file.size,
+                  mimeType: file.mimeType,
+                  base64: file.base64
+                }
+              }),
+              this.createTimeoutPromise(this.config.timeout)
+            ])
+
+            this.setSendingStatus(provider.id, 'sent')
+            this.emit('status-changed', { providerId: provider.id, status: 'sent', messageId })
+
+            this.log(
+              `[FileUpload:Dispatcher] Task DONE: ${taskLabel} `
+          + `success=${result.success} error=${result.error || 'none'}`
+            )
+            return {
+              providerId: provider.id,
+              success: result.success,
+              messageId,
+              error: result.error,
+              timestamp: new Date()
+            }
+          }
+          throw new Error('Electron API not available')
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error)
+          this.log(
+            `[FileUpload:Dispatcher] Task FAILED: ${taskLabel} error=${errorMsg}`
+          )
+          this.setSendingStatus(provider.id, 'error')
+          this.emit('status-changed', {
+            providerId: provider.id,
+            status: 'error',
+            messageId,
+            error
+          })
+
+          return {
+            providerId: provider.id,
+            success: false,
+            messageId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date()
+          }
+        }
+      })
+    ))
+
+    const settledResults = await Promise.allSettled(uploadPromises)
+    settledResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        results.push(result.value)
+        this.log(
+          `[FileUpload:Dispatcher] Result[${index}]: `
+            + `success=${result.value.success} provider=${result.value.providerId} `
+            + `error=${result.value.error || 'none'}`
+        )
+      } else {
+        this.log(`[FileUpload:Dispatcher] Result[${index}]: REJECTED reason=${result.reason}`)
+      }
+    })
+
+    this.log('[FileUpload:Dispatcher] ========== sendFiles END ==========')
+    this.emit('message-sent', { messageId, results })
+    return results
   }
 
   /**

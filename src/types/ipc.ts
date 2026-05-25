@@ -65,7 +65,12 @@ export enum IPCChannel {
   AI_STATUS_START_MONITORING = 'ai-status:start-monitoring',
   AI_STATUS_STOP_MONITORING = 'ai-status:stop-monitoring',
   AI_STATUS_GET_CURRENT = 'ai-status:get-current',
-  AI_STATUS_CHANGE = 'ai-status:change'
+  AI_STATUS_CHANGE = 'ai-status:change',
+
+  // 文件操作
+  FILE_OPEN_DIALOG = 'file:open-dialog',
+  FILE_READ = 'file:read',
+  FILE_UPLOAD_TO_WEBVIEW = 'file:upload-to-webview'
 }
 
 /**
@@ -340,9 +345,72 @@ export interface IPCHandler {
 }
 
 /**
+ * 文件打开对话框请求
+ */
+export interface FileOpenDialogRequest {
+  filters?: Array<{ name: string; extensions: string[] }>
+  multiSelections?: boolean
+}
+
+/**
+ * 文件打开对话框响应
+ */
+export interface FileOpenDialogResponse {
+  canceled: boolean
+  filePaths: string[]
+}
+
+/**
+ * 文件读取请求
+ */
+export interface FileReadRequest {
+  filePath: string
+}
+
+/**
+ * 文件读取响应
+ */
+export interface FileReadResponse {
+  success: boolean
+  name: string
+  size: number
+  mimeType: string
+  base64: string
+  error?: string
+}
+
+/**
+ * 文件上传到WebView请求
+ */
+export interface FileUploadToWebViewRequest {
+  webviewId: string
+  providerId: string
+  file: {
+    name: string
+    size: number
+    mimeType: string
+    base64: string
+  }
+}
+
+/**
+ * 文件上传到WebView响应
+ */
+export interface FileUploadToWebViewResponse {
+  success: boolean
+  providerId: string
+  error?: string
+}
+
+/**
  * IPC事件数据类型映射
  */
 export interface IPCEventDataMap {
+
+  [IPCChannel.FILE_OPEN_DIALOG]: FileOpenDialogRequest
+  [IPCChannel.FILE_READ]: FileReadRequest
+  [IPCChannel.FILE_UPLOAD_TO_WEBVIEW]: FileUploadToWebViewRequest
+
   [IPCChannel.MESSAGE_SEND]: MessageSendRequest
   [IPCChannel.MESSAGE_SEND_ALL]: MessageSendRequest
   [IPCChannel.MESSAGE_RECEIVED]: { messageId: string; providerId: string; content: string }

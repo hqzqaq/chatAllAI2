@@ -1,4 +1,4 @@
-export type ScriptType = 'getLLMLastMessage' | 'loginCheck' | 'sendMessage' | 'newChat' | 'statusMonitor'
+export type ScriptType = 'getLLMLastMessage' | 'loginCheck' | 'sendMessage' | 'newChat' | 'statusMonitor' | 'fileUpload'
 
 export interface ProviderScriptConfig {
   providerId: string
@@ -20,7 +20,8 @@ export const SCRIPT_TYPES: { value: ScriptType; label: string }[] = [
   { value: 'loginCheck', label: '登录状态检查' },
   { value: 'sendMessage', label: '发送消息' },
   { value: 'newChat', label: '新建对话' },
-  { value: 'statusMonitor', label: '状态监控' }
+  { value: 'statusMonitor', label: '状态监控' },
+  { value: 'fileUpload', label: '文件上传' }
 ]
 
 export const STORAGE_KEY_CUSTOM_SCRIPTS = 'chatallai_custom_scripts'

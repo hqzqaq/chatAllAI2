@@ -46,3 +46,5 @@ dist-prod
 /.gemini/
 /.promptx/
 /ppt-output/
+.playwright-cli/
+.claude

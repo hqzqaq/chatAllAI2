@@ -263,7 +263,7 @@ import {
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
-import type { MessageSendResult } from '../../services/MessageDispatcher'
+import type { MessageSendResult, AttachedFileInfo } from '../../services/MessageDispatcher'
 import type { AIProvider } from '@/types'
 import PromptManager from './PromptManager.vue'
 
@@ -280,6 +280,9 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 interface AttachedFile {
   name: string
   content: string
+  size: number
+  mimeType: string
+  base64: string
 }
 
 const attachedFiles = ref<AttachedFile[]>([])
@@ -288,7 +291,10 @@ const ACCEPTED_FILE_EXTENSIONS = [
   '.txt', '.md', '.json', '.csv', '.py', '.js', '.ts', '.html', '.css',
   '.xml', '.yaml', '.yml', '.log', '.sql', '.java', '.go', '.rs', '.c',
   '.cpp', '.h', '.hpp', '.sh', '.bat', '.ps1', '.ini', '.cfg', '.conf',
-  '.toml', '.properties', '.env'
+  '.toml', '.properties', '.env',
+  '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.zip', '.rar', '.7z', '.tar', '.gz'
 ].join(',')
 
 const selectedProviders = computed({
@@ -400,6 +406,9 @@ const applySelectedProviders = (): void => {
     const shouldEnable = selectedProviders.value.includes(provider.id)
     if (provider.isEnabled !== shouldEnable) {
       chatStore.toggleProvider(provider.id, shouldEnable)
+      if (!shouldEnable) {
+        stopAIStatusMonitoringForProvider(provider.id)
+      }
     }
   })
 }
@@ -495,6 +504,10 @@ const updateAIStatus = (providerId: string, status: 'waiting_input' | 'respondin
 
 const stopAIStatusMonitoring = async(): Promise<void> => {
   try {
+    Object.keys(monitoringTimers).forEach((providerId) => {
+      cancelAIStatusMonitoringRetry(providerId)
+    })
+
     if (window.electronAPI) {
       const { loggedInProviders } = chatStore
 
@@ -820,6 +833,10 @@ const handleSend = async(): Promise<void> => {
     const { loggedInProviders } = chatStore
     const messageContent = currentMessage.value
 
+    // 保存文件数据（提前保存，避免下面清空后丢失）
+    // 文本文件：content 已拼入消息，不需要走 webview 注入
+    // 二进制文件：已在文件选择时通过 uploadFileImmediately 上传，此处无需再处理
+
     // 清空输入框（提前清空，避免重复发送）
     chatStore.clearCurrentMessage()
     attachedFiles.value = []
@@ -892,42 +909,168 @@ const handleClear = (): void => {
   }
 }
 
-const triggerFileSelect = (): void => {
-  fileInputRef.value?.click()
+const triggerFileSelect = async(): Promise<void> => {
+  if (window.electronAPI && window.electronAPI.openFileDialog) {
+    const result = await window.electronAPI.openFileDialog({ multiSelections: true })
+    if (result.canceled || result.filePaths.length === 0) return
+    await addFilesFromPaths(result.filePaths)
+  } else {
+    fileInputRef.value?.click()
+  }
 }
 
-const handleFileInputChange = (event: Event): void => {
+const handleFileInputChange = async(event: Event): Promise<void> => {
   const input = event.target as HTMLInputElement
   const { files } = input
   if (!files || files.length === 0) return
 
-  for (let i = 0; i < files.length; i += 1) {
-    const file = files[i]
-    const reader = new FileReader()
-
-    reader.onload = (e) => {
-      const content = e.target?.result as string
-      attachedFiles.value.push({ name: file.name, content })
+  if (window.electronAPI && window.electronAPI.readFile) {
+    for (let i = 0; i < files.length; i += 1) {
+      const file = files[i]
+      // eslint-disable-next-line no-await-in-loop
+      if (file.path) {
+        // eslint-disable-next-line no-await-in-loop
+        await addFileFromPath(file.path)
+      } else {
+        readFileViaBrowser(file)
+      }
     }
-
-    reader.onerror = () => {
-      ElMessage.error(`读取文件 ${file.name} 失败`)
+  } else {
+    for (let i = 0; i < files.length; i += 1) {
+      readFileViaBrowser(files[i])
     }
-
-    reader.readAsText(file)
   }
 
   input.value = ''
+}
+
+const addFilesFromPaths = async(filePaths: string[]): Promise<void> => {
+  for (let i = 0; i < filePaths.length; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await addFileFromPath(filePaths[i])
+  }
+}
+
+const addFileFromPath = async(filePath: string): Promise<void> => {
+  if (!window.electronAPI || !window.electronAPI.readFile) return
+
+  // eslint-disable-next-line no-await-in-loop
+  const result = await window.electronAPI.readFile({ filePath })
+  if (result.success) {
+    const isTextFile = isTextMimeType(result.mimeType)
+    const newFile: AttachedFile = {
+      name: result.name,
+      content: isTextFile ? atob(result.base64) : '',
+      size: result.size,
+      mimeType: result.mimeType,
+      base64: result.base64
+    }
+    attachedFiles.value.push(newFile)
+
+    if (!isTextFile) {
+      uploadFileImmediately(newFile)
+    }
+  } else {
+    ElMessage.error(`读取文件失败: ${result.error}`)
+  }
+}
+
+const TEXT_MIME_PREFIXES = [
+  'text/',
+  'application/json',
+  'application/xml',
+  'application/javascript',
+  'application/typescript'
+]
+
+const isTextMimeType = (mimeType: string): boolean => (
+  TEXT_MIME_PREFIXES.some((prefix) => mimeType.startsWith(prefix))
+)
+
+const atob = (str: string): string => {
+  try {
+    const binary = window.atob(str)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new TextDecoder('utf-8').decode(bytes)
+  } catch {
+    return ''
+  }
+}
+
+const readFileViaBrowser = (file: File): void => {
+  const reader = new FileReader()
+
+  reader.onload = (e) => {
+    const content = e.target?.result as string
+    const isText = isTextMimeType(file.type || 'application/octet-stream')
+    attachedFiles.value.push({
+      name: file.name,
+      content: isText ? content : '',
+      size: file.size,
+      mimeType: file.type || 'application/octet-stream',
+      base64: ''
+    })
+    if (!isText) {
+      ElMessage.warning(`${file.name} 为二进制文件，在浏览器模式下无法获取base64数据，将仅作为附件提示发送`)
+    }
+  }
+
+  reader.onerror = () => {
+    ElMessage.error(`读取文件 ${file.name} 失败`)
+  }
+
+  reader.readAsText(file)
 }
 
 const removeFile = (index: number): void => {
   attachedFiles.value.splice(index, 1)
 }
 
-const appendFileContentToMessage = (): void => {
-  if (attachedFiles.value.length === 0) return
+const uploadedFileKeys = new Set<string>()
 
-  const fileContents = attachedFiles.value.map((file) => {
+const uploadFileImmediately = async(file: AttachedFile): Promise<void> => {
+  const fileKey = `${file.name}_${file.size}`
+  if (uploadedFileKeys.has(fileKey)) {
+    console.log(`[FileUpload:UI] Skip duplicate upload: ${file.name}`)
+    return
+  }
+  uploadedFileKeys.add(fileKey)
+
+  const { loggedInProviders } = chatStore
+  if (loggedInProviders.length === 0) {
+    console.log('[FileUpload:UI] No logged-in providers, skip immediate upload')
+    return
+  }
+
+  console.log(`[FileUpload:UI] Immediate upload: ${file.name} to ${loggedInProviders.length} provider(s)`)
+
+  const fileInfo: AttachedFileInfo = {
+    name: file.name,
+    size: file.size,
+    mimeType: file.mimeType,
+    base64: file.base64
+  }
+
+  try {
+    const results = await messageDispatcher.sendFiles([fileInfo], loggedInProviders)
+    const successCount = results.filter((r) => r.success).length
+    if (successCount > 0) {
+      ElMessage.success(`文件 ${file.name} 已注入到AI`)
+    }
+  } catch (error) {
+    console.error('[FileUpload:UI] Immediate upload failed:', error)
+    ElMessage.error(`文件 ${file.name} 上传失败`)
+  }
+}
+
+const appendFileContentToMessage = (): void => {
+  const textFiles = attachedFiles.value.filter((f) => f.content)
+  if (textFiles.length === 0) return
+
+  const fileContents = textFiles.map((file) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     let lang = ''
     switch (ext) {
@@ -958,6 +1101,49 @@ const appendFileContentToMessage = (): void => {
     chatStore.currentMessage = `${existing}\n\n---\n\n${fileContents}`
   } else {
     chatStore.currentMessage = fileContents
+  }
+}
+
+const sendBinaryFilesToWebViews = async(files: AttachedFile[]): Promise<void> => {
+  if (files.length === 0) return
+
+  const { loggedInProviders } = chatStore
+  if (loggedInProviders.length === 0) {
+    console.log('[FileUpload:UI] No logged-in providers to upload to')
+    return
+  }
+
+  console.log(`[FileUpload:UI] Uploading ${files.length} binary file(s) to ${loggedInProviders.length} provider(s)`)
+
+  const fileInfos: AttachedFileInfo[] = files.map((f) => ({
+    name: f.name,
+    size: f.size,
+    mimeType: f.mimeType,
+    base64: f.base64
+  }))
+
+  try {
+    const results = await messageDispatcher.sendFiles(fileInfos, loggedInProviders)
+    const successCount = results.filter((r) => r.success).length
+    const errorCount = results.length - successCount
+
+    console.log(
+      `[FileUpload:UI] Results: total=${results.length} `
+      + `success=${successCount} error=${errorCount}`
+    )
+    results.forEach((r) => {
+      console.log(`[FileUpload:UI]   provider=${r.providerId} success=${r.success} error=${r.error || 'none'}`)
+    })
+
+    if (errorCount > 0) {
+      console.warn(`[FileUpload:UI] ${errorCount} upload(s) failed`)
+    }
+    if (successCount > 0) {
+      ElMessage.success(`${successCount} 个文件已注入到AI`)
+    }
+  } catch (error) {
+    console.error('[FileUpload:UI] Exception:', error)
+    ElMessage.error('文件上传失败')
   }
 }
 
@@ -1154,6 +1340,18 @@ const startAIStatusMonitoringForLoggedInProviders = async(): Promise<void> => {
 /**
  * 为单个提供商启动AI状态监控
  */
+const MAX_MONITORING_RETRY = 5
+const monitoringRetryCount: Record<string, number> = {}
+const monitoringTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+
+const cancelAIStatusMonitoringRetry = (providerId: string): void => {
+  if (monitoringTimers[providerId]) {
+    clearTimeout(monitoringTimers[providerId])
+    delete monitoringTimers[providerId]
+  }
+  delete monitoringRetryCount[providerId]
+}
+
 const startAIStatusMonitoringForProvider = async(providerId: string): Promise<void> => {
   try {
     if (!window.electronAPI) {
@@ -1171,11 +1369,16 @@ const startAIStatusMonitoringForProvider = async(providerId: string): Promise<vo
       return
     }
 
+    if (!provider.isEnabled) {
+      console.log(`提供商已禁用，跳过AI状态监控: ${provider.name}`)
+      cancelAIStatusMonitoringRetry(providerId)
+      return
+    }
+
     const webviewId = `webview-${providerId}`
     console.log(`启动AI状态监控: ${provider.name} (webviewId: ${webviewId})`)
 
-    // 延迟启动，确保webview和登录检测脚本已完全加载
-    setTimeout(async() => {
+    monitoringTimers[providerId] = setTimeout(async() => {
       try {
         const result = await window.electronAPI.startAIStatusMonitoring({
           webviewId,
@@ -1184,33 +1387,49 @@ const startAIStatusMonitoringForProvider = async(providerId: string): Promise<vo
 
         if (result.success) {
           console.log(`AI状态监控已启动: ${provider.name}`)
+          delete monitoringRetryCount[providerId]
         } else {
-          console.warn(`AI状态监控启动失败: ${provider.name}`, result.error)
+          const retryCount = (monitoringRetryCount[providerId] || 0) + 1
+          monitoringRetryCount[providerId] = retryCount
 
-          // 启动失败时重试
-          setTimeout(() => {
+          if (retryCount >= MAX_MONITORING_RETRY) {
+            console.warn(`AI状态监控启动超过最大重试次数(${MAX_MONITORING_RETRY})，停止重试: ${provider.name}`)
+            delete monitoringRetryCount[providerId]
+            return
+          }
+
+          console.warn(`AI状态监控启动失败(${retryCount}/${MAX_MONITORING_RETRY}): ${provider.name}`, result.error)
+
+          monitoringTimers[providerId] = setTimeout(() => {
             startAIStatusMonitoringForProvider(providerId)
           }, 2000)
         }
       } catch (error) {
-        console.error(`启动AI状态监控时发生错误: ${provider.name}`, error)
+        const retryCount = (monitoringRetryCount[providerId] || 0) + 1
+        monitoringRetryCount[providerId] = retryCount
 
-        // 发生错误时重试
-        setTimeout(() => {
+        if (retryCount >= MAX_MONITORING_RETRY) {
+          console.warn(`AI状态监控启动超过最大重试次数(${MAX_MONITORING_RETRY})，停止重试: ${provider.name}`)
+          delete monitoringRetryCount[providerId]
+          return
+        }
+
+        console.error(`启动AI状态监控时发生错误(${retryCount}/${MAX_MONITORING_RETRY}): ${provider.name}`, error)
+
+        monitoringTimers[providerId] = setTimeout(() => {
           startAIStatusMonitoringForProvider(providerId)
         }, 2000)
       }
-    }, 1000) // 延迟1秒，确保登录检测脚本已执行
+    }, 1000)
   } catch (error) {
     console.error(`启动AI状态监控失败: ${providerId}`, error)
   }
 }
 
-/**
- * 为单个提供商停止AI状态监控
- */
 const stopAIStatusMonitoringForProvider = async(providerId: string): Promise<void> => {
   try {
+    cancelAIStatusMonitoringRetry(providerId)
+
     if (!window.electronAPI) {
       console.warn('electronAPI不可用，无法停止AI状态监控')
       return

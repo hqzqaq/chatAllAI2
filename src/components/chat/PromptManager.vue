@@ -918,6 +918,12 @@ const handleFileImport = (event: Event): void => {
   const file = target.files?.[0]
 
   if (file) {
+    const fileName = file.name.toLowerCase()
+    if (!fileName.endsWith('.json')) {
+      target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (e) => {
       try {

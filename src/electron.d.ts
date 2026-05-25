@@ -35,6 +35,11 @@ interface ElectronAPI {
   stopAIStatusMonitoring(data: { providerId: string }): Promise<{ success: boolean; error?: string }>
   onAIStatusChange(callback: (data: any) => void): () => void
   removeAllListeners(channel: string): void
+
+  // 文件操作
+  openFileDialog(data?: { filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }): Promise<{ canceled: boolean; filePaths: string[] }>
+  readFile(data: { filePath: string }): Promise<{ success: boolean; name: string; size: number; mimeType: string; base64: string; error?: string }>
+  uploadFileToWebView(data: { webviewId: string; providerId: string; file: { name: string; size: number; mimeType: string; base64: string } }): Promise<{ success: boolean; providerId: string; error?: string }>
 }
 
 interface Window {

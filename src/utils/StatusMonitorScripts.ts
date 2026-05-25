@@ -61,19 +61,34 @@ export function getStatusMonitorScript(providerId: string): string {
   return resolveScript(providerId, 'statusMonitor', defaultScript, { providerId })
 }
 
+export function getStopMonitorScript(): string {
+  return `
+    (function() {
+      if (window.__AI_MONITOR__) {
+        window.__AI_MONITOR__.stop();
+      }
+    })();
+  `
+}
+
 /**
  * 豆包状态监控脚本
  */
 function getDouBaoStatusMonitorScript(providerId: string): string {
   return `
     (function() {
+      if (window.__AI_MONITOR__) {
+        window.__AI_MONITOR__.stop();
+      }
+
       let lastStatus = '';
       let observer = null;
       let lastMessageElement = null;
       let completionTimeout = null;
-      let lastMessageContent = ''; // 跟踪消息内容变化
-      let isMonitoring = false; // 防止重复监控
-      let isDeepThinking = false; // 跟踪深度思考状态
+      let lastMessageContent = '';
+      let isMonitoring = false;
+      let isDeepThinking = false;
+      let intervalId = null;
 
       function postStatus(status, details = {}) {
         if (status === lastStatus) return;
@@ -85,13 +100,11 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
             details: details
           });
         } else {
-          // Fallback or error for when preload API is not available
           console.error('[DouBao Monitor] Preload API not available.');
         }
         console.log('[DouBao Monitor] Status changed:' + status);
       }
 
-      // 检查深度思考状态
       function checkDeepThinkingStatus() {
         const collapseButton = document.querySelector('[data-testid="collapse_button"]');
         if (collapseButton && collapseButton.textContent && collapseButton.textContent.includes('深度思考中')) {
@@ -114,17 +127,14 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
           observer.disconnect();
         }
         
-        // 记录初始内容
         lastMessageContent = element.textContent || '';
 
         observer = new MutationObserver((mutations) => {
-          // 检查是否有实际内容变化，排除UI变化
           let hasContentChange = false;
           
           mutations.forEach((mutation) => {
             if (mutation.type === 'characterData' || 
                 (mutation.type === 'childList' && mutation.addedNodes.length > 0)) {
-              // 检查变化是否影响文本内容
               const currentContent = element.textContent || '';
               if (currentContent !== lastMessageContent) {
                 hasContentChange = true;
@@ -133,37 +143,32 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
             }
           });
           
-          // 只有内容真正变化时才触发状态更新
           if (hasContentChange) {
             postStatus('ai_responding');
             if (completionTimeout) {
               clearTimeout(completionTimeout);
             }
             completionTimeout = setTimeout(() => {
-              // 检查是否仍在深度思考模式
               if (checkDeepThinkingStatus()) {
-                // 如果仍在深度思考，延长超时时间
                 completionTimeout = setTimeout(() => {
                   postStatus('ai_completed');
-                }, 2000); // 深度思考模式下使用更长的超时时间
+                }, 2000);
               } else {
                 postStatus('ai_completed');
               }
-            }, 3000); // 1 second of inactivity to mark as complete
+            }, 3000);
           }
         });
 
-        // 只观察内容变化，忽略样式和属性变化
         observer.observe(element, {
           childList: true,
           subtree: true,
           characterData: true,
-          attributes: false // 不观察属性变化，减少UI变化干扰
+          attributes: false
         });
       }
 
       function checkForAIResponse() {
-        // 首先检查深度思考状态
         const deepThinkingActive = checkDeepThinkingStatus();
         
         const messageElements = document.querySelectorAll(
@@ -172,7 +177,6 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
         const currentLastMessage = messageElements.length > 0 ? messageElements[messageElements.length - 1] : null;
 
         if (currentLastMessage || deepThinkingActive) {
-          // 如果处于深度思考模式或检测到消息，则认为是AI正在响应
           if (currentLastMessage !== lastMessageElement || deepThinkingActive) {
             if (currentLastMessage && currentLastMessage !== lastMessageElement) {
               lastMessageElement = currentLastMessage;
@@ -181,12 +185,9 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
             postStatus('ai_responding');
             if (completionTimeout) clearTimeout(completionTimeout);
             
-            // 根据是否深度思考设置不同的超时时间
             const timeoutDuration = deepThinkingActive ? 3000 : 3000;
             completionTimeout = setTimeout(() => {
-              // 再次检查深度思考状态
               if (checkDeepThinkingStatus()) {
-                // 如果仍在深度思考，继续等待
                 completionTimeout = setTimeout(() => {
                   postStatus('ai_completed');
                 }, 2000);
@@ -208,8 +209,29 @@ function getDouBaoStatusMonitorScript(providerId: string): string {
         }
       }
 
-      // 降低检查频率，减少性能开销
-      setInterval(checkForAIResponse, 3000);
+      intervalId = setInterval(checkForAIResponse, 3000);
+
+      window.__AI_MONITOR__ = {
+        intervalId: intervalId,
+        observer: observer,
+        stop: function() {
+          if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+          }
+          if (observer) {
+            observer.disconnect();
+            observer = null;
+          }
+          if (completionTimeout) {
+            clearTimeout(completionTimeout);
+            completionTimeout = null;
+          }
+          window.__AI_MONITOR__ = null;
+          console.log('[DouBao Monitor] Stopped.');
+        }
+      };
+
       console.log('[DouBao Monitor] Initialized with deep thinking support.');
       postStatus('waiting_input');
     })();
@@ -271,8 +293,13 @@ function getYuanBaoStatusMonitorScript(providerId: string): string {
 function getMiromindStatusMonitorScript(providerId: string): string {
   return `
     (function() {
+      if (window.__AI_MONITOR__) {
+        window.__AI_MONITOR__.stop();
+      }
+
       let lastStatus = '';
       let completionTimeout = null;
+      let intervalId = null;
 
       function postStatus(status, details = {}) {
         if (status === lastStatus) return;
@@ -310,7 +337,24 @@ function getMiromindStatusMonitorScript(providerId: string): string {
         }
       }
 
-      setInterval(checkForAIResponse, 3000);
+      intervalId = setInterval(checkForAIResponse, 3000);
+
+      window.__AI_MONITOR__ = {
+        intervalId: intervalId,
+        stop: function() {
+          if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+          }
+          if (completionTimeout) {
+            clearTimeout(completionTimeout);
+            completionTimeout = null;
+          }
+          window.__AI_MONITOR__ = null;
+          console.log('[miromind Monitor] Stopped.');
+        }
+      };
+
       console.log('[miromind Monitor] Initialized.');
       postStatus('waiting_input');
     })();
@@ -323,12 +367,17 @@ function getMiromindStatusMonitorScript(providerId: string): string {
 function getGenericStatusMonitorScript(providerId: string, elementSelector: string): string {
   return `
     (function() {
+      if (window.__AI_MONITOR__) {
+        window.__AI_MONITOR__.stop();
+      }
+
       let lastStatus = '';
       let observer = null;
       let lastMessageElement = null;
       let completionTimeout = null;
-      let lastMessageContent = ''; // 跟踪消息内容变化
-      let isMonitoring = false; // 防止重复监控
+      let lastMessageContent = '';
+      let isMonitoring = false;
+      let intervalId = null;
 
       function postStatus(status, details = {}) {
         if (status === lastStatus) return;
@@ -340,7 +389,6 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
             details: details
           });
         } else {
-          // Fallback or error for when preload API is not available
           console.error('[${providerId} Monitor] Preload API not available.');
         }
         console.log('[${providerId} Monitor] Status changed:' + status);
@@ -351,17 +399,14 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
           observer.disconnect();
         }
         
-        // 记录初始内容
         lastMessageContent = element.textContent || '';
 
         observer = new MutationObserver((mutations) => {
-          // 检查是否有实际内容变化，排除UI变化
           let hasContentChange = false;
           
           mutations.forEach((mutation) => {
             if (mutation.type === 'characterData' || 
                 (mutation.type === 'childList' && mutation.addedNodes.length > 0)) {
-              // 检查变化是否影响文本内容
               const currentContent = element.textContent || '';
               if (currentContent !== lastMessageContent) {
                 hasContentChange = true;
@@ -370,7 +415,6 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
             }
           });
           
-          // 只有内容真正变化时才触发状态更新
           if (hasContentChange) {
             postStatus('ai_responding');
             if (completionTimeout) {
@@ -378,16 +422,15 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
             }
             completionTimeout = setTimeout(() => {
               postStatus('ai_completed');
-            }, 3000); // 1 second of inactivity to mark as complete
+            }, 3000);
           }
         });
 
-        // 只观察内容变化，忽略样式和属性变化
         observer.observe(element, {
           childList: true,
           subtree: true,
           characterData: true,
-          attributes: false // 不观察属性变化，减少UI变化干扰
+          attributes: false
         });
       }
 
@@ -418,9 +461,30 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
         }
       }
 
-      // 降低检查频率，减少性能开销
-      setInterval(checkForAIResponse, 3000);
-      console.log('[DeepSeek Monitor] Initialized.');
+      intervalId = setInterval(checkForAIResponse, 3000);
+
+      window.__AI_MONITOR__ = {
+        intervalId: intervalId,
+        observer: observer,
+        stop: function() {
+          if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+          }
+          if (observer) {
+            observer.disconnect();
+            observer = null;
+          }
+          if (completionTimeout) {
+            clearTimeout(completionTimeout);
+            completionTimeout = null;
+          }
+          window.__AI_MONITOR__ = null;
+          console.log('[${providerId} Monitor] Stopped.');
+        }
+      };
+
+      console.log('[${providerId} Monitor] Initialized.');
       postStatus('waiting_input');
     })();
   `

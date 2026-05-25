@@ -4,13 +4,14 @@
  */
 
 import {
-  ipcMain, IpcMainEvent, IpcMainInvokeEvent
+  ipcMain, IpcMainEvent, IpcMainInvokeEvent, dialog
 } from 'electron'
+import * as fs from 'fs'
 import { EventEmitter } from 'events'
 import { WindowManager } from './WindowManager'
 import { SessionManager } from './SessionManager'
 import { getSendMessageScript } from '../../src/utils/MessageScripts'
-import { getStatusMonitorScript } from '../../src/utils/StatusMonitorScripts'
+import { getStatusMonitorScript, getStopMonitorScript } from '../../src/utils/StatusMonitorScripts'
 import { buildWebViewElementId, parseProviderIdFromElementId } from '../../src/utils/webviewHelper'
 import {
   IPCChannel,
@@ -26,8 +27,15 @@ import {
   AIStatusStartMonitoringRequest,
   AIStatusStartMonitoringResponse,
   AIStatusInfo,
-  AIStatusChangeEvent
+  AIStatusChangeEvent,
+  FileOpenDialogRequest,
+  FileOpenDialogResponse,
+  FileReadRequest,
+  FileReadResponse,
+  FileUploadToWebViewRequest,
+  FileUploadToWebViewResponse
 } from '../../src/types/ipc'
+import { getFileUploadScript } from '../../src/utils/UploadScripts'
 
 /**
  * IPC处理器配置接口
@@ -135,6 +143,11 @@ export class IPCHandler extends EventEmitter {
     this.handleInvoke(IPCChannel.AI_STATUS_START_MONITORING, this.handleAIStatusStartMonitoring.bind(this))
     this.handleInvoke(IPCChannel.AI_STATUS_STOP_MONITORING, this.handleAIStatusStopMonitoring.bind(this))
     this.handleInvoke(IPCChannel.AI_STATUS_GET_CURRENT, this.handleAIStatusGetCurrent.bind(this))
+
+    // 文件操作
+    this.handleInvoke(IPCChannel.FILE_OPEN_DIALOG, this.handleFileOpenDialog.bind(this))
+    this.handleInvoke(IPCChannel.FILE_READ, this.handleFileRead.bind(this))
+    this.handleInvoke(IPCChannel.FILE_UPLOAD_TO_WEBVIEW, this.handleFileUploadToWebView.bind(this))
 
     // 新增：获取预加载脚本路径
     ipcMain.handle('get-preload-path', (event, preloadName: string) => {
@@ -795,7 +808,20 @@ export class IPCHandler extends EventEmitter {
     try {
       this.log(`Stopping AI status monitoring for provider ${data.providerId}`)
 
-      // 清理监听器
+      const webviewId = `webview-${data.providerId}`
+      const stopScript = getStopMonitorScript()
+
+      try {
+        await this.executeInWebViewContainer(
+          webviewId,
+          `await webviewElement.executeJavaScript(${JSON.stringify(stopScript)});
+          return true;`,
+          'AI Status monitoring stop'
+        )
+      } catch (execError) {
+        this.log(`WebView not available for stopping monitoring ${data.providerId}, skipping script injection`)
+      }
+
       if (this.aiStatusMonitorListeners) {
         Object.keys(this.aiStatusMonitorListeners).forEach((webviewId) => {
           if (webviewId.includes(data.providerId)) {
@@ -858,6 +884,168 @@ export class IPCHandler extends EventEmitter {
   private log(message: string, data?: any): void {
     if (this.config.enableLogging) {
       console.log(`[IPCHandler] ${message}`, data || '')
+    }
+  }
+
+  private async handleFileUploadToWebView(
+    data: FileUploadToWebViewRequest
+  ): Promise<FileUploadToWebViewResponse> {
+    const { webviewId, providerId, file } = data
+    this.log(
+      `[FileUpload:Main] START provider=${providerId} `
+      + `webviewId=${webviewId} file=${file.name} size=${file.size} type=${file.mimeType}`
+    )
+    this.log(`[FileUpload:Main] base64 length=${file.base64.length}`)
+
+    try {
+      const script = getFileUploadScript(providerId, {
+        name: file.name,
+        mimeType: file.mimeType,
+        base64: file.base64
+      })
+
+      const debugScript = script.replace(/\n/g, ' ').substring(0, 300)
+      this.log(`[FileUpload:Main] Generated script (first 300 chars): ${debugScript}`)
+
+      const innerScript = `
+        console.log('[FileUpload:Bridge] Executing upload script...');
+        try {
+          const bridgeResult = await webviewElement.executeJavaScript(${JSON.stringify(script)});
+          console.log('[FileUpload:Bridge] Script result:', JSON.stringify(bridgeResult));
+          return bridgeResult;
+        } catch (e) {
+          console.error('[FileUpload:Bridge] Error:', e.message);
+          return { success: false, message: e.message };
+        }`
+
+      const result = await this.executeInWebViewContainer(
+        webviewId,
+        innerScript,
+        'File upload'
+      )
+
+      this.log(`[FileUpload:Main] executeInWebViewContainer result: ${JSON.stringify(result)}`)
+      return { success: true, providerId }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const stack = error instanceof Error ? error.stack : ''
+      this.log(`[FileUpload:Main] ERROR: ${errorMessage}`)
+      this.log(`[FileUpload:Main] Stack: ${stack}`)
+      return { success: false, providerId, error: errorMessage }
+    }
+  }
+
+  /**
+   * 打开文件选择对话框
+   */
+  private async handleFileOpenDialog(data: FileOpenDialogRequest): Promise<FileOpenDialogResponse> {
+    const mainWindow = this.windowManager.getMainWindow()
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return { canceled: true, filePaths: [] }
+    }
+
+    const options: Electron.OpenDialogOptions = {
+      properties: ['openFile'],
+      filters: data.filters || [
+        {
+          name: 'All Supported Files',
+          extensions: [
+            'txt', 'md', 'json', 'csv', 'py', 'js', 'ts', 'html', 'css', 'xml',
+            'yaml', 'yml', 'log', 'sql', 'java', 'go', 'rs', 'c', 'cpp', 'h',
+            'hpp', 'sh', 'bat', 'ps1', 'ini', 'cfg', 'conf', 'toml', 'properties',
+            'env', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp',
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+            'zip', 'rar', '7z', 'tar', 'gz'
+          ]
+        }
+      ]
+    }
+
+    if (data.multiSelections) {
+      (options.properties as string[]).push('multiSelections')
+    }
+
+    const result = await dialog.showOpenDialog(mainWindow, options)
+    return {
+      canceled: result.canceled,
+      filePaths: result.filePaths
+    }
+  }
+
+  /**
+   * 读取文件内容并返回base64
+   */
+  private async handleFileRead(data: FileReadRequest): Promise<FileReadResponse> {
+    try {
+      const pathMod = require('path')
+      const { filePath } = data
+      const buffer = fs.readFileSync(filePath)
+      const base64 = buffer.toString('base64')
+      const ext = pathMod.extname(filePath).toLowerCase().replace('.', '')
+      const mimeMap: Record<string, string> = {
+        txt: 'text/plain',
+        md: 'text/markdown',
+        json: 'application/json',
+        csv: 'text/csv',
+        xml: 'application/xml',
+        html: 'text/html',
+        css: 'text/css',
+        js: 'application/javascript',
+        ts: 'application/typescript',
+        py: 'text/x-python',
+        java: 'text/x-java',
+        go: 'text/x-go',
+        rs: 'text/x-rust',
+        sql: 'text/sql',
+        yaml: 'text/yaml',
+        yml: 'text/yaml',
+        sh: 'text/x-shellscript',
+        bat: 'text/plain',
+        ps1: 'text/plain',
+        ini: 'text/plain',
+        cfg: 'text/plain',
+        conf: 'text/plain',
+        toml: 'text/plain',
+        log: 'text/plain',
+        env: 'text/plain',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        bmp: 'image/bmp',
+        svg: 'image/svg+xml',
+        webp: 'image/webp',
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        zip: 'application/zip',
+        rar: 'application/x-rar-compressed',
+        '7z': 'application/x-7z-compressed',
+        tar: 'application/x-tar',
+        gz: 'application/gzip'
+      }
+
+      return {
+        success: true,
+        name: pathMod.basename(filePath),
+        size: buffer.length,
+        mimeType: mimeMap[ext] || 'application/octet-stream',
+        base64
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return {
+        success: false,
+        name: '',
+        size: 0,
+        mimeType: '',
+        base64: '',
+        error: errorMessage
+      }
     }
   }
 

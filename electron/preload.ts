@@ -69,6 +69,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_START_MONITORING, data),
   stopAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_STOP_MONITORING, data),
 
+  // 文件操作
+  openFileDialog: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_OPEN_DIALOG, data),
+  readFile: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_READ, data),
+  uploadFileToWebView: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_UPLOAD_TO_WEBVIEW, data),
+
   // 获取预加载脚本路径
   getPreloadPath: (preloadName: string) => ipcRenderer.invoke('get-preload-path', preloadName),
 
@@ -171,6 +176,11 @@ declare global {
       // AI状态监控
       startAIStatusMonitoring: (data: any) => Promise<any>
       stopAIStatusMonitoring: (data: any) => Promise<any>
+
+      // 文件操作
+      openFileDialog: (data: any) => Promise<any>
+      readFile: (data: any) => Promise<any>
+      uploadFileToWebView: (data: any) => Promise<any>
 
       // 获取预加载脚本路径
       getPreloadPath: (preloadName: string) => Promise<string>
