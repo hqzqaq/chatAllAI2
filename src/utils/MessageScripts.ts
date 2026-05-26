@@ -18,7 +18,7 @@ function escapeJavaScriptString(str: string): string {
   // 使用更安全的转义方式，确保字符串在JavaScript中安全使用
   return str
     .replace(/\\/g, '\\\\') // 转义反斜杠
-    .replace(/\'/g, '\\\'') // 转义单引号
+    .replace(/'/g, '\\\'') // 转义单引号
     .replace(/"/g, '\\"') // 转义双引号
     .replace(/\n/g, '\\n') // 转义换行符
     .replace(/\r/g, '\\r') // 转义回车符
@@ -236,7 +236,8 @@ function getDeepSeekScript(escapedMessage: string): string {
           });
 
           const dispatched = inputElement.dispatchEvent(enterEvent);
-          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + !dispatched + '.');
+          const status = !dispatched;
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + status + '.');
         }, INPUT_SEND_DELAY_MS);
 
         return true;
@@ -323,7 +324,8 @@ function getDouBaoScript(escapedMessage: string): string {
           });
 
           const dispatched = inputElement.dispatchEvent(enterEvent);
-          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + !dispatched + '.');
+          const cancelStatus = !dispatched;
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + cancelStatus + '.');
         }, INPUT_SEND_DELAY_MS);
 
         return true;
@@ -408,7 +410,8 @@ function getQwenScript(escapedMessage: string): string {
           });
 
           const dispatched = inputElement.dispatchEvent(enterEvent);
-          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + !dispatched + '.');
+          const eventStatus = !dispatched;
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + eventStatus + '.');
         }, INPUT_SEND_DELAY_MS);
 
         return true;
@@ -560,7 +563,11 @@ function getGeminiScript(escapedMessage: string): string {
 /**
  * ChatGPT发送脚本
  */
-function getChatGPTScript(escapedMessage: string, chatInputSelector: string = '[id="prompt-textarea"]', sendButtonSelector: string = '[data-testid="send-button"]'): string {
+function getChatGPTScript(
+  escapedMessage: string,
+  chatInputSelector: string = '[id="prompt-textarea"]',
+  sendButtonSelector: string = '[data-testid="send-button"]'
+): string {
   return `
       (function() {
       // --- Configuration ---
@@ -681,7 +688,8 @@ function getMinimaxScript(escapedMessage: string): string {
           });
 
           const dispatched = inputElement.dispatchEvent(enterEvent);
-          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + !dispatched + '.');
+          const keyStatus = !dispatched;
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + keyStatus + '.');
         }, INPUT_SEND_DELAY_MS);
 
         return true;
@@ -697,7 +705,10 @@ function getMinimaxScript(escapedMessage: string): string {
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
-  return ['kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot', 'glm', 'yuanbao', 'miromind', 'gemini', 'chatgpt', 'mimo']
+  return [
+    'kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot',
+    'glm', 'yuanbao', 'miromind', 'gemini', 'chatgpt', 'mimo'
+  ]
 }
 
 /**

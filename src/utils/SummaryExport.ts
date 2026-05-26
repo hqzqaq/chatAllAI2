@@ -281,7 +281,10 @@ export function exportToHTML(result: SummaryResult, config: ExportConfig = { for
     <div class="response-item">
       <h3>${index + 1}. ${escapeHtml(response.providerName)}</h3>
       <div class="response-content">
-        ${response.success ? escapeHtml(response.content).replace(/\n/g, '<br>') : `<div class="error-item"><strong>⚠️ 获取失败:</strong> ${escapeHtml(response.error || '未知错误')}</div>`}
+        ${response.success
+    ? escapeHtml(response.content).replace(/\n/g, '<br>')
+    : `<div class="error-item"><strong>⚠️ 获取失败:</strong> ${escapeHtml(response.error || '未知错误')}</div>`
+}
       </div>
     </div>
     `).join('')}

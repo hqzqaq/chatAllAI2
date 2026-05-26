@@ -358,7 +358,8 @@ function getDouBaoUploadScript(file: UploadFileData): string {
 
   function injectFileToInput(inputEl) {
     if (injectDone) return true;
-    console.log('[FileUpload:DouBao] injectFileToInput: tag=' + inputEl.tagName + ' class=' + (inputEl.className || '').substring(0, 60));
+    var className = (inputEl.className || '').substring(0, 60);
+    console.log('[FileUpload:DouBao] injectFileToInput: tag=' + inputEl.tagName + ' class=' + className);
     try {
       var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'files');
       if (!desc || !desc.set) return false;
@@ -622,7 +623,8 @@ function getDouBaoUploadScript(file: UploadFileData): string {
         var dropEvt = new DragEvent('drop', { bubbles: true, cancelable: true });
         Object.defineProperty(dropEvt, 'dataTransfer', { value: dt });
         zones[z].dispatchEvent(dropEvt);
-        console.log('[FileUpload:DouBao] Drop on ' + zones[z].tagName + (zones[z].className ? '.' + zones[z].className.substring(0, 40) : ''));
+        var zoneClass = zones[z].className ? '.' + zones[z].className.substring(0, 40) : '';
+        console.log('[FileUpload:DouBao] Drop on ' + zones[z].tagName + zoneClass);
       } catch(e2) {}
     }
   }

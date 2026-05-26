@@ -5,6 +5,7 @@
 
 import { session, Session, Cookie } from 'electron'
 import { promises as fs } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { EventEmitter } from 'events'
@@ -86,12 +87,12 @@ export class SessionManager extends EventEmitter {
 
     try {
       // 尝试读取现有密钥
-      const existingKey = require('fs').readFileSync(keyPath)
+      const existingKey = readFileSync(keyPath)
       return existingKey
     } catch {
       // 生成新密钥
       const newKey = crypto.randomBytes(this.encryptionConfig.keyLength)
-      require('fs').writeFileSync(keyPath, newKey)
+      writeFileSync(keyPath, newKey)
       return newKey
     }
   }
@@ -210,57 +211,70 @@ export class SessionManager extends EventEmitter {
     // 拦截请求头，确保所有发往Google的请求都带有正确的UA和平台信息
     electronSession.webRequest.onBeforeSendHeaders(
       {
-        urls: ['*://*.google.com/*', '*://*.googleusercontent.com/*', '*://gemini.google.com/*', '*://accounts.google.com/*']
+        urls: [
+          '*://*.google.com/*',
+          '*://*.googleusercontent.com/*',
+          '*://gemini.google.com/*',
+          '*://accounts.google.com/*'
+        ]
       },
       (details, callback) => {
+        // 创建新的请求头对象，避免修改参数
+        const requestHeaders = { ...details.requestHeaders }
+
         // 强制修改User-Agent，移除Electron标识
-        details.requestHeaders['User-Agent'] = userAgent
+        requestHeaders['User-Agent'] = userAgent
 
         // 添加Chrome特有的请求头，增强伪装
-        details.requestHeaders['Sec-Ch-Ua'] = secChUa
-        details.requestHeaders['Sec-Ch-Ua-Mobile'] = '?0'
-        details.requestHeaders['Sec-Ch-Ua-Platform'] = '"Windows"'
-        details.requestHeaders['Sec-Ch-Ua-Arch'] = '"x86_64"'
-        details.requestHeaders['Sec-Ch-Ua-Bitness'] = '"64"'
-        details.requestHeaders['Sec-Ch-Ua-Full-Version'] = '"134.0.0.0"'
-        details.requestHeaders['Sec-Ch-Ua-Full-Version-List'] = secChUa
-        details.requestHeaders['Sec-Fetch-Dest'] = 'document'
-        details.requestHeaders['Sec-Fetch-Mode'] = 'navigate'
-        details.requestHeaders['Sec-Fetch-Site'] = 'none'
-        details.requestHeaders['Sec-Fetch-User'] = '?1'
-        details.requestHeaders['Upgrade-Insecure-Requests'] = '1'
+        requestHeaders['Sec-Ch-Ua'] = secChUa
+        requestHeaders['Sec-Ch-Ua-Mobile'] = '?0'
+        requestHeaders['Sec-Ch-Ua-Platform'] = '"Windows"'
+        requestHeaders['Sec-Ch-Ua-Arch'] = '"x86_64"'
+        requestHeaders['Sec-Ch-Ua-Bitness'] = '"64"'
+        requestHeaders['Sec-Ch-Ua-Full-Version'] = '"134.0.0.0"'
+        requestHeaders['Sec-Ch-Ua-Full-Version-List'] = secChUa
+        requestHeaders['Sec-Fetch-Dest'] = 'document'
+        requestHeaders['Sec-Fetch-Mode'] = 'navigate'
+        requestHeaders['Sec-Fetch-Site'] = 'none'
+        requestHeaders['Sec-Fetch-User'] = '?1'
+        requestHeaders['Upgrade-Insecure-Requests'] = '1'
 
         // 添加Accept-Language和Accept头
-        if (!details.requestHeaders['Accept-Language']) {
-          details.requestHeaders['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8'
+        if (!requestHeaders['Accept-Language']) {
+          requestHeaders['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8'
         }
-        if (!details.requestHeaders.Accept) {
-          details.requestHeaders.Accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        if (!requestHeaders.Accept) {
+          requestHeaders.Accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         }
 
         // 移除可能暴露Electron身份的请求头
-        delete details.requestHeaders['X-Electron-Version']
-        delete details.requestHeaders['X-Electron-Build']
-        delete details.requestHeaders['X-DevTools-Request-Id']
+        delete requestHeaders['X-Electron-Version']
+        delete requestHeaders['X-Electron-Build']
+        delete requestHeaders['X-DevTools-Request-Id']
 
-        callback({ requestHeaders: details.requestHeaders })
+        callback({ requestHeaders })
       }
     )
 
     // 拦截响应头，处理Cookie和CSP策略
     electronSession.webRequest.onHeadersReceived(
       {
-        urls: ['*://*.google.com/*', '*://*.googleusercontent.com/*', '*://gemini.google.com/*', '*://accounts.google.com/*']
+        urls: [
+          '*://*.google.com/*',
+          '*://*.googleusercontent.com/*',
+          '*://gemini.google.com/*',
+          '*://accounts.google.com/*'
+        ]
       },
       (details, callback) => {
         const responseHeaders: Record<string, string | string[]> = {}
 
         // 复制原始响应头
-        for (const [key, value] of Object.entries(details.responseHeaders || {})) {
+        Object.entries(details.responseHeaders || {}).forEach(([key, value]) => {
           if (value !== undefined) {
             responseHeaders[key] = value
           }
-        }
+        })
 
         // 处理Set-Cookie头，确保SameSite=None且Secure
         if (responseHeaders['set-cookie']) {
@@ -285,9 +299,10 @@ export class SessionManager extends EventEmitter {
           const policies = Array.isArray(responseHeaders['permissions-policy'])
             ? responseHeaders['permissions-policy']
             : [responseHeaders['permissions-policy']]
-          responseHeaders['permissions-policy'] = policies.map((policy: string) =>
-            // 移除ch-ua-form-factors相关的策略
-            policy.replace(/ch-ua-form-factors[^,]*,?/g, '').replace(/,,/g, ',').replace(/,$/, ''))
+          responseHeaders['permissions-policy'] = policies.map((policy: string) => policy
+            .replace(/ch-ua-form-factors[^,]*,?/g, '')
+            .replace(/,,/g, ',')
+            .replace(/,$/, ''))
         }
 
         // 修改CSP策略，允许嵌入
@@ -295,13 +310,15 @@ export class SessionManager extends EventEmitter {
           const policies = Array.isArray(responseHeaders['content-security-policy'])
             ? responseHeaders['content-security-policy']
             : [responseHeaders['content-security-policy']]
-          responseHeaders['content-security-policy'] = policies.map((policy: string) => policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
+          responseHeaders['content-security-policy'] = policies.map((policy: string) => policy
+            .replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
         }
         if (responseHeaders['Content-Security-Policy']) {
           const policies = Array.isArray(responseHeaders['Content-Security-Policy'])
             ? responseHeaders['Content-Security-Policy']
             : [responseHeaders['Content-Security-Policy']]
-          responseHeaders['Content-Security-Policy'] = policies.map((policy: string) => policy.replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
+          responseHeaders['Content-Security-Policy'] = policies.map((policy: string) => policy
+            .replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
         }
 
         callback({ cancel: false, responseHeaders })
@@ -316,15 +333,20 @@ export class SessionManager extends EventEmitter {
    * 针对Gemini使用更完善的UA伪装，包含Windows Chrome的完整标识
    */
   private getUserAgent(providerId: string): string | undefined {
+    const macChromeUa = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+      + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
+    const winChromeUa = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+      + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
+
     const userAgents: Record<string, string> = {
-      kimi: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-      grok: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-      deepseek: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-      doubao: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-      qwen: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-      copilot: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+      kimi: macChromeUa,
+      grok: macChromeUa,
+      deepseek: macChromeUa,
+      doubao: macChromeUa,
+      qwen: macChromeUa,
+      copilot: macChromeUa,
       // Gemini使用Windows Chrome UA，更不容易被识别为Electron
-      gemini: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
+      gemini: winChromeUa
     }
 
     return userAgents[providerId]
@@ -449,29 +471,30 @@ export class SessionManager extends EventEmitter {
     }
 
     // 恢复cookies
-    for (const cookie of sessionData.cookies) {
-      try {
-        await electronSession.cookies.set({
-          url: cookie.domain?.startsWith('.') ? `https://${cookie.domain.slice(1)}` : `https://${cookie.domain}`,
-          name: cookie.name,
-          value: cookie.value,
-          domain: cookie.domain,
-          path: cookie.path,
-          secure: cookie.secure,
-          httpOnly: cookie.httpOnly,
-          expirationDate: cookie.expirationDate
-        })
-      } catch (error) {
+    sessionData.cookies.forEach((cookie) => {
+      electronSession!.cookies.set({
+        url: cookie.domain?.startsWith('.') ? `https://${cookie.domain.slice(1)}` : `https://${cookie.domain}`,
+        name: cookie.name,
+        value: cookie.value,
+        domain: cookie.domain,
+        path: cookie.path,
+        secure: cookie.secure,
+        httpOnly: cookie.httpOnly,
+        expirationDate: cookie.expirationDate
+      }).catch((error) => {
         console.warn(`Failed to restore cookie ${cookie.name}:`, error)
-      }
+      })
+    })
+
+    // 创建新的会话数据对象，避免修改参数
+    const updatedSessionData: SessionData = {
+      ...sessionData,
+      isActive: true,
+      lastAccess: new Date()
     }
 
-    // 更新会话状态为活跃，并更新最后访问时间
-    sessionData.isActive = true
-    sessionData.lastAccess = new Date()
-
     // 更新内存中的会话数据
-    this.sessions.set(providerId, sessionData)
+    this.sessions.set(providerId, updatedSessionData)
   }
 
   /**
@@ -616,13 +639,16 @@ export class SessionManager extends EventEmitter {
    */
   async cleanupExpiredSessions(maxAge: number = 24 * 60 * 60 * 1000): Promise<string[]> {
     const expiredSessions: string[] = []
+    const entries = Array.from(this.sessions.entries())
 
-    for (const [providerId, sessionData] of Array.from(this.sessions.entries())) {
-      if (this.isSessionExpired(providerId, maxAge)) {
-        await this.clearSession(providerId)
-        expiredSessions.push(providerId)
-      }
-    }
+    await Promise.all(
+      entries.map(async([providerId]) => {
+        if (this.isSessionExpired(providerId, maxAge)) {
+          await this.clearSession(providerId)
+          expiredSessions.push(providerId)
+        }
+      })
+    )
 
     if (expiredSessions.length > 0) {
       this.emit('sessions-cleaned', { expiredSessions })

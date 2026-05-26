@@ -56,6 +56,23 @@ import { useLoginCheck } from '@/composables/useLoginCheck'
 import { useSessionPersistence } from '@/composables/useSessionPersistence'
 import { useWebViewEvents } from '@/composables/useWebViewEvents'
 
+declare global {
+  interface Window {
+    electronAPI: {
+      getPreloadPath: (name: string) => Promise<string>
+      stopAIStatusMonitoring: (params: { providerId: string }) => Promise<void>
+    }
+  }
+
+  namespace Electron {
+    interface WebviewTag {
+      executeJavaScript: (script: string) => Promise<unknown>
+      reload: () => void
+      src: string
+    }
+  }
+}
+
 // Props
 interface Props {
   provider: AIProvider
@@ -243,7 +260,7 @@ const retry = (): void => {
     return
   }
 
-  retryCount.value++
+  retryCount.value += 1
   hasError.value = false
   errorMessage.value = ''
 
@@ -280,7 +297,7 @@ const executeScript = async(script: string): Promise<any> => {
     throw new Error('WebView not ready')
   }
 
-  return await webviewElement.value.executeJavaScript(script)
+  return webviewElement.value.executeJavaScript(script)
 }
 
 /**
@@ -333,7 +350,9 @@ const create = async(): Promise<void> => {
     await loadSession()
 
     // 等待一小段时间确保DOM已经渲染
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    await new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), 100)
+    })
 
     createWebView()
   } else {

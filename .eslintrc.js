@@ -5,6 +5,11 @@ module.exports = {
     es2021: true,
     node: true
   },
+  globals: {
+    NodeJS: 'readonly',
+    Electron: 'readonly',
+    EventListener: 'readonly'
+  },
   extends: [
     'eslint:recommended',
     'airbnb-base',
@@ -49,7 +54,9 @@ module.exports = {
     'import/no-named-as-default-member': 'off',
     'class-methods-use-this': 'off',
     'no-use-before-define': 'off',
-    'max-len': ['error', { code: 120 }],
+    'max-len': ['error', {
+      code: 120, ignoreUrls: true, ignoreStrings: true, ignoreTemplateLiterals: true
+    }],
     semi: ['error', 'never'],
     quotes: ['error', 'single'],
     'comma-dangle': ['error', 'never'],

@@ -341,10 +341,7 @@ const webviewStyle = computed((): Record<string, string> => {
   }
 })
 
-const shouldShowWebView = computed(() =>
-// 只有在provider启用且不在初始加载状态时才显示WebView
-  props.provider.isEnabled && props.provider.loadingState !== 'idle'
-)
+const shouldShowWebView = computed(() => props.provider.isEnabled && props.provider.loadingState !== 'idle')
 
 const webviewWidth = computed(() => {
   const width = props.config?.size.width

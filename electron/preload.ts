@@ -1,3 +1,4 @@
+import type { IpcRendererEvent } from 'electron'
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPCChannel } from '../src/types/ipc'
 
@@ -18,7 +19,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleFullScreen: () => ipcRenderer.invoke('toggle-fullscreen'),
 
   // WebView管理
-  sendMessageToWebView: (webviewId: string, message: string) => ipcRenderer.invoke('send-message-to-webview', { webviewId, message }),
+  sendMessageToWebView: (webviewId: string, message: string) => (
+    ipcRenderer.invoke('send-message-to-webview', { webviewId, message })
+  ),
   refreshWebView: (webviewId: string) => ipcRenderer.invoke('refresh-webview', webviewId),
   refreshAllWebViews: () => ipcRenderer.invoke('refresh-all-webviews'),
   loadWebView: (webviewId: string, url: string) => ipcRenderer.invoke('load-webview', { webviewId, url }),
@@ -41,7 +44,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   reloadWebView: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_RELOAD, data),
   navigateWebView: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_NAVIGATE, data),
   executeScript: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, data),
-  executeScriptInWebView: (webviewId: string, script: string) => ipcRenderer.invoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, { webviewId, script }),
+  executeScriptInWebView: (webviewId: string, script: string) => (
+    ipcRenderer.invoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, { webviewId, script })
+  ),
   insertCSS: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_INSERT_CSS, data),
   setProxy: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_SET_PROXY, data),
 
@@ -82,7 +87,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 事件监听
   onAIStatusChange: (callback: (data: any) => void) => {
-    const handler = (event: Electron.IpcRendererEvent, data: any) => callback(data)
+    const handler = (event: IpcRendererEvent, data: any) => callback(data)
     ipcRenderer.on(IPCChannel.AI_STATUS_CHANGE, handler)
     // 返回一个取消订阅函数
     return () => {

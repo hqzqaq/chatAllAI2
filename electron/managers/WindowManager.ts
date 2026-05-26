@@ -53,8 +53,6 @@ export class WindowManager extends EventEmitter {
    * 创建主窗口
    */
   async createMainWindow(): Promise<BrowserWindow> {
-    const isDev = process.env.NODE_ENV === 'development'
-
     const config: WindowConfig = {
       id: 'main',
       width: 1400,
@@ -101,7 +99,8 @@ export class WindowManager extends EventEmitter {
     // 创建窗口
     const window = new BrowserWindow(config)
 
-    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      + '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     // 应用于所有请求
     window.webContents.setUserAgent(userAgent)
 
@@ -437,31 +436,30 @@ export class WindowManager extends EventEmitter {
     const window = this.getWindow(id)
     if (!window) return
 
+    const devMode = process.env.NODE_ENV === 'development'
+
     if (urlOrRoute) {
       // 如果是外部URL
       if (urlOrRoute.startsWith('http')) {
         await window.loadURL(urlOrRoute)
       } else {
         // 如果是应用路由
-        const isDev = process.env.NODE_ENV === 'development'
         // 动态获取输出目录
         const outDir = process.env.VITE_OUT_DIR || 'dist'
-        const baseUrl = isDev ? 'http://localhost:5173' : `file://${join(app.getAppPath(), outDir, '/index.html')}`
+        const baseUrl = devMode ? 'http://localhost:5173' : `file://${join(app.getAppPath(), outDir, '/index.html')}`
         const fullUrl = urlOrRoute.startsWith('/') ? `${baseUrl}#${urlOrRoute}` : `${baseUrl}#/${urlOrRoute}`
         await window.loadURL(fullUrl)
       }
+    } else if (devMode) {
+      // 加载默认页面 - 开发环境
+      await window.loadURL('http://localhost:5173')
     } else {
-      // 加载默认页面
-      const isDev = process.env.NODE_ENV === 'development'
-      if (isDev) {
-        await window.loadURL('http://localhost:5173')
-      } else {
-        // 动态获取输出目录
-        const outDir = process.env.VITE_OUT_DIR || 'dist'
-        // 生产环境下使用app.getAppPath()获取应用安装路径
-        const appPath = app.getAppPath()
-        await window.loadFile(join(appPath, outDir, '/index.html'))
-      }
+      // 加载默认页面 - 生产环境
+      // 动态获取输出目录
+      const outDir = process.env.VITE_OUT_DIR || 'dist'
+      // 生产环境下使用app.getAppPath()获取应用安装路径
+      const appPath = app.getAppPath()
+      await window.loadFile(join(appPath, outDir, '/index.html'))
     }
   }
 }

@@ -2,6 +2,8 @@
  * 错误类型定义
  */
 
+/* eslint-disable no-shadow */
+
 /**
  * 错误类型枚举
  */

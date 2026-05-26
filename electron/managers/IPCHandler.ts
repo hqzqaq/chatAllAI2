@@ -4,9 +4,11 @@
  */
 
 import {
-  ipcMain, IpcMainEvent, IpcMainInvokeEvent, dialog
+  ipcMain, IpcMainEvent, IpcMainInvokeEvent, dialog, app, session
 } from 'electron'
 import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 import { EventEmitter } from 'events'
 import { WindowManager } from './WindowManager'
 import { SessionManager } from './SessionManager'
@@ -56,7 +58,11 @@ export class IPCHandler extends EventEmitter {
 
   private config: IPCHandlerConfig
 
-  private requestMap: Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }> = new Map()
+  private requestMap: Map<string, {
+    resolve: Function
+    reject: Function
+    timeout: ReturnType<typeof setTimeout>
+  }> = new Map()
 
   private messageHandlers: Map<IPCChannel, Function> = new Map()
 
@@ -150,11 +156,7 @@ export class IPCHandler extends EventEmitter {
     this.handleInvoke(IPCChannel.FILE_UPLOAD_TO_WEBVIEW, this.handleFileUploadToWebView.bind(this))
 
     // 新增：获取预加载脚本路径
-    ipcMain.handle('get-preload-path', (event, preloadName: string) => {
-      const path = require('path')
-      // __dirname 在主进程中指向 dist-electron 目录
-      return path.resolve(__dirname, preloadName)
-    })
+    ipcMain.handle('get-preload-path', (event, preloadName: string) => path.resolve(__dirname, preloadName))
 
     // 新增：清除指定provider的存储数据（用于解决Gemini登录问题）
     ipcMain.handle('clear-provider-storage', async(event, providerId: string) => {
@@ -166,7 +168,6 @@ export class IPCHandler extends EventEmitter {
 
         if (!electronSession) {
           // 如果session不存在，尝试从partition创建
-          const { session } = require('electron')
           electronSession = session.fromPartition(`persist:${providerId}`)
         }
 
@@ -331,7 +332,6 @@ export class IPCHandler extends EventEmitter {
    * 获取应用版本
    */
   private async handleGetAppVersion(): Promise<string> {
-    const { app } = require('electron')
     return app.getVersion()
   }
 
@@ -357,7 +357,6 @@ export class IPCHandler extends EventEmitter {
    * 关闭窗口
    */
   private async handleCloseWindow(): Promise<void> {
-    const { app } = require('electron')
     app.quit()
   }
 
@@ -515,7 +514,6 @@ export class IPCHandler extends EventEmitter {
    * 处理应用就绪
    */
   private async handleAppReady(): Promise<{ success: boolean; version: string }> {
-    const { app } = require('electron')
     return {
       success: true,
       version: app.getVersion()
@@ -526,7 +524,6 @@ export class IPCHandler extends EventEmitter {
    * 处理应用退出
    */
   private async handleAppQuit(): Promise<{ success: boolean }> {
-    const { app } = require('electron')
     app.quit()
     return { success: true }
   }
@@ -565,7 +562,7 @@ export class IPCHandler extends EventEmitter {
 
     const providers = targetProviders || this.sessionManager.getActiveSessionIds()
 
-    for (const providerId of providers) {
+    await Promise.all(providers.map(async(providerId) => {
       try {
         // 这里应该实现实际的消息发送逻辑
         // 暂时返回成功状态
@@ -587,7 +584,7 @@ export class IPCHandler extends EventEmitter {
           error: error instanceof Error ? error.message : 'Unknown error'
         })
       }
-    }
+    }))
 
     return {
       messageId: finalMessageId,
@@ -671,17 +668,16 @@ export class IPCHandler extends EventEmitter {
    * 处理性能指标获取
    */
   private async handlePerformanceGetMetrics(): Promise<PerformanceMetricsResponse> {
-    const { app } = require('electron')
-    const metrics: ProcessMetric[] = app.getAppMetrics()
+    const metrics = app.getAppMetrics()
 
     return {
       cpu: {
-        usage: metrics.reduce((sum: number, metric: ProcessMetric) => sum + (metric.cpu?.percentCPUUsage || 0), 0),
+        usage: metrics.reduce((sum: number, metric) => sum + (metric.cpu?.percentCPUUsage || 0), 0),
         timestamp: new Date()
       },
       memory: {
-        used: metrics.reduce((sum: number, metric: ProcessMetric) => sum + (metric.memory?.workingSetSize || 0), 0),
-        total: require('os').totalmem(),
+        used: metrics.reduce((sum: number, metric) => sum + (metric.memory?.workingSetSize || 0), 0),
+        total: os.totalmem(),
         percentage: 0,
         timestamp: new Date()
       },
@@ -733,21 +729,21 @@ export class IPCHandler extends EventEmitter {
       }
 
       // 检查会话是否存在，如果不存在则创建
-      let session = this.sessionManager.getSession(providerId)
-      if (!session) {
+      let electronSession = this.sessionManager.getSession(providerId)
+      if (!electronSession) {
         this.log(`Session not found for webview: ${data.webviewId}, creating new session...`)
-        session = await this.sessionManager.createProviderSession(providerId)
+        electronSession = await this.sessionManager.createProviderSession(providerId)
       }
 
       if (data.enabled) {
         // 设置代理
-        await session.setProxy({
+        await electronSession.setProxy({
           proxyRules: data.proxyRules
         })
         this.log(`Proxy set successfully for webview ${data.webviewId}`)
       } else {
         // 禁用代理，使用直连
-        await session.setProxy({
+        await electronSession.setProxy({
           proxyRules: 'direct://'
         })
         this.log(`Proxy disabled for webview ${data.webviewId}`)
@@ -823,15 +819,15 @@ export class IPCHandler extends EventEmitter {
       }
 
       if (this.aiStatusMonitorListeners) {
-        Object.keys(this.aiStatusMonitorListeners).forEach((webviewId) => {
-          if (webviewId.includes(data.providerId)) {
+        Object.keys(this.aiStatusMonitorListeners).forEach((listenerWebviewId) => {
+          if (listenerWebviewId.includes(data.providerId)) {
             const mainWindow = this.windowManager.getMainWindow()
-            const listener = this.aiStatusMonitorListeners?.[webviewId]
+            const listener = this.aiStatusMonitorListeners?.[listenerWebviewId]
             if (mainWindow && !mainWindow.isDestroyed() && listener) {
               mainWindow.webContents.off('ipc-message', listener)
             }
             if (this.aiStatusMonitorListeners) {
-              delete this.aiStatusMonitorListeners[webviewId]
+              delete this.aiStatusMonitorListeners[listenerWebviewId]
             }
           }
         })
@@ -944,7 +940,10 @@ export class IPCHandler extends EventEmitter {
       return { canceled: true, filePaths: [] }
     }
 
-    const options: Electron.OpenDialogOptions = {
+    const options: {
+      properties: Array<'openFile' | 'multiSelections'>
+      filters: Array<{ name: string; extensions: string[] }>
+    } = {
       properties: ['openFile'],
       filters: data.filters || [
         {
@@ -977,11 +976,10 @@ export class IPCHandler extends EventEmitter {
    */
   private async handleFileRead(data: FileReadRequest): Promise<FileReadResponse> {
     try {
-      const pathMod = require('path')
       const { filePath } = data
       const buffer = fs.readFileSync(filePath)
       const base64 = buffer.toString('base64')
-      const ext = pathMod.extname(filePath).toLowerCase().replace('.', '')
+      const ext = path.extname(filePath).toLowerCase().replace('.', '')
       const mimeMap: Record<string, string> = {
         txt: 'text/plain',
         md: 'text/markdown',
@@ -1031,7 +1029,7 @@ export class IPCHandler extends EventEmitter {
 
       return {
         success: true,
-        name: pathMod.basename(filePath),
+        name: path.basename(filePath),
         size: buffer.length,
         mimeType: mimeMap[ext] || 'application/octet-stream',
         base64

@@ -23,6 +23,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  config: undefined,
   maximized: undefined,
   minimized: undefined
 })

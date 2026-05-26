@@ -2,6 +2,8 @@
  * IPC通信类型定义
  */
 
+/* eslint-disable no-shadow */
+
 /**
  * IPC通道枚举
  */

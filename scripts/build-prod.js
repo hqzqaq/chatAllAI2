@@ -21,26 +21,27 @@ const viteBuild = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['exec
   cwd: process.cwd()
 })
 
-viteBuild.on('close', (code) => {
-  if (code !== 0) {
+viteBuild.on('close', (viteCode) => {
+  if (viteCode !== 0) {
     console.error('❌ 前端构建失败')
-    process.exit(code)
+    process.exit(viteCode)
   }
 
   console.log('✅ 前端构建完成')
 
   // 构建Electron应用
   console.log('🔧 构建Electron应用...')
-  const electronBuild = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['exec', '--no', 'electron-builder', '--publish=never'], {
+  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const electronBuild = spawn(npmCmd, ['exec', '--no', 'electron-builder', '--publish=never'], {
     stdio: 'inherit',
     shell: true,
     cwd: process.cwd()
   })
 
-  electronBuild.on('close', (code) => {
-    if (code !== 0) {
+  electronBuild.on('close', (electronCode) => {
+    if (electronCode !== 0) {
       console.error('❌ Electron构建失败')
-      process.exit(code)
+      process.exit(electronCode)
     }
 
     console.log('✅ 生产版本构建完成！')

@@ -77,8 +77,8 @@ export const useChatStore = defineStore('chat', () => {
   /**
    * 更新选中的提供商列表
    */
-  const updateSelectedProviders = (providers: string[]): void => {
-    selectedProviders.value = providers
+  const updateSelectedProviders = (providerIds: string[]): void => {
+    selectedProviders.value = providerIds
     saveSelectedProviders()
   }
 
@@ -86,16 +86,16 @@ export const useChatStore = defineStore('chat', () => {
    * 应用选中的提供商（启用选中的提供商）
    */
   const applySelectedProviders = (): void => {
-    providers.value.forEach((provider) => {
+    providers.value = providers.value.map((provider) => {
       const shouldEnable = selectedProviders.value.includes(provider.id)
       if (provider.isEnabled !== shouldEnable) {
-        provider.isEnabled = shouldEnable
-        if (shouldEnable) {
-          provider.loadingState = 'loading'
-        } else {
-          provider.loadingState = 'idle'
+        return {
+          ...provider,
+          isEnabled: shouldEnable,
+          loadingState: shouldEnable ? 'loading' : 'idle'
         }
       }
+      return provider
     })
   }
 
