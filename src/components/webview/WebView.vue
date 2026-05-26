@@ -166,6 +166,11 @@ async function checkStatusAndNotify(): Promise<void> {
 }
 
 /**
+ * 检查登录状态（无参包装方法）
+ */
+const checkLoginStatusWrapper = async(): Promise<boolean> => checkLoginStatus(webviewElement.value)
+
+/**
  * 创建WebView元素
  */
 const createWebView = async(): Promise<void> => {
@@ -343,7 +348,7 @@ defineExpose({
   executeScript,
   sendMessage,
   destroy,
-  checkLoginStatus,
+  checkLoginStatus: checkLoginStatusWrapper,
   saveSession,
   loadSession,
   create

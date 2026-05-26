@@ -267,13 +267,13 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  config: undefined,
   minimized: undefined,
   maximized: undefined
 })
 
 // Emits
-const emit = defineEmits<{
-  (e: 'toggle-minimized'): void
+const emit = defineEmits<{(e: 'toggle-minimized'): void
   (e: 'toggle-maximized'): void
 }>()
 
@@ -285,7 +285,6 @@ const isRefreshing = ref(false)
 const isLoading = ref(false)
 const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
 const proxyDialogVisible = ref(false)
-const proxyFormRef = ref()
 
 // 使用props提供的minimized/maximized状态，或者回退到config中的状态
 const resolvedIsMinimized = computed(() => props.minimized ?? props.config?.isMinimized ?? false)
@@ -303,7 +302,7 @@ const proxyConfig = ref({
 // 计算属性
 const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] || 'idle')
 
-const cardStyle = computed(() => {
+const cardStyle = computed((): Record<string, string | number> => {
   if (!props.config) return {}
 
   const isHidden = props.config.isHidden === true
@@ -312,11 +311,14 @@ const cardStyle = computed(() => {
   const width = typeof props.config.size.width === 'string'
     ? props.config.size.width
     : `${props.config.size.width}px`
-  const height = isMinimized
-    ? 'auto'
-    : (typeof props.config.size.height === 'string'
-      ? props.config.size.height
-      : `${props.config.size.height}px`)
+  let height: string
+  if (isMinimized) {
+    height = 'auto'
+  } else if (typeof props.config.size.height === 'string') {
+    height = props.config.size.height
+  } else {
+    height = `${props.config.size.height}px`
+  }
 
   return {
     width,
@@ -329,7 +331,7 @@ const cardStyle = computed(() => {
   }
 })
 
-const webviewStyle = computed(() => {
+const webviewStyle = computed((): Record<string, string> => {
   if (!props.config) return {}
 
   if (resolvedIsMinimized.value) return {}
@@ -339,10 +341,9 @@ const webviewStyle = computed(() => {
   }
 })
 
-const shouldShowWebView = computed(
-  () =>
-    // 只有在provider启用且不在初始加载状态时才显示WebView
-    props.provider.isEnabled && props.provider.loadingState !== 'idle'
+const shouldShowWebView = computed(() =>
+// 只有在provider启用且不在初始加载状态时才显示WebView
+  props.provider.isEnabled && props.provider.loadingState !== 'idle'
 )
 
 const webviewWidth = computed(() => {
@@ -664,7 +665,7 @@ const saveProxyConfig = async(): Promise<void> => {
       }
 
       // 验证端口号
-      const port = parseInt(proxyConfig.value.port)
+      const port = parseInt(proxyConfig.value.port, 10)
       if (port < 1 || port > 65535) {
         ElMessage.error('端口号必须在1-65535之间')
         return
@@ -844,7 +845,6 @@ onMounted(() => {
 
 /* 为卡片添加键盘可访问性 */
 .ai-card {
-  tabindex: 0;
   cursor: pointer;
 }
 

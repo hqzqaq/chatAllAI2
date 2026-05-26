@@ -48,3 +48,4 @@ dist-prod
 /ppt-output/
 .playwright-cli/
 .claude
+/doc/

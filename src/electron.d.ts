@@ -20,7 +20,7 @@ interface ElectronAPI {
   refreshAllWebViews(): Promise<void>
   loadWebView(data: { webviewId: string; url: string }): Promise<void>
   openDevTools(webviewId: string): Promise<void>
-  setProxy(data: { webviewId: string; proxy: string }): Promise<void>
+  setProxy(data: { webviewId: string; proxyRules: string; enabled: boolean }): Promise<void>
 
   // 会话管理
   saveSession(data: { providerId: string }): Promise<{ success: boolean }>

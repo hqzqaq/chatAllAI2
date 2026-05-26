@@ -55,5 +55,7 @@ export function useLoginCheck(provider: AIProvider) {
     }
   }
 
-  return { checkLoginStatus, startLoginCheckTimer, stopLoginCheckTimer, loginCheckTimer }
+  return {
+    checkLoginStatus, startLoginCheckTimer, stopLoginCheckTimer, loginCheckTimer
+  }
 }

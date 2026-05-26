@@ -76,5 +76,7 @@ export function useWebViewEvents(callbacks: WebViewEventCallbacks) {
     currentUrl.value = ''
   }
 
-  return { isInitialLoad, currentUrl, bindEvents, reset }
+  return {
+    isInitialLoad, currentUrl, bindEvents, reset
+  }
 }
