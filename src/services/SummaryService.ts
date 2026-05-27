@@ -45,14 +45,16 @@ export class SummaryService {
   async collectResponses(providers: AIProvider[]): Promise<CollectResult> {
     const summaryStore = useSummaryStore()
     const responses: AIResponse[] = []
-    let successCount = 0
 
     console.log(`开始收集 ${providers.length} 个AI的回答`)
 
-    // 并发收集所有AI的回答
-    const collectPromises = providers.map(async(provider, index) => {
+    // 串行收集所有AI的回答，避免并发执行脚本导致竞态条件
+    // eslint-disable-next-line no-await-in-loop
+    for (let i = 0; i < providers.length; i += 1) {
+      const provider = providers[i]
       try {
         console.log(`正在收集 ${provider.name} 的回答...`)
+        // eslint-disable-next-line no-await-in-loop
         const content = await this.fetchResponseFromProvider(provider)
 
         const response: AIResponse = {
@@ -64,13 +66,11 @@ export class SummaryService {
         }
 
         responses.push(response)
-        successCount += 1
 
         // 更新进度
-        summaryStore.setCollectingStatus(successCount, providers.length, response)
+        summaryStore.setCollectingStatus(responses.length, providers.length, response)
 
         console.log(`成功收集 ${provider.name} 的回答`)
-        return response
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '获取失败'
         console.error(`收集 ${provider.name} 的回答失败:`, errorMessage)
@@ -87,25 +87,11 @@ export class SummaryService {
         responses.push(response)
 
         // 更新进度
-        summaryStore.setCollectingStatus(successCount, providers.length, response)
-
-        return response
+        summaryStore.setCollectingStatus(responses.length, providers.length, response)
       }
-    })
+    }
 
-    await Promise.all(collectPromises)
-
-    // 按原始顺序排序
-    const sortedResponses = providers.map((provider) => responses.find((r) => r.providerId === provider.id) || {
-      providerId: provider.id,
-      providerName: provider.name,
-      content: '',
-      timestamp: new Date(),
-      success: false,
-      error: '未找到响应'
-    })
-
-    const successResponses = sortedResponses.filter(
+    const successResponses = responses.filter(
       (r) => r.success && typeof r.content === 'string' && r.content.trim()
     )
 
@@ -114,14 +100,14 @@ export class SummaryService {
     if (successResponses.length === 0) {
       return {
         success: false,
-        responses: sortedResponses,
+        responses,
         error: '未能获取任何AI的回答，请检查AI是否已完成回答'
       }
     }
 
     return {
       success: true,
-      responses: sortedResponses
+      responses
     }
   }
 

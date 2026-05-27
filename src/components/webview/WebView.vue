@@ -216,10 +216,12 @@ const createWebView = async(): Promise<void> => {
 
   // 设置webview属性
   webview.setAttribute('nodeintegration', 'false')
-  webview.setAttribute('websecurity', 'true')
+  webview.setAttribute('websecurity', 'false')
   webview.setAttribute('allowpopups', 'true')
   webview.setAttribute('useragent', getUserAgent())
   webview.setAttribute('partition', partition.value)
+  webview.setAttribute('allowrunninginsecurecontent', 'true')
+  webview.setAttribute('disablewebsecurity', 'true')
 
   // 设置preload脚本
   if (window.electronAPI) {

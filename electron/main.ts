@@ -10,16 +10,41 @@ import { IPCHandler } from './managers/IPCHandler'
 function configureCommandLineSwitches(): void {
   console.log('[Main] Configuring command line switches for Gemini compatibility')
 
-  // 禁用第三方Cookie拦截 - 解决Google登录的Cookie问题
-  app.commandLine.appendSwitch('disable-features', 'ThirdPartyCookieBlocking')
-
   // 禁用站点隔离试验 - 减少跨域限制
   app.commandLine.appendSwitch('disable-site-isolation-trials')
 
-  // 允许所有Cookie - 确保Google登录流程正常
-  app.commandLine.appendSwitch('disable-features', 'SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure')
+  // 禁用所有影响Cookie的特性 - 确保Google登录流程正常
+  // 将所有需要禁用的特性合并到一个逗号分隔的列表中
+  const disabledFeatures = [
+    'ThirdPartyCookieBlocking', // 禁用第三方Cookie拦截
+    'SameSiteByDefaultCookies', // 禁用默认SameSite策略
+    'CookiesWithoutSameSiteMustBeSecure', // 禁用SameSite=None必须Secure的限制
+    'PartitionedCookies', // 禁用分区Cookie
+    'StorageAccessAPI', // 禁用存储访问API限制
+    'BlockInsecurePrivateNetworkRequests', // 禁用不安全私有网络请求拦截
+    'InterestCohort', // 禁用FLoC
+    'PrivacySandboxSettings', // 禁用隐私沙盒设置
+    'TrackingProtection', // 禁用跟踪保护
+    'CookieDeprecationFacilitatedTesting' // 禁用Cookie弃用测试
+  ]
+  app.commandLine.appendSwitch('disable-features', disabledFeatures.join(','))
 
-  console.log('[Main] Command line switches configured')
+  // 从Blink引擎层面禁用SameSite策略
+  app.commandLine.appendSwitch('disable-blink-features', 'SameSiteByDefaultCookies')
+
+  // 允许跨域Cookie - 解决Google登录时的Cookie设置问题
+  app.commandLine.appendSwitch('disable-web-security')
+
+  // 允许不安全的本地主机
+  app.commandLine.appendSwitch('allow-insecure-localhost')
+
+  // 禁用同源策略限制
+  app.commandLine.appendSwitch('disable-site-isolation-for-passwords')
+
+  console.log('[Main] Command line switches configured:', {
+    disabledFeatures,
+    disableBlinkFeatures: 'SameSiteByDefaultCookies'
+  })
 }
 
 // 在应用ready之前配置命令行开关

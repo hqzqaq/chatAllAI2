@@ -78,7 +78,7 @@ function getDeepSeekLastMessageScript(): string {
 
 function getDouBaoLastMessageScript(): string {
   return `(() => {
-    const messages = document.querySelectorAll('[data-testid="receive_message"]');
+    const messages = document.querySelectorAll('[data-target-id="message-box-target-id"]');
     const lastMessage = messages[messages.length - 1];
     return lastMessage ? lastMessage.textContent || '' : '';
   })()`

@@ -208,6 +208,14 @@ export class SessionManager extends EventEmitter {
     const userAgent = this.getUserAgent('gemini') || ''
     const secChUa = this.getSecChUa()
 
+    // 配置Cookie - 允许所有Cookie包括第三方Cookie
+    electronSession.cookies.set({
+      url: 'https://google.com',
+      name: 'cookie_test',
+      value: 'enabled',
+      sameSite: 'no_restriction'
+    }).catch(() => {})
+
     // 拦截请求头，确保所有发往Google的请求都带有正确的UA和平台信息
     electronSession.webRequest.onBeforeSendHeaders(
       {
@@ -282,11 +290,13 @@ export class SessionManager extends EventEmitter {
             ? responseHeaders['set-cookie']
             : [responseHeaders['set-cookie']]
           responseHeaders['set-cookie'] = cookies.map((cookie: string) => {
+            // 移除所有SameSite限制，允许跨域Cookie
+            let modifiedCookie = cookie.replace(/SameSite=[^;]*/gi, '')
             // 确保Cookie包含SameSite=None; Secure
-            if (!cookie.includes('SameSite')) {
-              return `${cookie}; SameSite=None; Secure`
+            if (!modifiedCookie.includes('SameSite')) {
+              modifiedCookie = `${modifiedCookie}; SameSite=None; Secure`
             }
-            return cookie
+            return modifiedCookie
           })
         }
 
