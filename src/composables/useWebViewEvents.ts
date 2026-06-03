@@ -65,8 +65,11 @@ export function useWebViewEvents(callbacks: WebViewEventCallbacks) {
     })
 
     webview.addEventListener('console-message', (event) => {
-      if (event.level === 0) {
+      // Electron console-message level: 0=verbose, 1=info, 2=warning, 3=error
+      if (event.level === 3) {
         console.error(`WebView Console [${providerName}]:`, event.message)
+      } else if (event.level === 2) {
+        console.warn(`WebView Console [${providerName}]:`, event.message)
       }
     })
   }

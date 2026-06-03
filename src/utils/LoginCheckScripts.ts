@@ -71,5 +71,5 @@ export function getLoginCheckScript(providerId: string): string {
     `
   }
 
-  return resolveScript(providerId, 'loginCheck', scripts[providerId] || 'false')
+  return resolveScript(providerId, 'loginCheck', scripts[providerId] || '(() => { try { return false; } catch (e) { return false; } })()')
 }

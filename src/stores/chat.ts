@@ -1,15 +1,34 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { AIProvider, Message, Session } from '../types'
+import type {
+  AIProvider, Message, Session, CustomProviderConfig
+} from '../types'
 import { storage } from '../utils/storage'
 import { providerConfigs, createDefaultProvider } from '../config/providers'
+
+/**
+ * localStorage key for custom providers
+ */
+const STORAGE_KEY_CUSTOM_PROVIDERS = 'chatallai_custom_providers'
 
 /**
  * 聊天状态管理
  */
 export const useChatStore = defineStore('chat', () => {
-  // AI提供商列表
-  const providers = ref<AIProvider[]>(providerConfigs.map(createDefaultProvider))
+  // 内置AI提供商列表
+  const builtInProviders = ref<AIProvider[]>(providerConfigs.map((config) => ({
+    ...createDefaultProvider(config),
+    isCustom: false
+  })))
+
+  // 自定义AI提供商列表
+  const customProviders = ref<AIProvider[]>([])
+
+  // 合并后的AI提供商列表
+  const providers = computed<AIProvider[]>(() => [
+    ...builtInProviders.value,
+    ...customProviders.value
+  ])
 
   // 当前输入的消息
   const currentMessage = ref<string>('')
@@ -86,23 +105,145 @@ export const useChatStore = defineStore('chat', () => {
    * 应用选中的提供商（启用选中的提供商）
    */
   const applySelectedProviders = (): void => {
-    providers.value = providers.value.map((provider) => {
+    // 遍历所有提供商（内置 + 自定义），更新 isEnabled 状态
+    const allProviders = [...builtInProviders.value, ...customProviders.value]
+    allProviders.forEach((provider) => {
       const shouldEnable = selectedProviders.value.includes(provider.id)
       if (provider.isEnabled !== shouldEnable) {
-        return {
-          ...provider,
-          isEnabled: shouldEnable,
-          loadingState: shouldEnable ? 'loading' : 'idle'
+        // eslint-disable-next-line no-param-reassign
+        provider.isEnabled = shouldEnable
+        // eslint-disable-next-line no-param-reassign
+        provider.loadingState = shouldEnable ? 'loading' : 'idle'
+      }
+    })
+  }
+
+  /**
+   * 加载自定义提供商列表
+   */
+  const loadCustomProviders = (): void => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_CUSTOM_PROVIDERS)
+      if (stored) {
+        const parsed: CustomProviderConfig[] = JSON.parse(stored)
+        customProviders.value = parsed.map((config) => {
+          const provider = createDefaultProvider(config)
+          provider.isCustom = true
+          // 反序列化 Date 对象
+          if (provider.sessionData.lastActiveTime) {
+            provider.sessionData.lastActiveTime = new Date(provider.sessionData.lastActiveTime)
+          }
+          if (provider.lastActiveTime) {
+            provider.lastActiveTime = new Date(provider.lastActiveTime)
+          }
+          return provider
+        })
+      }
+    } catch (error) {
+      console.error('加载自定义提供商失败:', error)
+    }
+  }
+
+  /**
+   * 保存自定义提供商列表
+   */
+  const saveCustomProviders = (): void => {
+    try {
+      const configs: CustomProviderConfig[] = customProviders.value.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        url: provider.url,
+        icon: provider.icon,
+        createdAt: new Date().toISOString()
+      }))
+      localStorage.setItem(STORAGE_KEY_CUSTOM_PROVIDERS, JSON.stringify(configs))
+    } catch (error) {
+      console.error('保存自定义提供商失败:', error)
+    }
+  }
+
+  /**
+   * 添加自定义提供商
+   */
+  const addCustomProvider = (config: { name: string; url: string; icon?: string }): AIProvider | null => {
+    try {
+      const id = `custom-${Date.now()}`
+      const providerConfig = {
+        id,
+        name: config.name,
+        url: config.url,
+        icon: config.icon || './icons/default.svg'
+      }
+      const provider = createDefaultProvider(providerConfig)
+      provider.isCustom = true
+      customProviders.value.push(provider)
+      saveCustomProviders()
+
+      // 初始化该提供商的对话历史
+      if (!conversations.value[id]) {
+        conversations.value[id] = []
+      }
+      if (!sessions.value[id]) {
+        sessions.value[id] = {
+          providerId: id,
+          cookies: [],
+          localStorage: {},
+          sessionStorage: {},
+          isActive: false
         }
       }
+      sendingStatus.value[id] = 'idle'
+
       return provider
-    })
+    } catch (error) {
+      console.error('添加自定义提供商失败:', error)
+      return null
+    }
+  }
+
+  /**
+   * 更新自定义提供商
+   */
+  const updateCustomProvider = (providerId: string, config: { name: string; url: string; icon?: string }): boolean => {
+    try {
+      const provider = customProviders.value.find((p) => p.id === providerId)
+      if (!provider) return false
+      provider.name = config.name
+      provider.url = config.url
+      if (config.icon !== undefined) {
+        provider.icon = config.icon
+      }
+      saveCustomProviders()
+      return true
+    } catch (error) {
+      console.error('更新自定义提供商失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 删除自定义提供商
+   */
+  const removeCustomProvider = (providerId: string): boolean => {
+    try {
+      const index = customProviders.value.findIndex((p) => p.id === providerId)
+      if (index === -1) return false
+      customProviders.value.splice(index, 1)
+      saveCustomProviders()
+      return true
+    } catch (error) {
+      console.error('删除自定义提供商失败:', error)
+      return false
+    }
   }
 
   /**
    * 初始化对话历史
    */
   const initializeConversations = (): void => {
+    // 先加载自定义提供商
+    loadCustomProviders()
+
     providers.value.forEach((provider) => {
       if (!conversations.value[provider.id]) {
         conversations.value[provider.id] = []
@@ -255,6 +396,8 @@ export const useChatStore = defineStore('chat', () => {
 
   return {
     providers,
+    builtInProviders,
+    customProviders,
     currentMessage,
     selectedProviders,
     conversations,
@@ -281,6 +424,11 @@ export const useChatStore = defineStore('chat', () => {
     updateProviderError,
     toggleProvider,
     resetProviderState,
-    updateProviderActiveTime
+    updateProviderActiveTime,
+    addCustomProvider,
+    updateCustomProvider,
+    removeCustomProvider,
+    loadCustomProviders,
+    saveCustomProviders
   }
 })

@@ -57,6 +57,27 @@ export interface AIProvider {
   lastError?: string
   retryCount?: number
   lastActiveTime?: Date
+  isCustom?: boolean
+}
+
+/**
+ * 自定义提供商配置（用于持久化）
+ */
+export interface CustomProviderConfig {
+  id: string
+  name: string
+  url: string
+  icon: string
+  createdAt: string
+}
+
+/**
+ * 添加提供商表单数据
+ */
+export interface AddProviderFormData {
+  name: string
+  url: string
+  icon: string
 }
 
 /**

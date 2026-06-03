@@ -59,6 +59,14 @@
                 >
                 <span class="provider-name">{{ provider.name }}</span>
                 <el-tag
+                  v-if="provider.isCustom"
+                  type="info"
+                  size="small"
+                  class="custom-tag"
+                >
+                  自定义
+                </el-tag>
+                <el-tag
                   v-if="getProviderAIStatus(provider.id) === 'responding'"
                   type="warning"
                   size="small"
@@ -82,6 +90,17 @@
                 </el-icon>
               </div>
             </el-checkbox>
+            <div
+              class="provider-checkbox add-provider-btn"
+              @click="handleAddProvider"
+            >
+              <div class="provider-option add-option">
+                <el-icon class="add-icon">
+                  <Plus />
+                </el-icon>
+                <span class="provider-name">添加模型</span>
+              </div>
+            </div>
           </el-checkbox-group>
         </div>
 
@@ -241,6 +260,11 @@
       @apply-prompt="handleApplyPrompt"
     />
 
+    <AddProviderDialog
+      v-model="addProviderVisible"
+      @added="handleProviderAdded"
+    />
+
     <input
       ref="fileInputRef"
       type="file"
@@ -266,6 +290,7 @@ import { messageDispatcher } from '../../services/MessageDispatcher'
 import type { MessageSendResult, AttachedFileInfo } from '../../services/MessageDispatcher'
 import type { AIProvider } from '@/types'
 import PromptManager from './PromptManager.vue'
+import AddProviderDialog from './AddProviderDialog.vue'
 
 const chatStore = useChatStore()
 
@@ -309,6 +334,17 @@ const aiStatusMap = ref<{ [providerId: string]: 'waiting_input' | 'responding' |
 
 // Prompt 管理器
 const promptManagerVisible = ref<boolean>(false)
+
+// 添加模型对话框
+const addProviderVisible = ref<boolean>(false)
+
+const handleAddProvider = (): void => {
+  addProviderVisible.value = true
+}
+
+const handleProviderAdded = (_providerId: string): void => {
+  // 新添加的提供商会自动出现在 sortedProviders 中
+}
 
 // 快捷 Prompt 管理
 const quickPrompt = ref<string>('')
@@ -1789,6 +1825,41 @@ onUnmounted(() => {
   transform: none;
   border-color: #e5e5ea;
   box-shadow: none;
+}
+
+.custom-tag {
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #e8f4fd;
+  border-color: #b3d8fd;
+  color: #409eff;
+}
+
+.add-provider-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  min-height: 60px;
+}
+
+.add-option {
+  border: 2px dashed #c0c4cc;
+  background: #fafafa;
+  color: #909399;
+  justify-content: center;
+}
+
+.add-option:hover {
+  border-color: #409eff;
+  color: #409eff;
+  background: #ecf5ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+}
+
+.add-icon {
+  font-size: 20px;
 }
 
 /* 响应式布局优化 */
