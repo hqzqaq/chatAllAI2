@@ -5,8 +5,8 @@ import type { AIProvider } from '../types'
 export function useLoginCheck(provider: AIProvider) {
   const loginCheckTimer = ref<NodeJS.Timeout | null>(null)
 
-  async function checkLoginStatus(webviewElement: Electron.WebviewTag | null): Promise<boolean> {
-    if (!webviewElement) return false
+  async function checkLoginStatus(): Promise<boolean> {
+    if (!window.electronAPI) return false
 
     try {
       let isLoggedIn = false
@@ -18,7 +18,10 @@ export function useLoginCheck(provider: AIProvider) {
           ? provider.id.replace('summary-', '')
           : provider.id
         const loginCheckScript = getLoginCheckScript(providerId)
-        const result = await webviewElement.executeJavaScript(loginCheckScript)
+        const result = await window.electronAPI.executeWebViewScript({
+          providerId: provider.id,
+          script: loginCheckScript
+        })
         isLoggedIn = Boolean(result)
       }
 
@@ -30,16 +33,16 @@ export function useLoginCheck(provider: AIProvider) {
   }
 
   function startLoginCheckTimer(
-    getWebviewElement: () => Electron.WebviewTag | null,
+    providerIdFn: () => string,
     isLoading: { value: boolean },
     onLoggedIn: () => Promise<void>
   ) {
     if (loginCheckTimer.value) return
 
     loginCheckTimer.value = setInterval(() => {
-      const webviewEl = getWebviewElement()
-      if (webviewEl && !isLoading.value) {
-        checkLoginStatus(webviewEl).then((isLoggedIn) => {
+      const currentProviderId = providerIdFn()
+      if (currentProviderId && !isLoading.value) {
+        checkLoginStatus().then((isLoggedIn) => {
           if (isLoggedIn) {
             onLoggedIn()
           }

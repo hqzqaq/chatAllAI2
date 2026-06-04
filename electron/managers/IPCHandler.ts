@@ -12,15 +12,14 @@ import * as os from 'os'
 import { EventEmitter } from 'events'
 import { WindowManager } from './WindowManager'
 import { SessionManager } from './SessionManager'
+import { WebViewManager } from './WebViewManager'
 import { getSendMessageScript } from '../../src/utils/MessageScripts'
 import { getStatusMonitorScript, getStopMonitorScript } from '../../src/utils/StatusMonitorScripts'
-import { buildWebViewElementId, parseProviderIdFromElementId } from '../../src/utils/webviewHelper'
+import { parseProviderIdFromElementId } from '../../src/utils/webviewHelper'
 import {
   IPCChannel,
   MessageSendRequest,
   MessageSendResponse,
-  WebViewExecuteScriptRequest,
-  WebViewExecuteScriptResponse,
   SessionSaveRequest,
   SessionLoadRequest,
   SessionLoadResponse,
@@ -56,6 +55,8 @@ export class IPCHandler extends EventEmitter {
 
   private sessionManager: SessionManager
 
+  private webViewManager: WebViewManager
+
   private config: IPCHandlerConfig
 
   private requestMap: Map<string, {
@@ -73,11 +74,13 @@ export class IPCHandler extends EventEmitter {
   constructor(
     windowManager: WindowManager,
     sessionManager: SessionManager,
+    webViewManager: WebViewManager,
     config: IPCHandlerConfig = {}
   ) {
     super()
     this.windowManager = windowManager
     this.sessionManager = sessionManager
+    this.webViewManager = webViewManager
     this.config = {
       enableLogging: true,
       requestTimeout: 30000,
@@ -121,6 +124,33 @@ export class IPCHandler extends EventEmitter {
     ipcMain.handle('load-webview', (event, data) => this.handleLoadWebView(data))
     ipcMain.handle('open-devtools', (event, webviewId) => this.handleOpenDevTools(webviewId))
 
+    // WebViewManager 驱动的 WebView 操作
+    ipcMain.handle('create-webview', async(event, data: { providerId: string; url: string }) => {
+      const preloadPath = path.resolve(__dirname, 'webview-preload.js')
+      await this.webViewManager.createView(data.providerId, data.url, preloadPath)
+      return { success: true }
+    })
+    ipcMain.handle('destroy-webview', async(event, data: { providerId: string }) => {
+      this.webViewManager.destroyView(data.providerId)
+      return { success: true }
+    })
+    ipcMain.handle('update-webview-bounds', async(event, data: { providerId: string; bounds: { x: number; y: number; width: number; height: number } }) => {
+      this.webViewManager.setBounds(data.providerId, data.bounds)
+    })
+    ipcMain.handle('set-webview-visibility', async(event, data: { providerId: string; visible: boolean }) => {
+      this.webViewManager.setVisibility(data.providerId, data.visible)
+    })
+    ipcMain.handle('navigate-webview', async(event, data: { providerId: string; url: string }) => {
+      this.webViewManager.navigateTo(data.providerId, data.url)
+    })
+    ipcMain.handle('reload-webview', async(event, data: { providerId: string }) => {
+      this.webViewManager.reload(data.providerId)
+    })
+    ipcMain.handle('execute-webview-script', async(event, data: { providerId: string; script: string }) => this.webViewManager.executeScript(data.providerId, data.script))
+    ipcMain.handle('open-webview-devtools', async(event, data: { providerId: string }) => {
+      this.webViewManager.openDevTools(data.providerId)
+    })
+
     // 应用控制
     this.handleInvoke(IPCChannel.APP_READY, this.handleAppReady.bind(this))
     this.handleInvoke(IPCChannel.APP_QUIT, this.handleAppQuit.bind(this))
@@ -133,7 +163,6 @@ export class IPCHandler extends EventEmitter {
     this.handleInvoke(IPCChannel.MESSAGE_SEND_ALL, this.handleMessageSendAll.bind(this))
 
     // WebView管理
-    this.handleInvoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, this.handleWebViewExecuteScript.bind(this))
     this.handleInvoke(IPCChannel.WEBVIEW_SET_PROXY, this.handleWebViewSetProxy.bind(this))
 
     // 会话管理
@@ -393,30 +422,9 @@ export class IPCHandler extends EventEmitter {
    * 在WebView容器中执行脚本
    */
   private async executeInWebViewContainer(webviewId: string, innerScript: string, logPrefix: string): Promise<any> {
-    const mainWindow = this.windowManager.getMainWindow()
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      throw new Error('Main window not available')
-    }
-    const elementId = buildWebViewElementId(parseProviderIdFromElementId(webviewId))
-    const script = `
-      (async function() {
-        try {
-          console.log('[IPC] ${logPrefix}...');
-          const webviewElement = document.querySelector('webview[id="${elementId}"]');
-          if (!webviewElement) {
-            console.error('[IPC] WebView element not found: ${elementId}');
-            return null;
-          }
-          ${innerScript}
-        } catch (error) {
-          console.error('[IPC] Error in ${logPrefix}:', error);
-          return null;
-        }
-      })()
-    `
-    const result = await mainWindow.webContents.executeJavaScript(script)
-    this.log(`${logPrefix} result for ${webviewId}:`, result)
-    return result
+    const providerId = parseProviderIdFromElementId(webviewId)
+    this.log(`${logPrefix} executing for provider:`, providerId)
+    return this.webViewManager.executeScript(providerId, innerScript)
   }
 
   /**
@@ -434,18 +442,8 @@ export class IPCHandler extends EventEmitter {
         this.log('[IPC] Detected summary provider, using original provider:', scriptProviderId)
       }
 
-      this.log('[IPC] Provider ID:', scriptProviderId)
-
       const sendScript = getSendMessageScript(scriptProviderId, data.message)
-
-      this.log('[IPC] Generated send script:', sendScript)
-
-      await this.executeInWebViewContainer(
-        data.webviewId,
-        `const result = await webviewElement.executeJavaScript(${JSON.stringify(sendScript)});
-        return result;`,
-        'Message send'
-      )
+      await this.webViewManager.executeScript(extractedProviderId, sendScript)
     } catch (error) {
       this.log(`Failed to send message to WebView ${data.webviewId}:`, error)
       throw error
@@ -458,19 +456,8 @@ export class IPCHandler extends EventEmitter {
   private async handleRefreshWebView(webviewId: string): Promise<void> {
     try {
       this.log(`Refreshing WebView: ${webviewId}`)
-      const result = await this.executeInWebViewContainer(
-        webviewId,
-        `if (webviewElement && webviewElement.reload) {
-          webviewElement.reload();
-          console.log('WebView reloaded successfully');
-          return true;
-        }
-        return false;`,
-        'WebView refresh'
-      )
-      if (!result) {
-        throw new Error('Failed to refresh WebView - WebView may not be ready')
-      }
+      const providerId = parseProviderIdFromElementId(webviewId)
+      this.webViewManager.reload(providerId)
     } catch (error) {
       this.log(`Failed to refresh WebView ${webviewId}:`, error)
       throw error
@@ -491,19 +478,8 @@ export class IPCHandler extends EventEmitter {
   private async handleOpenDevTools(webviewId: string): Promise<void> {
     try {
       this.log(`Opening DevTools for WebView: ${webviewId}`)
-      const result = await this.executeInWebViewContainer(
-        webviewId,
-        `if (webviewElement && webviewElement.openDevTools) {
-          webviewElement.openDevTools();
-          console.log('DevTools opened');
-          return true;
-        }
-        return false;`,
-        'DevTools open'
-      )
-      if (!result) {
-        throw new Error('Failed to open DevTools - WebView may not be ready')
-      }
+      const providerId = parseProviderIdFromElementId(webviewId)
+      this.webViewManager.openDevTools(providerId)
     } catch (error) {
       this.log(`Failed to open DevTools for WebView ${webviewId}:`, error)
       throw error
@@ -605,30 +581,6 @@ export class IPCHandler extends EventEmitter {
   }
 
   /**
-   * 处理WebView脚本执行
-   */
-  private async handleWebViewExecuteScript(data: WebViewExecuteScriptRequest): Promise<WebViewExecuteScriptResponse> {
-    try {
-      this.log(`Executing script in WebView ${data.webviewId}`)
-      const result = await this.executeInWebViewContainer(
-        data.webviewId,
-        `const result = await webviewElement.executeJavaScript(${JSON.stringify(data.script)});
-        return result;`,
-        'Script execution'
-      )
-      return {
-        success: result !== false && result !== null,
-        result
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
    * 处理会话保存
    */
   private async handleSessionSave(data: SessionSaveRequest): Promise<{ success: boolean }> {
@@ -718,9 +670,7 @@ export class IPCHandler extends EventEmitter {
     try {
       this.log(`Setting proxy for webview ${data.webviewId}: ${data.proxyRules}`)
 
-      // 获取webview对应的session - 使用providerId而不是webviewId
-      // 首先需要从webviewId映射到providerId
-      let providerId = data.webviewId.replace('webview-', '')
+      let providerId = parseProviderIdFromElementId(data.webviewId)
 
       // 对于总结模式的provider（id格式为summary-{originalId}），使用原始provider的session
       if (providerId.startsWith('summary-')) {
@@ -774,12 +724,7 @@ export class IPCHandler extends EventEmitter {
       }
       const statusMonitorScript = getStatusMonitorScript(data.providerId)
 
-      const result = await this.executeInWebViewContainer(
-        data.webviewId,
-        `await webviewElement.executeJavaScript(${JSON.stringify(statusMonitorScript)});
-        return true;`,
-        'AI Status monitoring start'
-      )
+      const result = await this.webViewManager.executeScript(data.providerId, statusMonitorScript)
 
       if (result) {
         this.log(`AI status monitoring started successfully for ${data.webviewId}`)
@@ -804,16 +749,10 @@ export class IPCHandler extends EventEmitter {
     try {
       this.log(`Stopping AI status monitoring for provider ${data.providerId}`)
 
-      const webviewId = `webview-${data.providerId}`
       const stopScript = getStopMonitorScript()
 
       try {
-        await this.executeInWebViewContainer(
-          webviewId,
-          `await webviewElement.executeJavaScript(${JSON.stringify(stopScript)});
-          return true;`,
-          'AI Status monitoring stop'
-        )
+        await this.webViewManager.executeScript(data.providerId, stopScript)
       } catch (execError) {
         this.log(`WebView not available for stopping monitoring ${data.providerId}, skipping script injection`)
       }
@@ -903,24 +842,7 @@ export class IPCHandler extends EventEmitter {
       const debugScript = script.replace(/\n/g, ' ').substring(0, 300)
       this.log(`[FileUpload:Main] Generated script (first 300 chars): ${debugScript}`)
 
-      const innerScript = `
-        console.log('[FileUpload:Bridge] Executing upload script...');
-        try {
-          const bridgeResult = await webviewElement.executeJavaScript(${JSON.stringify(script)});
-          console.log('[FileUpload:Bridge] Script result:', JSON.stringify(bridgeResult));
-          return bridgeResult;
-        } catch (e) {
-          console.error('[FileUpload:Bridge] Error:', e.message);
-          return { success: false, message: e.message };
-        }`
-
-      const result = await this.executeInWebViewContainer(
-        webviewId,
-        innerScript,
-        'File upload'
-      )
-
-      this.log(`[FileUpload:Main] executeInWebViewContainer result: ${JSON.stringify(result)}`)
+      await this.webViewManager.executeScript(providerId, script)
       return { success: true, providerId }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -1059,10 +981,16 @@ export class IPCHandler extends EventEmitter {
     ipcMain.removeHandler('maximize-window')
     ipcMain.removeHandler('unmaximize-window')
     ipcMain.removeHandler('is-maximized')
-    ipcMain.removeHandler('send-message-to-webview')
-    ipcMain.removeHandler('refresh-webview')
-    ipcMain.removeHandler('refresh-all-webviews')
-    ipcMain.removeHandler('load-webview')
+
+    // 移除WebViewManager驱动的处理器
+    ipcMain.removeHandler('create-webview')
+    ipcMain.removeHandler('destroy-webview')
+    ipcMain.removeHandler('update-webview-bounds')
+    ipcMain.removeHandler('set-webview-visibility')
+    ipcMain.removeHandler('navigate-webview')
+    ipcMain.removeHandler('reload-webview')
+    ipcMain.removeHandler('execute-webview-script')
+    ipcMain.removeHandler('open-webview-devtools')
 
     // 移除所有IPC监听器
     this.invokeHandlers.forEach((_, channel) => {

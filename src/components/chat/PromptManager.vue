@@ -384,7 +384,7 @@
 
 <script setup lang="ts">
 import {
-  ref, computed, onMounted, watch, nextTick
+  ref, computed, onMounted, onUnmounted, watch, nextTick
 } from 'vue'
 import {
   Search, Plus, Edit, Delete, Position, Share, Star, Rank
@@ -392,6 +392,7 @@ import {
 import {
   ElMessage, ElMessageBox, type FormInstance, type FormRules
 } from 'element-plus'
+import { useLayoutStore } from '../../stores'
 
 interface Prompt {
   id: string
@@ -1104,6 +1105,34 @@ onMounted(() => {
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     loadPrompts()
+  }
+})
+
+// 任意模态层打开时通知 useViewLayering 隐藏所有原生 AI 卡片视图，
+// 避免 Electron WebContentsView 覆盖到 DOM 模态层之上
+const layoutStore = useLayoutStore()
+watch(
+  () => [
+    dialogVisible.value,
+    editDialogVisible.value,
+    categoryDialogVisible.value
+  ],
+  ([main, edit, category], [prevMain, prevEdit, prevCategory]) => {
+    const wasOpen = prevMain || prevEdit || prevCategory
+    const isOpen = main || edit || category
+    if (!wasOpen && isOpen) {
+      layoutStore.pushDialogLayer()
+    } else if (wasOpen && !isOpen) {
+      layoutStore.popDialogLayer()
+    }
+  }
+)
+
+// 组件卸载时如果还有任意模态层未关闭，释放占用的引用计数，
+// 避免组件实例被销毁后导致 dialogLayerCount 永远无法归零
+onUnmounted(() => {
+  if (dialogVisible.value || editDialogVisible.value || categoryDialogVisible.value) {
+    layoutStore.popDialogLayer()
   }
 })
 </script>

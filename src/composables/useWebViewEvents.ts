@@ -9,66 +9,70 @@ export interface WebViewEventCallbacks {
   onDidLoad?: () => void
 }
 
+interface WebViewEventData {
+  providerId: string
+  type: string
+  errorCode?: number
+  errorDescription?: string
+  title?: string
+  url?: string
+  message?: string
+}
+
 export function useWebViewEvents(callbacks: WebViewEventCallbacks) {
   const isInitialLoad = ref(true)
   const currentUrl = ref('')
 
-  function bindEvents(webview: Electron.WebviewTag, providerName: string) {
-    webview.addEventListener('did-start-loading', () => {
-      const isSignificant = isInitialLoad.value
-      if (isSignificant && callbacks.onLoadingStart) {
-        callbacks.onLoadingStart()
+  function bindEvents(eventData: WebViewEventData) {
+    switch (eventData.type) {
+      case 'loading-start': {
+        const isSignificant = isInitialLoad.value
+        if (isSignificant && callbacks.onLoadingStart) {
+          callbacks.onLoadingStart()
+        }
+        break
       }
-    })
+      case 'loading-finish': {
+        if (eventData.url) {
+          currentUrl.value = eventData.url
+        }
 
-    webview.addEventListener('did-finish-load', () => {
-      const newUrl = webview.src
-      currentUrl.value = newUrl
+        const wasInitialLoad = isInitialLoad.value
+        const isSignificant = wasInitialLoad
 
-      const wasInitialLoad = isInitialLoad.value
-      const isSignificant = wasInitialLoad
+        if (isSignificant && callbacks.onLoadingFinish) {
+          callbacks.onLoadingFinish()
+        }
 
-      if (isSignificant && callbacks.onLoadingFinish) {
-        callbacks.onLoadingFinish()
+        if (isSignificant && callbacks.onDidLoad) {
+          callbacks.onDidLoad()
+        }
+
+        isInitialLoad.value = false
+        break
       }
-
-      if (isSignificant && callbacks.onDidLoad) {
-        callbacks.onDidLoad()
+      case 'loading-error': {
+        if (eventData.errorCode === -3) return
+        if (callbacks.onError) {
+          callbacks.onError()
+        }
+        break
       }
-
-      isInitialLoad.value = false
-    })
-
-    webview.addEventListener('did-fail-load', (event) => {
-      if (event.errorCode === -3) return
-      if (callbacks.onError) {
-        callbacks.onError()
+      case 'title-changed': {
+        if (callbacks.onTitleChanged && eventData.title) {
+          callbacks.onTitleChanged(eventData.title)
+        }
+        break
       }
-    })
-
-    webview.addEventListener('page-title-updated', (event) => {
-      if (callbacks.onTitleChanged) {
-        callbacks.onTitleChanged(event.title)
+      case 'url-changed': {
+        if (callbacks.onUrlChanged && eventData.url) {
+          callbacks.onUrlChanged(eventData.url)
+        }
+        break
       }
-    })
-
-    webview.addEventListener('will-navigate', (event) => {
-      if (callbacks.onUrlChanged) {
-        callbacks.onUrlChanged(event.url)
-      }
-    })
-
-    webview.addEventListener('new-window', (event) => {
-      if (window.electronAPI) {
-        window.electronAPI.openExternal(event.url)
-      }
-    })
-
-    webview.addEventListener('console-message', (event) => {
-      if (event.level === 0) {
-        console.error(`WebView Console [${providerName}]:`, event.message)
-      }
-    })
+      default:
+        break
+    }
   }
 
   function reset() {

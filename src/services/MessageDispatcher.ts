@@ -360,7 +360,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
       // 通过IPC发送脚本到WebView
       if (window.electronAPI) {
         await Promise.race([
-          window.electronAPI.executeScriptInWebView(provider.webviewId, script),
+          window.electronAPI.executeWebViewScript({ providerId: provider.id, script }),
           this.createTimeoutPromise(this.config.timeout)
         ])
 

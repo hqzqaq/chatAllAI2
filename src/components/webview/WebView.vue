@@ -1,9 +1,9 @@
 <template>
   <div
+    ref="wrapperRef"
     class="webview-wrapper"
     :class="{ loading: isLoading, error: hasError }"
   >
-    <!-- 加载状态 -->
     <div
       v-if="isLoading"
       class="loading-overlay"
@@ -14,7 +14,6 @@
       <p>正在加载 {{ provider.name }}...</p>
     </div>
 
-    <!-- 错误状态 -->
     <div
       v-if="hasError"
       class="error-overlay"
@@ -31,49 +30,26 @@
       </el-button>
     </div>
 
-    <!-- WebView容器 -->
     <div
-      :id="webviewId"
+      ref="containerRef"
       class="webview-container"
-      :style="{
-        visibility: hasError ? 'hidden' : 'visible',
-        opacity: isLoading && isInitialLoad ? '0.5' : '1'
-      }"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import {
-  ref, computed, onMounted, onUnmounted, watch
+  ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, watch, nextTick
 } from 'vue'
 import { Loading, Warning } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { AIProvider } from '@/types'
 import { getSendMessageScript } from '@/utils/MessageScripts.ts'
-import { buildWebViewElementId } from '@/utils/webviewHelper'
+import { getLoginCheckScript } from '@/utils/LoginCheckScripts'
 import { useLoginCheck } from '@/composables/useLoginCheck'
 import { useSessionPersistence } from '@/composables/useSessionPersistence'
 import { useWebViewEvents } from '@/composables/useWebViewEvents'
 
-declare global {
-  interface Window {
-    electronAPI: {
-      getPreloadPath: (name: string) => Promise<string>
-      stopAIStatusMonitoring: (params: { providerId: string }) => Promise<void>
-    }
-  }
-
-  namespace Electron {
-    interface WebviewTag {
-      executeJavaScript: (script: string) => Promise<unknown>
-      reload: () => void
-      src: string
-    }
-  }
-}
-
-// Props
 interface Props {
   provider: AIProvider
   width?: number
@@ -87,7 +63,6 @@ const props = withDefaults(defineProps<Props>(), {
   autoLoad: true
 })
 
-// Emits
 interface Emits {
   (e: 'ready'): void
   (e: 'loading', loading: boolean): void
@@ -99,8 +74,8 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
-// 计算属性
-const webviewId = computed(() => buildWebViewElementId(props.provider.id))
+const containerRef = ref<HTMLElement | null>(null)
+const wrapperRef = ref<HTMLElement | null>(null)
 
 const originalProviderId = computed(() => {
   let providerId = props.provider.id
@@ -110,13 +85,10 @@ const originalProviderId = computed(() => {
   return providerId
 })
 
-const partition = computed(() => `persist:${originalProviderId.value}`)
-
-// Composables
 const {
   checkLoginStatus,
   loginCheckTimer,
-  startLoginCheckTimer: startLoginTimer,
+  startLoginCheckTimer,
   stopLoginCheckTimer
 } = useLoginCheck(props.provider)
 
@@ -156,104 +128,220 @@ const {
   onDidLoad: () => {
     checkStatusAndNotify()
     startSaveSessionTimer(() => props.provider.isLoggedIn)
-    startLoginTimer(
-      () => webviewElement.value,
+    startLoginCheckTimer(
+      () => props.provider.id,
       isLoading,
       async() => { await saveSession() }
     )
   }
 })
 
-// 响应式数据
 const isLoading = ref(false)
 const hasError = ref(false)
 const errorMessage = ref('')
-const webviewElement = ref<Electron.WebviewTag | null>(null)
 const retryCount = ref(0)
 const maxRetries = 3
+const isViewCreated = ref(false)
+let rafId: number | null = null
+let lastBounds: { x: number; y: number; width: number; height: number } | null = null
+let unsubEvent: (() => void) | null = null
+/** 裁剪父容器缓存，避免每帧遍历 DOM */
+let cachedClipParent: HTMLElement | null | undefined
+/** 视图是否因滚动出裁剪区域而被隐藏 */
+let isHiddenByClip = false
 
 async function checkStatusAndNotify(): Promise<void> {
-  const isLoggedIn = await checkLoginStatus(webviewElement.value)
-  if (isLoggedIn !== props.provider.isLoggedIn) {
-    emit('login-status-changed', isLoggedIn)
-    if (isLoggedIn && window.electronAPI) {
-      await saveSession()
+  try {
+    const result = await window.electronAPI.executeWebViewScript({
+      providerId: props.provider.id,
+      script: getLoginCheckScriptForProvider()
+    })
+    const isLoggedIn = Boolean(result)
+    if (isLoggedIn !== props.provider.isLoggedIn) {
+      emit('login-status-changed', isLoggedIn)
+      if (isLoggedIn && window.electronAPI) {
+        await saveSession()
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to check login status for ${props.provider.name}:`, error)
+  }
+}
+
+function getLoginCheckScriptForProvider(): string {
+  const providerId = props.provider.id.startsWith('summary-')
+    ? props.provider.id.replace('summary-', '')
+    : props.provider.id
+  if (providerId === 'chatgpt') {
+    return 'true'
+  }
+  return getLoginCheckScript(providerId)
+}
+
+const checkLoginStatusWrapper = async(): Promise<boolean> => {
+  try {
+    const result = await window.electronAPI.executeWebViewScript({
+      providerId: props.provider.id,
+      script: getLoginCheckScriptForProvider()
+    })
+    return Boolean(result)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 查找标记了 data-webview-clip 的裁剪父容器
+ * WebContentsView 是原生视图，不受 CSS overflow 裁剪，
+ * 需要手动查找标记了 data-webview-clip 的父容器并裁剪 bounds
+ */
+function findClipParent(element: HTMLElement): HTMLElement | null {
+  if (cachedClipParent !== undefined) {
+    if (cachedClipParent && cachedClipParent.isConnected) {
+      return cachedClipParent
+    }
+    cachedClipParent = undefined
+  }
+
+  let parent = element.parentElement
+  while (parent) {
+    if (parent.hasAttribute('data-webview-clip')) {
+      cachedClipParent = parent
+      return parent
+    }
+    parent = parent.parentElement
+  }
+
+  cachedClipParent = null
+  return null
+}
+
+function updateBounds(): void {
+  if (!containerRef.value || !isViewCreated.value) return
+
+  const rect = containerRef.value.getBoundingClientRect()
+
+  // 查找裁剪父容器，限制 WebContentsView 不超出其可见区域
+  const clipParent = findClipParent(containerRef.value)
+
+  let currentBounds: { x: number; y: number; width: number; height: number } | null = null
+
+  if (clipParent) {
+    const clipRect = clipParent.getBoundingClientRect()
+
+    // 计算容器与裁剪区域的交集
+    const top = Math.max(rect.top, clipRect.top)
+    const bottom = Math.min(rect.bottom, clipRect.bottom)
+    const left = Math.max(rect.left, clipRect.left)
+    const right = Math.min(rect.right, clipRect.right)
+
+    if (top < bottom && left < right) {
+      // 有交集，使用裁剪后的 bounds
+      currentBounds = {
+        x: Math.round(left),
+        y: Math.round(top),
+        width: Math.round(right - left),
+        height: Math.round(bottom - top)
+      }
+    }
+    // 没有交集时 currentBounds 为 null，视图将被隐藏
+  } else {
+    // 没有裁剪父容器，使用原始 bounds
+    currentBounds = {
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
     }
   }
-}
 
-/**
- * 检查登录状态（无参包装方法）
- */
-const checkLoginStatusWrapper = async(): Promise<boolean> => checkLoginStatus(webviewElement.value)
-
-/**
- * 创建WebView元素
- */
-const createWebView = async(): Promise<void> => {
-  console.log(`Creating WebView for ${props.provider.name}`)
-
-  const container = document.getElementById(webviewId.value)
-  if (!container) {
-    console.error(`WebView container not found: ${webviewId.value}`)
-    return
-  }
-
-  // 清空容器
-  container.innerHTML = ''
-
-  // 创建webview元素
-  const webview = document.createElement('webview') as Electron.WebviewTag
-  webview.id = webviewId.value
-  webview.src = props.provider.url
-  webview.style.width = '100%'
-  webview.style.height = '100%'
-  webview.style.border = 'none'
-
-  // 初始化URL状态
-  currentUrl.value = props.provider.url
-  isInitialLoad.value = true
-
-  // 设置webview属性
-  webview.setAttribute('nodeintegration', 'false')
-  webview.setAttribute('websecurity', 'true')
-  webview.setAttribute('allowpopups', 'true')
-  webview.setAttribute('useragent', getUserAgent())
-  webview.setAttribute('partition', partition.value)
-
-  // 设置preload脚本
-  if (window.electronAPI) {
-    try {
-      const preloadPath = await window.electronAPI.getPreloadPath('webview-preload.js')
-      webview.setAttribute('preload', `file://${preloadPath}`)
-      console.log(`Preload script set for ${props.provider.name}: file://${preloadPath}`)
-    } catch (e) {
-      console.error('Failed to get preload path:', e)
+  // 更新视图状态
+  if (currentBounds) {
+    // 视图在可见区域内，更新 bounds
+    if (
+      !lastBounds
+      || lastBounds.x !== currentBounds.x
+      || lastBounds.y !== currentBounds.y
+      || lastBounds.width !== currentBounds.width
+      || lastBounds.height !== currentBounds.height
+    ) {
+      lastBounds = currentBounds
+      window.electronAPI.updateWebViewBounds({
+        providerId: props.provider.id,
+        bounds: currentBounds
+      })
     }
+    // 如果视图之前因滚动被隐藏，恢复显示
+    if (isHiddenByClip) {
+      isHiddenByClip = false
+      window.electronAPI.setWebViewVisibility({
+        providerId: props.provider.id,
+        visible: true
+      }).catch(() => {})
+    }
+  } else if (!isHiddenByClip) {
+    // 视图完全在裁剪区域外，隐藏视图
+    isHiddenByClip = true
+    window.electronAPI.setWebViewVisibility({
+      providerId: props.provider.id,
+      visible: false
+    }).catch(() => {})
+  }
+}
+
+function startBoundsPolling(): void {
+  if (!containerRef.value) return
+
+  function poll(): void {
+    if (!isViewCreated.value) {
+      rafId = requestAnimationFrame(poll)
+      return
+    }
+    updateBounds()
+    rafId = requestAnimationFrame(poll)
   }
 
-  console.log(`WebView created for ${props.provider.name}, URL: ${props.provider.url}`)
-
-  // 添加到容器
-  container.appendChild(webview)
-  webviewElement.value = webview
-
-  // 绑定事件
-  bindEvents(webview, props.provider.name)
+  rafId = requestAnimationFrame(poll)
 }
 
-/**
- * 获取用户代理字符串
- */
-const getUserAgent = (): string => {
-  const baseUA = navigator.userAgent
-  // 添加自定义标识，避免被某些网站检测为自动化工具
-  return baseUA.replace(/Electron\/[\d.]+\s/, '')
+function stopBoundsPolling(): void {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+  lastBounds = null
+  cachedClipParent = undefined
+  isHiddenByClip = false
 }
 
-/**
- * 重试加载
- */
+async function createView(): Promise<void> {
+  if (isViewCreated.value || !window.electronAPI) return
+
+  console.log(`Creating WebContentsView for ${props.provider.name}`)
+
+  isViewCreated.value = true
+  resetEvents()
+  isLoading.value = true
+
+  unsubEvent = window.electronAPI.onWebViewEvent((data) => {
+    if (data.providerId === props.provider.id) {
+      bindEvents(data)
+    }
+  })
+
+  await window.electronAPI.createWebView({
+    providerId: props.provider.id,
+    url: props.provider.url
+  })
+
+  await nextTick()
+  startBoundsPolling()
+  updateBounds()
+
+  isLoading.value = false
+  hasError.value = false
+}
+
 const retry = (): void => {
   if (retryCount.value >= maxRetries) {
     ElMessage.error(`${props.provider.name} 重试次数已达上限`)
@@ -264,64 +352,37 @@ const retry = (): void => {
   hasError.value = false
   errorMessage.value = ''
 
-  if (webviewElement.value) {
-    webviewElement.value.reload()
-  } else {
-    createWebView()
-  }
+  window.electronAPI.reloadWebView(props.provider.id)
 }
 
-/**
- * 刷新WebView
- */
 const refresh = (): void => {
-  if (webviewElement.value) {
-    webviewElement.value.reload()
-  }
+  window.electronAPI.reloadWebView(props.provider.id)
 }
 
-/**
- * 导航到指定URL
- */
 const navigateTo = (url: string): void => {
-  if (webviewElement.value) {
-    webviewElement.value.src = url
-  }
+  window.electronAPI.navigateWebView({ providerId: props.provider.id, url })
 }
 
-/**
- * 执行JavaScript代码
- */
-const executeScript = async(script: string): Promise<any> => {
-  if (!webviewElement.value) {
-    throw new Error('WebView not ready')
-  }
+const executeScript = async(script: string): Promise<any> => window.electronAPI.executeWebViewScript({
+  providerId: props.provider.id,
+  script
+})
 
-  return webviewElement.value.executeJavaScript(script)
-}
-
-/**
- * 发送消息到WebView
- */
 const sendMessage = async(message: string): Promise<void> => {
-  if (!webviewElement.value) {
-    throw new Error('WebView not ready')
-  }
-
   try {
     console.log('[WebView] Sending message:', message)
     const sendScript = getSendMessageScript(props.provider.id, message)
     console.log('[WebView] Send script:', sendScript)
-    await webviewElement.value.executeJavaScript(sendScript)
+    await window.electronAPI.executeWebViewScript({
+      providerId: props.provider.id,
+      script: sendScript
+    })
   } catch (error) {
     console.error(`Failed to send message to ${props.provider.name}:`, error)
     throw error
   }
 }
 
-/**
- * 销毁WebView
- */
 const destroy = (): void => {
   stopSaveSessionTimer()
   stopLoginCheckTimer()
@@ -330,37 +391,36 @@ const destroy = (): void => {
     window.electronAPI.stopAIStatusMonitoring({ providerId: props.provider.id }).catch(() => {})
   }
 
-  if (webviewElement.value) {
-    const container = document.getElementById(webviewId.value)
-    if (container) {
-      container.innerHTML = ''
-    }
-    webviewElement.value = null
+  if (unsubEvent) {
+    unsubEvent()
+    unsubEvent = null
+  }
+
+  stopBoundsPolling()
+
+  if (isViewCreated.value) {
+    window.electronAPI.destroyWebView(props.provider.id)
+    isViewCreated.value = false
   }
 }
 
-/**
- * 手动创建WebView（用于按需加载）
- */
 const create = async(): Promise<void> => {
   console.log(`Manual create WebView for ${props.provider.name}`)
 
-  if (!webviewElement.value) {
+  if (!isViewCreated.value) {
     console.log(`Loading session and creating WebView for ${props.provider.name}`)
     await loadSession()
 
-    // 等待一小段时间确保DOM已经渲染
     await new Promise<void>((resolve) => {
       setTimeout(() => resolve(), 100)
     })
 
-    createWebView()
+    await createView()
   } else {
     console.log(`WebView already exists for ${props.provider.name}`)
   }
 }
 
-// 暴露方法给父组件
 defineExpose({
   refresh,
   navigateTo,
@@ -373,27 +433,36 @@ defineExpose({
   create
 })
 
-// 生命周期
 onMounted(async() => {
   console.log(`WebView mounted for ${props.provider.name}, autoLoad: ${props.autoLoad}`)
 
   if (props.autoLoad) {
-    // 先尝试加载保存的会话
     await loadSession()
-    // 然后创建WebView
-    createWebView()
+    await createView()
   }
+})
+
+onActivated(async() => {
+  console.log(`WebView activated for ${props.provider.name}`)
+  if (!isViewCreated.value && props.autoLoad) {
+    await loadSession()
+    await createView()
+  }
+})
+
+onDeactivated(() => {
+  console.log(`WebView deactivated for ${props.provider.name}`)
+  destroy()
 })
 
 onUnmounted(() => {
   destroy()
 })
 
-// 监听provider变化
 watch(
   () => props.provider.url,
   (newUrl) => {
-    if (webviewElement.value && newUrl) {
+    if (isViewCreated.value && newUrl) {
       navigateTo(newUrl)
     }
   }

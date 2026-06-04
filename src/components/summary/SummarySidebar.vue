@@ -1,21 +1,45 @@
 <template>
+  <!-- 折叠切换按钮 - 放在侧边栏外部，完全独立定位 -->
+  <div
+    v-show="!isMaximized && !layoutStore.maximizedCardId"
+    class="collapse-toggle"
+    :class="{ collapsed: isCollapsed }"
+    :title="isCollapsed ? '展开总结面板' : '收起总结面板'"
+    @click="toggleCollapse"
+  >
+    <div class="toggle-button">
+      <svg
+        class="collapse-arrow"
+        width="10"
+        height="14"
+        viewBox="0 0 12 16"
+      >
+        <path
+          v-if="!isCollapsed"
+          d="M4 3 L10 8 L4 13"
+          stroke="currentColor"
+          stroke-width="2"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          v-else
+          d="M8 3 L2 8 L8 13"
+          stroke="currentColor"
+          stroke-width="2"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </div>
+  </div>
+
   <div
     class="summary-sidebar"
     :class="{ collapsed: isCollapsed }"
   >
-    <!-- 折叠切换按钮 - 小圆点按钮 -->
-    <div
-      v-show="!isMaximized"
-      class="collapse-toggle"
-      :class="{ collapsed: isCollapsed }"
-      :title="isCollapsed ? '展开总结面板' : '收起总结面板'"
-      @click="toggleCollapse"
-    >
-      <div class="toggle-button">
-        <div class="collapse-arrow" />
-      </div>
-    </div>
-
     <!-- 侧边栏内容 -->
     <div
       v-show="!isCollapsed"
@@ -65,7 +89,7 @@
           :provider="provider"
           :config="cardConfig"
           :maximized="isMaximized"
-          @toggle-maximized="isMaximized = !isMaximized"
+          @toggle-maximized="handleToggleMaximized"
         />
       </div>
     </div>
@@ -76,6 +100,7 @@
 import { computed, ref, watch } from 'vue'
 import { FullScreen, Close } from '@element-plus/icons-vue'
 import SummaryCard from '../chat/SummaryCard.vue'
+import { useLayoutStore } from '../../stores'
 import type { AIProvider } from '../../types'
 
 /**
@@ -104,11 +129,15 @@ const props = defineProps<Props>()
 interface Emits {
   /** 更新显示状态 */
   (e: 'update:visible', visible: boolean): void
+  /** 更新折叠状态 */
+  (e: 'update:collapsed', collapsed: boolean): void
   /** 模型切换事件 */
   (e: 'model-change', providerId: string): void
 }
 
 const emit = defineEmits<Emits>()
+
+const layoutStore = useLayoutStore()
 
 // 折叠状态 - 默认收起
 const isCollapsed = ref(true)
@@ -122,6 +151,7 @@ const selectedModelId = ref(props.selectedProviderId)
 // 切换折叠
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
+  emit('update:collapsed', isCollapsed.value)
 }
 
 // 处理模型切换
@@ -133,6 +163,11 @@ const handleModelChange = (providerId: string) => {
 const handleIconError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = '/icons/default.svg'
+}
+
+// 处理最大化切换
+const handleToggleMaximized = () => {
+  isMaximized.value = !isMaximized.value
 }
 
 // 总结模型的providerId（加summary后缀）
@@ -174,6 +209,7 @@ const cardConfig = computed(() => ({
 watch(() => props.visible, (newVisible) => {
   if (newVisible) {
     isCollapsed.value = false
+    emit('update:collapsed', isCollapsed.value)
   }
 })
 
@@ -181,9 +217,70 @@ watch(() => props.visible, (newVisible) => {
 watch(() => props.selectedProviderId, (newId) => {
   selectedModelId.value = newId
 })
+
+// 监听折叠状态变化，更新原生视图层级
+watch(isCollapsed, (collapsed) => {
+  if (collapsed) {
+    layoutStore.onSidebarCollapse()
+  } else {
+    layoutStore.onSidebarExpand()
+  }
+})
 </script>
 
 <style scoped>
+/**
+ * 折叠切换按钮 - 根据侧边栏状态动态定位
+ * 收起时：在屏幕右边缘
+ * 展开时：在侧边栏左边缘（屏幕中间）
+ */
+.collapse-toggle {
+  position: fixed;
+  right: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 210;
+  transition: right 0.3s ease;
+}
+
+.collapse-toggle.collapsed {
+  right: 0;
+}
+
+.toggle-button {
+  width: 24px;
+  height: 48px;
+  background: var(--el-color-primary);
+  border: 1px solid var(--el-color-primary-dark-2);
+  border-radius: 6px 0 0 6px;
+  box-shadow: -1px 0 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #fff;
+}
+
+.toggle-button:hover {
+  background: var(--el-color-primary-light-3);
+  width: 28px;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-button:active {
+  transform: scale(0.95);
+}
+
+.collapse-arrow {
+  color: #fff;
+  transition: transform 0.3s;
+}
+
+.collapse-toggle.collapsed .collapse-arrow {
+  transform: rotate(180deg);
+}
+
 .summary-sidebar {
   position: fixed;
   right: 0;
@@ -193,53 +290,13 @@ watch(() => props.selectedProviderId, (newId) => {
   background: var(--el-bg-color);
   border-left: 1px solid var(--el-border-color);
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  z-index: 100;
   transition: transform 0.3s ease;
   display: flex;
 }
 
 .summary-sidebar.collapsed {
   transform: translateX(calc(100%));
-}
-
-.collapse-toggle {
-  position: absolute;
-  left: -32px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1001;
-}
-
-.toggle-button {
-  width: 28px;
-  height: 60px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px 0 0 8px;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.toggle-button:hover {
-  background: var(--el-fill-color-light);
-  width: 32px;
-}
-
-.collapse-arrow {
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-right: 6px solid var(--el-text-color-regular);
-  transition: transform 0.3s;
-}
-
-.summary-sidebar.collapsed .collapse-arrow {
-  transform: rotate(180deg);
 }
 
 .sidebar-content {
