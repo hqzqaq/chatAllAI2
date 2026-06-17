@@ -64,8 +64,7 @@ export class WindowManager extends EventEmitter {
         contextIsolation: true,
 
         preload: join(__dirname, 'preload.js'),
-        webSecurity: false, // 允许加载外部网站
-        webviewTag: true // 启用webview标签
+        webSecurity: false
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       show: false,
@@ -132,6 +131,17 @@ export class WindowManager extends EventEmitter {
    */
   getMainWindow(): BrowserWindow | null {
     return this.mainWindowId ? this.getWindow(this.mainWindowId) : null
+  }
+
+  /**
+   * 获取主窗口的边界信息
+   */
+  getMainWindowBounds(): { x: number, y: number, width: number, height: number } | null {
+    const win = this.getMainWindow()
+    if (win && !win.isDestroyed()) {
+      return win.getBounds()
+    }
+    return null
   }
 
   /**

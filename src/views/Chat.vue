@@ -1,14 +1,21 @@
 <template>
   <div class="chat-view">
-    <div class="chat-container">
+    <div
+      class="chat-container"
+      :style="containerStyle"
+    >
       <!-- 统一输入区域 -->
       <div class="input-section">
-        <UnifiedInput @summary="handleSummaryClick" />
+        <UnifiedInput
+          v-model:collapsed="inputCollapsed"
+          @summary="handleSummaryClick"
+        />
       </div>
 
       <!-- AI卡片网格 -->
       <div
         class="cards-grid"
+        data-webview-clip
         :style="gridStyle"
       >
         <!-- 普通AI卡片 -->
@@ -25,6 +32,7 @@
     <!-- 总结侧边栏 - 嵌入独立的AI卡片 -->
     <SummarySidebar
       v-model:visible="sidebarVisible"
+      v-model:collapsed="sidebarCollapsed"
       :original-provider-id="selectedSummaryProvider?.id || ''"
       :original-provider-name="selectedSummaryProvider?.name || ''"
       :original-provider="selectedSummaryProvider"
@@ -37,16 +45,23 @@
 
 <script setup lang="ts">
 import {
-  computed, onMounted, onUnmounted, watch
+  computed, onMounted, onUnmounted, watch, ref
 } from 'vue'
 import { useChatStore, useLayoutStore } from '../stores'
 import { useSummary } from '../composables/useSummary'
+import { useViewLayering } from '../composables/useViewLayering'
 import UnifiedInput from '../components/chat/UnifiedInput.vue'
 import AICard from '../components/chat/AICard.vue'
 import SummarySidebar from '../components/summary/SummarySidebar.vue'
 
 const chatStore = useChatStore()
 const layoutStore = useLayoutStore()
+
+const sidebarCollapsed = ref(true)
+const inputCollapsed = ref(false)
+
+// 初始化原生视图层级管理
+useViewLayering()
 
 const {
   sidebarVisible,
@@ -96,13 +111,26 @@ const gridStyle = computed(() => {
   const { columns } = layoutStore.gridSettings
   const { gap } = layoutStore.gridSettings
 
-  return {
+  // 网格布局：stretch 让卡片自动撑满行高，配合 alignContent 默认 stretch
+  // 让行高跟随网格高度自适应，避免全屏时上下卡片间出现大片空白
+  const style: Record<string, string> = {
     display: 'grid',
     gridTemplateColumns: `repeat(${columns}, 1fr)`,
     gap: `${gap}px`,
-    padding: `${gap}px`,
-    alignItems: 'start' // 让卡片顶部对齐
+    padding: `${gap}px`
   }
+
+  if (inputCollapsed.value) {
+    style.paddingTop = '0px'
+  }
+
+  return style
+})
+
+const containerStyle = computed(() => {
+  if (!sidebarVisible.value) return {}
+  if (!sidebarCollapsed.value) return { paddingRight: '50vw' }
+  return {}
 })
 
 /**
@@ -198,7 +226,10 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-view {
-  height: 100vh;
+  /* 修复：之前用 100vh 会让 chat-view 撑到整个窗口高度，
+     溢出 main-content 并盖住 footer。改为 100% 让其填满父容器 */
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -210,6 +241,7 @@ onUnmounted(() => {
   padding: 6px;
   gap: 16px;
   min-height: 0; /* 允许flex子项收缩 */
+  overflow: hidden; /* 防止整体滚动，让滚动仅在卡片网格区域内部进行 */
 }
 
 .input-section {
@@ -221,7 +253,6 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0; /* 允许flex子项收缩 */
-  max-height: calc(100vh - 120px); /* 确保有足够的高度用于滚动 */
 }
 
 .card-item {

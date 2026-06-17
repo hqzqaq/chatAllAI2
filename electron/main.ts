@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import { WindowManager } from './managers/WindowManager'
 import { SessionManager } from './managers/SessionManager'
 import { IPCHandler } from './managers/IPCHandler'
+import { WebViewManager } from './managers/WebViewManager'
 
 /**
  * 配置Electron命令行开关
@@ -56,6 +57,7 @@ configureCommandLineSwitches()
 let windowManager: WindowManager | null = null
 let sessionManager: SessionManager | null = null
 let ipcHandler: IPCHandler | null = null
+let webViewManager: WebViewManager | null = null
 
 /**
  * 初始化应用
@@ -65,7 +67,8 @@ async function initializeApp(): Promise<void> {
     // 创建管理器实例
     windowManager = new WindowManager()
     sessionManager = new SessionManager()
-    ipcHandler = new IPCHandler(windowManager, sessionManager)
+    webViewManager = new WebViewManager(windowManager, sessionManager)
+    ipcHandler = new IPCHandler(windowManager, sessionManager, webViewManager)
 
     // 创建主窗口
     await windowManager.createMainWindow()
@@ -160,6 +163,11 @@ app.on('before-quit', async() => {
     // 销毁IPC处理器
     if (ipcHandler) {
       ipcHandler.destroy()
+    }
+
+    // 销毁WebView管理器
+    if (webViewManager) {
+      webViewManager.destroyAll()
     }
 
     // 销毁所有窗口

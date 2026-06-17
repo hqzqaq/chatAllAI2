@@ -2,15 +2,10 @@ import type { IpcRendererEvent } from 'electron'
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPCChannel } from '../src/types/ipc'
 
-/**
- * 预加载脚本 - 在渲染进程中暴露安全的 API
- */
 contextBridge.exposeInMainWorld('electronAPI', {
-  // 应用信息
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
 
-  // 窗口控制
   minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
   closeWindow: () => ipcRenderer.invoke('close-window'),
   maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
@@ -18,111 +13,92 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isMaximized: () => ipcRenderer.invoke('is-maximized'),
   toggleFullScreen: () => ipcRenderer.invoke('toggle-fullscreen'),
 
-  // WebView管理
-  sendMessageToWebView: (webviewId: string, message: string) => (
-    ipcRenderer.invoke('send-message-to-webview', { webviewId, message })
-  ),
-  refreshWebView: (webviewId: string) => ipcRenderer.invoke('refresh-webview', webviewId),
-  refreshAllWebViews: () => ipcRenderer.invoke('refresh-all-webviews'),
-  loadWebView: (webviewId: string, url: string) => ipcRenderer.invoke('load-webview', { webviewId, url }),
-  openDevTools: (webviewId: string) => ipcRenderer.invoke('open-devtools', webviewId),
+  createWebView: (data: { providerId: string, url: string }) => ipcRenderer.invoke('create-webview', data),
+  destroyWebView: (providerId: string) => ipcRenderer.invoke('destroy-webview', { providerId }),
+  updateWebViewBounds: (data: { providerId: string, bounds: { x: number, y: number, width: number, height: number } }) => ipcRenderer.invoke('update-webview-bounds', data),
+  setWebViewVisibility: (data: { providerId: string, visible: boolean }) => ipcRenderer.invoke('set-webview-visibility', data),
+  executeWebViewScript: (data: { providerId: string, script: string }) => ipcRenderer.invoke('execute-webview-script', data),
+  reloadWebView: (providerId: string) => ipcRenderer.invoke('reload-webview', { providerId }),
+  navigateWebView: (data: { providerId: string, url: string }) => ipcRenderer.invoke('navigate-webview', data),
+  openWebViewDevTools: (providerId: string) => ipcRenderer.invoke('open-webview-devtools', { providerId }),
 
-  // 应用控制
+  sendMessageToWebView: (webviewId: string, message: string) => ipcRenderer.invoke('send-message-to-webview', { webviewId, message }),
+
   appReady: () => ipcRenderer.invoke(IPCChannel.APP_READY),
   appQuit: () => ipcRenderer.invoke(IPCChannel.APP_QUIT),
   appMinimize: () => ipcRenderer.invoke(IPCChannel.APP_MINIMIZE),
   appMaximize: () => ipcRenderer.invoke(IPCChannel.APP_MAXIMIZE),
   appRestore: () => ipcRenderer.invoke(IPCChannel.APP_RESTORE),
 
-  // 消息处理
   sendMessage: (data: any) => ipcRenderer.invoke(IPCChannel.MESSAGE_SEND, data),
   sendMessageAll: (data: any) => ipcRenderer.invoke(IPCChannel.MESSAGE_SEND_ALL, data),
 
-  // WebView管理
-  createWebView: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_CREATE, data),
-  destroyWebView: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_DESTROY, data),
-  reloadWebView: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_RELOAD, data),
-  navigateWebView: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_NAVIGATE, data),
-  executeScript: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, data),
-  executeScriptInWebView: (webviewId: string, script: string) => (
-    ipcRenderer.invoke(IPCChannel.WEBVIEW_EXECUTE_SCRIPT, { webviewId, script })
-  ),
-  insertCSS: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_INSERT_CSS, data),
   setProxy: (data: any) => ipcRenderer.invoke(IPCChannel.WEBVIEW_SET_PROXY, data),
 
-  // 会话管理
   saveSession: (data: any) => ipcRenderer.invoke(IPCChannel.SESSION_SAVE, data),
   loadSession: (data: any) => ipcRenderer.invoke(IPCChannel.SESSION_LOAD, data),
   clearSession: (data: any) => ipcRenderer.invoke(IPCChannel.SESSION_CLEAR, data),
   checkSession: (data: any) => ipcRenderer.invoke(IPCChannel.SESSION_CHECK, data),
 
-  // 存储操作
   getStorage: (data: any) => ipcRenderer.invoke(IPCChannel.STORAGE_GET, data),
   setStorage: (data: any) => ipcRenderer.invoke(IPCChannel.STORAGE_SET, data),
   deleteStorage: (data: any) => ipcRenderer.invoke(IPCChannel.STORAGE_DELETE, data),
   clearStorage: (data: any) => ipcRenderer.invoke(IPCChannel.STORAGE_CLEAR, data),
 
-  // 设置管理
   getSettings: (data: any) => ipcRenderer.invoke(IPCChannel.SETTINGS_GET, data),
   setSettings: (data: any) => ipcRenderer.invoke(IPCChannel.SETTINGS_SET, data),
   resetSettings: (data: any) => ipcRenderer.invoke(IPCChannel.SETTINGS_RESET, data),
 
-  // 性能监控
   getPerformanceMetrics: () => ipcRenderer.invoke(IPCChannel.PERFORMANCE_GET_METRICS),
 
-  // AI状态监控
   startAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_START_MONITORING, data),
   stopAIStatusMonitoring: (data: any) => ipcRenderer.invoke(IPCChannel.AI_STATUS_STOP_MONITORING, data),
 
-  // 文件操作
   openFileDialog: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_OPEN_DIALOG, data),
   readFile: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_READ, data),
   uploadFileToWebView: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_UPLOAD_TO_WEBVIEW, data),
 
-  // 获取预加载脚本路径
   getPreloadPath: (preloadName: string) => ipcRenderer.invoke('get-preload-path', preloadName),
 
-  // 清除指定provider的存储数据（用于解决Gemini登录问题）
   clearProviderStorage: (providerId: string) => ipcRenderer.invoke('clear-provider-storage', providerId),
 
-  // 事件监听
   onAIStatusChange: (callback: (data: any) => void) => {
     const handler = (event: IpcRendererEvent, data: any) => callback(data)
     ipcRenderer.on(IPCChannel.AI_STATUS_CHANGE, handler)
-    // 返回一个取消订阅函数
     return () => {
       ipcRenderer.removeListener(IPCChannel.AI_STATUS_CHANGE, handler)
     }
   },
 
-  // 错误报告
+  onWebViewEvent: (callback: (data: { providerId: string, type: string, data: any }) => void) => {
+    const handler = (event: any, data: any) => callback(data)
+    ipcRenderer.on('webview:event', handler)
+    return () => {
+      ipcRenderer.removeListener('webview:event', handler)
+    }
+  },
+
   reportError: (data: any) => ipcRenderer.send(IPCChannel.ERROR_REPORT, data),
 
-  // 移除单个监听器
   removeListener: (channel: string, callback: (...args: any[]) => void) => {
     ipcRenderer.removeListener(channel, callback)
   },
 
-  // 移除监听器
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel)
   },
 
-  // 通用发送方法
   send: (channel: string, data: any) => {
     ipcRenderer.send(channel, data)
   }
 })
 
-// 类型声明
 declare global {
   interface Window {
     electronAPI: {
-      // 应用信息
       getAppVersion: () => Promise<string>
       getSystemInfo: () => Promise<{ platform: string; nodeVersion: string; electronVersion: string }>
 
-      // 窗口控制
       minimizeWindow: () => Promise<void>
       closeWindow: () => Promise<void>
       maximizeWindow: () => Promise<void>
@@ -130,79 +106,66 @@ declare global {
       isMaximized: () => Promise<boolean>
       toggleFullScreen: () => Promise<void>
 
-      // WebView管理
-      sendMessageToWebView: (webviewId: string, message: string) => Promise<void>
-      refreshWebView: (webviewId: string) => Promise<void>
-      refreshAllWebViews: () => Promise<void>
-      loadWebView: (webviewId: string, url: string) => Promise<void>
-      openDevTools: (webviewId: string) => Promise<void>
+      createWebView: (data: { providerId: string, url: string }) => Promise<any>
+      destroyWebView: (providerId: string) => Promise<any>
+      updateWebViewBounds: (data: {
+        providerId: string
+        bounds: { x: number, y: number, width: number, height: number }
+      }) => Promise<any>
+      setWebViewVisibility: (data: { providerId: string, visible: boolean }) => Promise<any>
+      executeWebViewScript: (data: { providerId: string, script: string }) => Promise<any>
+      reloadWebView: (providerId: string) => Promise<any>
+      navigateWebView: (data: { providerId: string, url: string }) => Promise<any>
+      openWebViewDevTools: (providerId: string) => Promise<any>
 
-      // 应用控制
+      sendMessageToWebView: (webviewId: string, message: string) => Promise<any>
+
       appReady: () => Promise<any>
       appQuit: () => Promise<any>
       appMinimize: () => Promise<any>
       appMaximize: () => Promise<any>
       appRestore: () => Promise<any>
 
-      // 消息处理
       sendMessage: (data: any) => Promise<any>
       sendMessageAll: (data: any) => Promise<any>
 
-      // WebView管理
-      createWebView: (data: any) => Promise<any>
-      destroyWebView: (data: any) => Promise<any>
-      reloadWebView: (data: any) => Promise<any>
-      navigateWebView: (data: any) => Promise<any>
-      executeScript: (data: any) => Promise<any>
-      executeScriptInWebView: (webviewId: string, script: string) => Promise<any>
-      insertCSS: (data: any) => Promise<any>
       setProxy: (data: any) => Promise<any>
 
-      // 会话管理
       saveSession: (data: any) => Promise<any>
       loadSession: (data: any) => Promise<any>
       clearSession: (data: any) => Promise<any>
       checkSession: (data: any) => Promise<any>
 
-      // 存储操作
       getStorage: (data: any) => Promise<any>
       setStorage: (data: any) => Promise<any>
       deleteStorage: (data: any) => Promise<any>
       clearStorage: (data: any) => Promise<any>
 
-      // 设置管理
       getSettings: (data: any) => Promise<any>
       setSettings: (data: any) => Promise<any>
       resetSettings: (data: any) => Promise<any>
 
-      // 性能监控
       getPerformanceMetrics: () => Promise<any>
 
-      // AI状态监控
       startAIStatusMonitoring: (data: any) => Promise<any>
       stopAIStatusMonitoring: (data: any) => Promise<any>
 
-      // 文件操作
       openFileDialog: (data: any) => Promise<any>
       readFile: (data: any) => Promise<any>
       uploadFileToWebView: (data: any) => Promise<any>
 
-      // 获取预加载脚本路径
       getPreloadPath: (preloadName: string) => Promise<string>
 
-      // 清除指定provider的存储数据（用于解决Gemini登录问题）
       clearProviderStorage: (providerId: string) => Promise<{ success: boolean; error?: string }>
 
-      // 事件监听
-      onMessageReceived: (callback: (data: any) => void) => void
-      onMessageError: (callback: (data: any) => void) => void
-      onAIStatusChange: (callback: (data: any) => void) => void
+      onAIStatusChange: (callback: (data: any) => void) => () => void
+      onWebViewEvent: (callback: (data: { providerId: string, type: string, data: any }) => void) => () => void
 
-      // 错误报告
       reportError: (data: any) => void
 
-      // 移除监听器
+      removeListener: (channel: string, callback: (...args: any[]) => void) => void
       removeAllListeners: (channel: string) => void
+      send: (channel: string, data: any) => void
     }
   }
 }

@@ -237,7 +237,7 @@
 
 <script setup lang="ts">
 import {
-  computed, ref, onMounted, nextTick
+  computed, ref, onMounted, onUnmounted, nextTick, watch
 } from 'vue'
 import {
   ArrowUp,
@@ -308,37 +308,49 @@ const cardStyle = computed((): Record<string, string | number> => {
   const isHidden = props.config.isHidden === true
   const isMinimized = resolvedIsMinimized.value
 
+  if (isHidden) {
+    return {
+      position: 'absolute',
+      left: '-99999px',
+      top: '-99999px',
+      width: '1px',
+      height: '1px',
+      zIndex: -1,
+      opacity: 0
+    }
+  }
+
   const width = typeof props.config.size.width === 'string'
     ? props.config.size.width
     : `${props.config.size.width}px`
+  // 自适应：非最小化时让卡片撑满网格行高，避免全屏时上下卡片间出现大片空白
+  // 最小高度保留 600px，确保卡片有足够可视区域
   let height: string
+  let minHeight: string
   if (isMinimized) {
     height = 'auto'
-  } else if (typeof props.config.size.height === 'string') {
-    height = props.config.size.height
+    minHeight = '60px'
   } else {
-    height = `${props.config.size.height}px`
+    height = '100%'
+    minHeight = '600px'
   }
 
   return {
     width,
     height,
-    minHeight: isMinimized ? 'auto' : '0',
+    minHeight,
     zIndex: props.config.zIndex,
     transition: 'all 0.3s ease',
-    visibility: isHidden ? 'hidden' : 'visible',
-    opacity: isHidden ? 0 : 1
+    visibility: 'visible',
+    opacity: 1
   }
 })
 
 const webviewStyle = computed((): Record<string, string> => {
+  // webview 容器使用 flex: 1 自适应填充卡片高度，无需再设置固定高度
   if (!props.config) return {}
-
   if (resolvedIsMinimized.value) return {}
-
-  return {
-    height: `${props.config.size.height - 120}px`
-  }
+  return {}
 })
 
 const shouldShowWebView = computed(() => props.provider.isEnabled && props.provider.loadingState !== 'idle')
@@ -427,12 +439,8 @@ const toggleMaximized = (): void => {
  */
 const openDevTools = async(): Promise<void> => {
   try {
-    if (window.electronAPI && window.electronAPI.openDevTools) {
-      await window.electronAPI.openDevTools(props.provider.webviewId)
-      ElMessage.success(`${props.provider.name} 控制台已打开`)
-    } else if (webViewRef.value?.$el?.openDevTools) {
-      // 直接调用WebView元素的openDevTools方法
-      webViewRef.value.$el.openDevTools()
+    if (window.electronAPI && window.electronAPI.openWebViewDevTools) {
+      await window.electronAPI.openWebViewDevTools(props.provider.id)
       ElMessage.success(`${props.provider.name} 控制台已打开`)
     } else {
       ElMessage.error('无法打开控制台：WebView未就绪')
@@ -450,7 +458,7 @@ const refreshWebView = async(): Promise<void> => {
   isRefreshing.value = true
   try {
     if (window.electronAPI) {
-      await window.electronAPI.refreshWebView(props.provider.webviewId)
+      await window.electronAPI.reloadWebView(props.provider.id)
       ElMessage.success(`${props.provider.name} 已刷新`)
     }
   } catch (error) {
@@ -598,8 +606,8 @@ const startResize = (event: MouseEvent): void => {
 
   const startX = event.clientX
   const startY = event.clientY
-  const startWidth = props.config?.size.width || 300
-  const startHeight = props.config?.size.height || 400
+  const startWidth = typeof props.config?.size.width === 'number' ? props.config.size.width : 300
+  const startHeight = typeof props.config?.size.height === 'number' ? props.config.size.height : 400
 
   const handleMouseMove = (e: MouseEvent): void => {
     const deltaX = e.clientX - startX
@@ -729,7 +737,7 @@ const applyProxyConfig = async(): Promise<void> => {
 
       // 通过IPC通知主进程设置代理
       await window.electronAPI.setProxy({
-        webviewId: props.provider.webviewId,
+        webviewId: props.provider.id,
         proxyRules: proxyUrl,
         enabled: true
       })
@@ -738,7 +746,7 @@ const applyProxyConfig = async(): Promise<void> => {
     } else {
       // 禁用代理
       await window.electronAPI.setProxy({
-        webviewId: props.provider.webviewId,
+        webviewId: props.provider.id,
         proxyRules: 'direct://',
         enabled: false
       })
@@ -796,6 +804,44 @@ onMounted(() => {
     enableWebView()
   }
 })
+
+// 监听 isHidden 变化，直接控制原生 WebContentsView 显隐
+// 使用 nextTick 确保在 DOM 更新之后执行 IPC，避免视图闪烁
+watch(
+  () => props.config?.isHidden,
+  async(isHidden) => {
+    if (!window.electronAPI?.setWebViewVisibility) return
+    await nextTick()
+    window.electronAPI.setWebViewVisibility({
+      providerId: props.provider.id,
+      visible: !isHidden
+    }).catch(() => {})
+  }
+)
+
+// 代理配置对话框打开时通知 useViewLayering 隐藏所有原生 AI 卡片视图，
+// 避免 Electron WebContentsView 覆盖到 DOM 模态层之上
+watch(proxyDialogVisible, (visible, prevVisible) => {
+  if (!prevVisible && visible) {
+    layoutStore.pushDialogLayer()
+  } else if (prevVisible && !visible) {
+    layoutStore.popDialogLayer()
+  }
+})
+
+onUnmounted(() => {
+  // 组件卸载时确保原生视图恢复可见
+  if (window.electronAPI?.setWebViewVisibility) {
+    window.electronAPI.setWebViewVisibility({
+      providerId: props.provider.id,
+      visible: true
+    }).catch(() => {})
+  }
+  // 组件卸载时如果代理对话框还开着，释放占用的模态层计数
+  if (proxyDialogVisible.value) {
+    layoutStore.popDialogLayer()
+  }
+})
 </script>
 
 <style scoped>
@@ -827,7 +873,7 @@ onMounted(() => {
   left: 16px !important;
   width: calc(100vw - 32px) !important;
   height: calc(100vh - 120px) !important;
-  z-index: 1000 !important;
+  z-index: 200 !important;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
   border-color: var(--el-color-primary);
 }

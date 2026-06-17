@@ -296,6 +296,7 @@ const chatStore = useChatStore()
 
 // 组件事件
 const emit = defineEmits<{(e: 'summary'): void
+  (e: 'update:collapsed', collapsed: boolean): void
 }>()
 
 const draggedProvider = ref<AIProvider | null>(null)
@@ -382,6 +383,7 @@ const saveCollapsedState = (): void => {
  */
 const toggleCollapse = (): void => {
   isCollapsed.value = !isCollapsed.value
+  emit('update:collapsed', isCollapsed.value)
   saveCollapsedState()
 }
 

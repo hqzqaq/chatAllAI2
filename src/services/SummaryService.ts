@@ -10,6 +10,7 @@ import type { AIProvider } from '../types'
 import type { SummaryResult, AIResponse, SummaryOptions } from '../types/summary'
 import { getSendMessageScript } from '../utils/GetLLMLastMessage'
 import { generateSummaryPrompt } from '../utils/SummaryPrompts'
+import { parseProviderIdFromElementId } from '../utils/webviewHelper'
 import { useSummaryStore } from '../stores/summary'
 import { ElMessage } from 'element-plus'
 
@@ -136,7 +137,7 @@ export class SummaryService {
       try {
         // 执行脚本获取回答
         const result = await Promise.race([
-          window.electronAPI.executeScriptInWebView(provider.webviewId, script),
+          window.electronAPI.executeWebViewScript({ providerId: provider.id, script }),
           new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error('获取回答超时')), 10000)
           })
@@ -194,10 +195,11 @@ export class SummaryService {
       try {
         // 尝试执行一个简单的脚本检查WebView是否可用
         if (window.electronAPI) {
-          const result = await window.electronAPI.executeScriptInWebView(
-            webviewId,
-            '(() => { return document.readyState })()'
-          )
+          const providerIdForCheck = parseProviderIdFromElementId(webviewId)
+          const result = await window.electronAPI.executeWebViewScript({
+            providerId: providerIdForCheck,
+            script: '(() => { return document.readyState })()'
+          })
           console.log(`WebView ${webviewId} 状态: ${result}`)
           if (result) {
             console.log(`WebView ${webviewId} 已准备好`)
