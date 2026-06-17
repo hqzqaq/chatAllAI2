@@ -6,45 +6,22 @@ import { WebViewManager } from './managers/WebViewManager'
 
 /**
  * 配置Electron命令行开关
- * 解决Gemini登录的Cookie和第三方Cookie拦截问题
+ * Gemini 登录改为系统浏览器登录后注入 Cookie，
+ * 因此只保留对第三方 Cookie 兼容性的最小开关，移除不必要的安全降级。
  */
 function configureCommandLineSwitches(): void {
-  console.log('[Main] Configuring command line switches for Gemini compatibility')
+  console.log('[Main] Configuring command line switches for Gemini cookie compatibility')
 
-  // 禁用站点隔离试验 - 减少跨域限制
-  app.commandLine.appendSwitch('disable-site-isolation-trials')
-
-  // 禁用所有影响Cookie的特性 - 确保Google登录流程正常
-  // 将所有需要禁用的特性合并到一个逗号分隔的列表中
+  // 放宽部分 Cookie 策略，便于注入后的 Google 会话 Cookie 在 gemini.google.com 生效
   const disabledFeatures = [
     'ThirdPartyCookieBlocking', // 禁用第三方Cookie拦截
     'SameSiteByDefaultCookies', // 禁用默认SameSite策略
-    'CookiesWithoutSameSiteMustBeSecure', // 禁用SameSite=None必须Secure的限制
-    'PartitionedCookies', // 禁用分区Cookie
-    'StorageAccessAPI', // 禁用存储访问API限制
-    'BlockInsecurePrivateNetworkRequests', // 禁用不安全私有网络请求拦截
-    'InterestCohort', // 禁用FLoC
-    'PrivacySandboxSettings', // 禁用隐私沙盒设置
-    'TrackingProtection', // 禁用跟踪保护
-    'CookieDeprecationFacilitatedTesting' // 禁用Cookie弃用测试
+    'CookiesWithoutSameSiteMustBeSecure' // 禁用SameSite=None必须Secure的限制
   ]
   app.commandLine.appendSwitch('disable-features', disabledFeatures.join(','))
 
-  // 从Blink引擎层面禁用SameSite策略
-  app.commandLine.appendSwitch('disable-blink-features', 'SameSiteByDefaultCookies')
-
-  // 允许跨域Cookie - 解决Google登录时的Cookie设置问题
-  app.commandLine.appendSwitch('disable-web-security')
-
-  // 允许不安全的本地主机
-  app.commandLine.appendSwitch('allow-insecure-localhost')
-
-  // 禁用同源策略限制
-  app.commandLine.appendSwitch('disable-site-isolation-for-passwords')
-
   console.log('[Main] Command line switches configured:', {
-    disabledFeatures,
-    disableBlinkFeatures: 'SameSiteByDefaultCookies'
+    disabledFeatures
   })
 }
 

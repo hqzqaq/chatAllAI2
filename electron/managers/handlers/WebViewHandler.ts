@@ -4,6 +4,7 @@
  */
 
 import { IpcMainInvokeEvent, session } from 'electron'
+import * as path from 'path'
 import {
   IPCChannel,
   WebViewExecuteScriptRequest,
@@ -246,7 +247,7 @@ export class WebViewHandler extends BaseIPCHandler {
    * 获取预加载脚本路径
    */
   private async handleGetPreloadPath(preloadName: string): Promise<string> {
-    return require('path').resolve(__dirname, preloadName)
+    return path.resolve(__dirname, preloadName)
   }
 
   /**

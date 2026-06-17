@@ -3,10 +3,12 @@
  * 提供处理器接口、错误处理和日志记录的基础架构
  */
 
+/* eslint-disable max-classes-per-file */
+
 import {
   IpcMainEvent, IpcMainInvokeEvent, BrowserWindow, Session
 } from 'electron'
-import { IPCChannel } from '../../../src/types/ipc'
+import { IPCChannel, ProviderCookieInput, ProviderImportCookiesResponse } from '../../../src/types/ipc'
 
 // ==================== 依赖接口 ====================
 
@@ -39,6 +41,10 @@ export interface ISessionManager {
   getElectronSession(providerId: string): Session | null
   getSession(providerId: string): Session | null
   createProviderSession(providerId: string): Promise<Session>
+  importCookies(
+    providerId: string,
+    cookies: ProviderCookieInput[]
+  ): Promise<ProviderImportCookiesResponse>
 }
 
 /**
@@ -66,7 +72,11 @@ export interface ILogger {
  * 控制台日志实现
  */
 export class ConsoleLogger implements ILogger {
-  constructor(private prefix: string) {}
+  private prefix: string
+
+  constructor(prefix: string) {
+    this.prefix = prefix
+  }
 
   info(message: string, meta?: any): void {
     console.log(`[${this.prefix}] INFO: ${message}`, meta || '')
@@ -164,7 +174,7 @@ export abstract class BaseIPCHandler implements IIPCHandler {
     try {
       return await operation()
     } catch (error) {
-      IPCErrorHandler.handle(error, context, this.logger)
+      return IPCErrorHandler.handle(error, context, this.logger)
     }
   }
 
@@ -178,7 +188,7 @@ export abstract class BaseIPCHandler implements IIPCHandler {
     try {
       return operation()
     } catch (error) {
-      IPCErrorHandler.handle(error, context, this.logger)
+      return IPCErrorHandler.handle(error, context, this.logger)
     }
   }
 

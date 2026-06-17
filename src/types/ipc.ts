@@ -69,6 +69,10 @@ export enum IPCChannel {
   AI_STATUS_GET_CURRENT = 'ai-status:get-current',
   AI_STATUS_CHANGE = 'ai-status:change',
 
+  // 系统浏览器登录 + Cookie 导入（支持 Gemini / ChatGPT / Grok / Copilot 等）
+  PROVIDER_OPEN_SYSTEM_LOGIN = 'provider:open-system-login',
+  PROVIDER_IMPORT_COOKIES = 'provider:import-cookies',
+
   // 文件操作
   FILE_OPEN_DIALOG = 'file:open-dialog',
   FILE_READ = 'file:read',
@@ -405,9 +409,43 @@ export interface FileUploadToWebViewResponse {
 }
 
 /**
+ * Cookie 导入请求中的单条 Cookie
+ */
+export interface ProviderCookieInput {
+  name: string
+  value: string
+  domain?: string
+  path?: string
+  secure?: boolean
+  httpOnly?: boolean
+  expirationDate?: number
+  sameSite?: 'unspecified' | 'no_restriction' | 'lax' | 'strict' | null
+  hostOnly?: boolean
+}
+
+/**
+ * Gemini Cookie 导入请求
+ */
+export interface ProviderImportCookiesRequest {
+  providerId: string
+  cookies: ProviderCookieInput[]
+}
+
+/**
+ * Gemini Cookie 导入响应
+ */
+export interface ProviderImportCookiesResponse {
+  success: boolean
+  imported: number
+  error?: string
+}
+
+/**
  * IPC事件数据类型映射
  */
 export interface IPCEventDataMap {
+  [IPCChannel.PROVIDER_OPEN_SYSTEM_LOGIN]: { providerId: string }
+  [IPCChannel.PROVIDER_IMPORT_COOKIES]: ProviderImportCookiesRequest
 
   [IPCChannel.FILE_OPEN_DIALOG]: FileOpenDialogRequest
   [IPCChannel.FILE_READ]: FileReadRequest

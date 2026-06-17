@@ -62,6 +62,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   clearProviderStorage: (providerId: string) => ipcRenderer.invoke('clear-provider-storage', providerId),
 
+  providerOpenSystemLogin: (providerId: string) => ipcRenderer.invoke(
+    IPCChannel.PROVIDER_OPEN_SYSTEM_LOGIN,
+    { providerId }
+  ),
+  providerImportCookies: (data: { providerId: string, cookies: any[] }) => (
+    ipcRenderer.invoke(IPCChannel.PROVIDER_IMPORT_COOKIES, data)
+  ),
+
   onAIStatusChange: (callback: (data: any) => void) => {
     const handler = (event: IpcRendererEvent, data: any) => callback(data)
     ipcRenderer.on(IPCChannel.AI_STATUS_CHANGE, handler)
@@ -157,6 +165,20 @@ declare global {
       getPreloadPath: (preloadName: string) => Promise<string>
 
       clearProviderStorage: (providerId: string) => Promise<{ success: boolean; error?: string }>
+
+      providerOpenSystemLogin: (providerId: string) => Promise<{ success: boolean; error?: string }>
+      providerImportCookies: (data: {
+        providerId: string
+        cookies: Array<{
+          name: string
+          value: string
+          domain?: string
+          path?: string
+          secure?: boolean
+          httpOnly?: boolean
+          expirationDate?: number
+        }>
+      }) => Promise<{ success: boolean; imported: number; error?: string }>
 
       onAIStatusChange: (callback: (data: any) => void) => () => void
       onWebViewEvent: (callback: (data: { providerId: string, type: string, data: any }) => void) => () => void

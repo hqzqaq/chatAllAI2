@@ -4,6 +4,7 @@
  */
 
 import { session, Session, Cookie } from 'electron'
+import { ProviderCookieInput, ProviderImportCookiesResponse } from '../../src/types/ipc'
 import { promises as fs } from 'fs'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
@@ -199,141 +200,18 @@ export class SessionManager extends EventEmitter {
   }
 
   /**
-   * 配置Gemini会话的特殊设置
-   * 解决"此浏览器或应用可能不安全"问题
+   * 配置 Gemini 会话
+   * 仅保留持久化 session、基础 UA 和必要权限，
+   * 登录流程改为系统浏览器登录后注入 Cookie，不再依赖 UA/Header 伪装绕过风控。
    */
   private configureGeminiSession(electronSession: Session): void {
-    console.log('[SessionManager] Configuring Gemini session with security bypasses')
+    console.log('[SessionManager] Configuring Gemini session for cookie-injected login')
 
-    const userAgent = this.getUserAgent('gemini') || ''
-    const secChUa = this.getSecChUa()
-
-    // 配置Cookie - 允许所有Cookie包括第三方Cookie
-    electronSession.cookies.set({
-      url: 'https://google.com',
-      name: 'cookie_test',
-      value: 'enabled',
-      sameSite: 'no_restriction'
-    }).catch(() => {})
-
-    // 拦截请求头，确保所有发往Google的请求都带有正确的UA和平台信息
-    electronSession.webRequest.onBeforeSendHeaders(
-      {
-        urls: [
-          '*://*.google.com/*',
-          '*://*.googleusercontent.com/*',
-          '*://gemini.google.com/*',
-          '*://accounts.google.com/*'
-        ]
-      },
-      (details, callback) => {
-        // 创建新的请求头对象，避免修改参数
-        const requestHeaders = { ...details.requestHeaders }
-
-        // 强制修改User-Agent，移除Electron标识
-        requestHeaders['User-Agent'] = userAgent
-
-        // 添加Chrome特有的请求头，增强伪装
-        requestHeaders['Sec-Ch-Ua'] = secChUa
-        requestHeaders['Sec-Ch-Ua-Mobile'] = '?0'
-        requestHeaders['Sec-Ch-Ua-Platform'] = '"Windows"'
-        requestHeaders['Sec-Ch-Ua-Arch'] = '"x86_64"'
-        requestHeaders['Sec-Ch-Ua-Bitness'] = '"64"'
-        requestHeaders['Sec-Ch-Ua-Full-Version'] = '"134.0.0.0"'
-        requestHeaders['Sec-Ch-Ua-Full-Version-List'] = secChUa
-        requestHeaders['Sec-Fetch-Dest'] = 'document'
-        requestHeaders['Sec-Fetch-Mode'] = 'navigate'
-        requestHeaders['Sec-Fetch-Site'] = 'none'
-        requestHeaders['Sec-Fetch-User'] = '?1'
-        requestHeaders['Upgrade-Insecure-Requests'] = '1'
-
-        // 添加Accept-Language和Accept头
-        if (!requestHeaders['Accept-Language']) {
-          requestHeaders['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8'
-        }
-        if (!requestHeaders.Accept) {
-          requestHeaders.Accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-        }
-
-        // 移除可能暴露Electron身份的请求头
-        delete requestHeaders['X-Electron-Version']
-        delete requestHeaders['X-Electron-Build']
-        delete requestHeaders['X-DevTools-Request-Id']
-
-        callback({ requestHeaders })
-      }
-    )
-
-    // 拦截响应头，处理Cookie和CSP策略
-    electronSession.webRequest.onHeadersReceived(
-      {
-        urls: [
-          '*://*.google.com/*',
-          '*://*.googleusercontent.com/*',
-          '*://gemini.google.com/*',
-          '*://accounts.google.com/*'
-        ]
-      },
-      (details, callback) => {
-        const responseHeaders: Record<string, string | string[]> = {}
-
-        // 复制原始响应头
-        Object.entries(details.responseHeaders || {}).forEach(([key, value]) => {
-          if (value !== undefined) {
-            responseHeaders[key] = value
-          }
-        })
-
-        // 处理Set-Cookie头，确保SameSite=None且Secure
-        if (responseHeaders['set-cookie']) {
-          const cookies = Array.isArray(responseHeaders['set-cookie'])
-            ? responseHeaders['set-cookie']
-            : [responseHeaders['set-cookie']]
-          responseHeaders['set-cookie'] = cookies.map((cookie: string) => {
-            // 移除所有SameSite限制，允许跨域Cookie
-            let modifiedCookie = cookie.replace(/SameSite=[^;]*/gi, '')
-            // 确保Cookie包含SameSite=None; Secure
-            if (!modifiedCookie.includes('SameSite')) {
-              modifiedCookie = `${modifiedCookie}; SameSite=None; Secure`
-            }
-            return modifiedCookie
-          })
-        }
-
-        // 移除阻止嵌入的X-Frame-Options头
-        delete responseHeaders['x-frame-options']
-        delete responseHeaders['X-Frame-Options']
-
-        // 修改Permissions-Policy头，移除ch-ua-form-factors
-        if (responseHeaders['permissions-policy']) {
-          const policies = Array.isArray(responseHeaders['permissions-policy'])
-            ? responseHeaders['permissions-policy']
-            : [responseHeaders['permissions-policy']]
-          responseHeaders['permissions-policy'] = policies.map((policy: string) => policy
-            .replace(/ch-ua-form-factors[^,]*,?/g, '')
-            .replace(/,,/g, ',')
-            .replace(/,$/, ''))
-        }
-
-        // 修改CSP策略，允许嵌入
-        if (responseHeaders['content-security-policy']) {
-          const policies = Array.isArray(responseHeaders['content-security-policy'])
-            ? responseHeaders['content-security-policy']
-            : [responseHeaders['content-security-policy']]
-          responseHeaders['content-security-policy'] = policies.map((policy: string) => policy
-            .replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
-        }
-        if (responseHeaders['Content-Security-Policy']) {
-          const policies = Array.isArray(responseHeaders['Content-Security-Policy'])
-            ? responseHeaders['Content-Security-Policy']
-            : [responseHeaders['Content-Security-Policy']]
-          responseHeaders['Content-Security-Policy'] = policies.map((policy: string) => policy
-            .replace(/frame-ancestors[^;]*;/g, 'frame-ancestors *;'))
-        }
-
-        callback({ cancel: false, responseHeaders })
-      }
-    )
+    // User-Agent 中移除 Electron 标识，降低第一道检测触发概率
+    const userAgent = this.getUserAgent('gemini')
+    if (userAgent) {
+      electronSession.setUserAgent(userAgent)
+    }
 
     console.log('[SessionManager] Gemini session configured successfully')
   }
@@ -505,6 +383,113 @@ export class SessionManager extends EventEmitter {
 
     // 更新内存中的会话数据
     this.sessions.set(providerId, updatedSessionData)
+  }
+
+  /**
+   * 导入 Cookie 到指定 provider 的会话中
+   * 用于 Gemini 等需要通过系统浏览器登录后再注入登录态的场景
+   */
+  async importCookies(
+    providerId: string,
+    cookies: ProviderCookieInput[]
+  ): Promise<ProviderImportCookiesResponse> {
+    try {
+      console.log(`[SessionManager] Importing ${cookies.length} cookies for ${providerId}`)
+
+      const electronSession = await this.createProviderSession(providerId)
+      const failures: string[] = []
+
+      // 先清空该会话中已有的所有 Cookie，避免旧登录态与新 Cookie 冲突
+      const existingCookies = await electronSession.cookies.get({})
+      await Promise.all(
+        existingCookies.map((cookie) => electronSession.cookies.remove(
+          cookie.domain?.startsWith('.') ? `https://${cookie.domain.slice(1)}` : `https://${cookie.domain}`,
+          cookie.name
+        ))
+      )
+      console.log(`[SessionManager] Cleared ${existingCookies.length} existing cookies for ${providerId}`)
+
+      const results = await Promise.all(
+        cookies.map(async(cookie) => {
+          if (!cookie.name || !cookie.value) {
+            console.warn(`[SessionManager] Skipping invalid cookie for ${providerId}:`, cookie)
+            return false
+          }
+
+          const domain = cookie.domain || '.google.com'
+          const path = cookie.path || '/'
+          const cookieUrl = domain.startsWith('.')
+            ? `https://${domain.slice(1)}`
+            : `https://${domain}`
+
+          // 优先保留浏览器插件导出的 sameSite；未指定时使用 unspecified，由 Chromium 按默认策略处理
+          let sameSite: 'unspecified' | 'no_restriction' | 'lax' | 'strict' = 'unspecified'
+          if (cookie.sameSite === 'no_restriction') {
+            sameSite = 'no_restriction'
+          } else if (cookie.sameSite === 'lax') {
+            sameSite = 'lax'
+          } else if (cookie.sameSite === 'strict') {
+            sameSite = 'strict'
+          }
+
+          try {
+            await electronSession.cookies.set({
+              url: cookieUrl,
+              name: cookie.name,
+              value: cookie.value,
+              domain,
+              path,
+              secure: cookie.secure ?? true,
+              httpOnly: cookie.httpOnly ?? true,
+              expirationDate: cookie.expirationDate,
+              sameSite
+            })
+            return true
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            console.warn(`[SessionManager] Failed to import cookie ${cookie.name}:`, errorMessage)
+            failures.push(`${cookie.name}: ${errorMessage}`)
+            return false
+          }
+        })
+      )
+
+      const imported = results.filter(Boolean).length
+
+      // 更新会话状态为活跃
+      const sessionData = this.sessions.get(providerId)
+      if (sessionData) {
+        sessionData.isActive = true
+        sessionData.lastAccess = new Date()
+      }
+
+      // 持久化到磁盘
+      await this.saveSession(providerId)
+
+      // 验证实际写入的 Cookie
+      const storedCookies = await electronSession.cookies.get({})
+      const storedGoogleCookies = storedCookies.filter(
+        (cookie) => cookie.domain?.includes('google.com')
+      )
+      console.log(
+        `[SessionManager] Imported ${imported}/${cookies.length} cookies for ${providerId}. `
+        + `Total stored cookies: ${storedCookies.length}, Google domains: ${storedGoogleCookies.length}`
+      )
+
+      if (imported === 0) {
+        return {
+          success: false,
+          imported: 0,
+          error: `没有 Cookie 成功导入。${failures.slice(0, 3).join('; ')}`
+        }
+      }
+
+      return { success: true, imported }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error(`[SessionManager] Failed to import cookies for ${providerId}:`, errorMessage)
+      return { success: false, imported: 0, error: errorMessage }
+    }
   }
 
   /**

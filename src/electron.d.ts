@@ -55,6 +55,21 @@ interface ElectronAPI {
   // 其他功能
   openExternal(url: string): Promise<void>
 
+  // 系统浏览器登录与 Cookie 注入（Gemini / ChatGPT / Grok / Copilot 等）
+  providerOpenSystemLogin(providerId: string): Promise<{ success: boolean; error?: string }>
+  providerImportCookies(data: {
+    providerId: string
+    cookies: Array<{
+      name: string
+      value: string
+      domain?: string
+      path?: string
+      secure?: boolean
+      httpOnly?: boolean
+      expirationDate?: number
+    }>
+  }): Promise<{ success: boolean; imported: number; error?: string }>
+
   // AI状态监控
   startAIStatusMonitoring(data: {
     webviewId: string

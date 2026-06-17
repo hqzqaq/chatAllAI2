@@ -4,7 +4,7 @@
  */
 
 import {
-  ipcMain, IpcMainEvent, IpcMainInvokeEvent, dialog, app, session
+  ipcMain, IpcMainEvent, IpcMainInvokeEvent, dialog, app, session, shell
 } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -16,6 +16,7 @@ import { WebViewManager } from './WebViewManager'
 import { getSendMessageScript } from '../../src/utils/MessageScripts'
 import { getStatusMonitorScript, getStopMonitorScript } from '../../src/utils/StatusMonitorScripts'
 import { parseProviderIdFromElementId } from '../../src/utils/webviewHelper'
+import { providerCookieLoginUrls } from '../../src/config/providers'
 import {
   IPCChannel,
   MessageSendRequest,
@@ -34,7 +35,8 @@ import {
   FileReadRequest,
   FileReadResponse,
   FileUploadToWebViewRequest,
-  FileUploadToWebViewResponse
+  FileUploadToWebViewResponse,
+  ProviderImportCookiesRequest
 } from '../../src/types/ipc'
 import { getFileUploadScript } from '../../src/utils/UploadScripts'
 
@@ -186,6 +188,32 @@ export class IPCHandler extends EventEmitter {
 
     // 新增：获取预加载脚本路径
     ipcMain.handle('get-preload-path', (event, preloadName: string) => path.resolve(__dirname, preloadName))
+
+    // 新增：系统浏览器登录与 Cookie 注入（Gemini / ChatGPT / Grok / Copilot 等）
+    ipcMain.handle(IPCChannel.PROVIDER_OPEN_SYSTEM_LOGIN, async(event, data: { providerId: string }) => {
+      try {
+        const loginUrl = providerCookieLoginUrls[data.providerId] || `https://${data.providerId}.com`
+        this.log(`Opening system browser login for ${data.providerId}`, { loginUrl })
+        await shell.openExternal(loginUrl)
+        return { success: true }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        this.log(`Failed to open system browser login for ${data.providerId}:`, errorMessage)
+        return { success: false, error: errorMessage }
+      }
+    })
+
+    ipcMain.handle(IPCChannel.PROVIDER_IMPORT_COOKIES, async(event, data: ProviderImportCookiesRequest) => {
+      try {
+        this.log(`Importing cookies for ${data.providerId}`, { count: data.cookies.length })
+        const result = await this.sessionManager.importCookies(data.providerId, data.cookies)
+        return result
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        this.log(`Failed to import cookies for ${data.providerId}:`, errorMessage)
+        return { success: false, imported: 0, error: errorMessage }
+      }
+    })
 
     // 新增：清除指定provider的存储数据（用于解决Gemini登录问题）
     ipcMain.handle('clear-provider-storage', async(event, providerId: string) => {
@@ -977,6 +1005,9 @@ export class IPCHandler extends EventEmitter {
    */
   destroy(): void {
     // 移除新的IPC处理器
+    ipcMain.removeHandler(IPCChannel.PROVIDER_OPEN_SYSTEM_LOGIN)
+    ipcMain.removeHandler(IPCChannel.PROVIDER_IMPORT_COOKIES)
+
     ipcMain.removeHandler('get-app-version')
     ipcMain.removeHandler('get-system-info')
     ipcMain.removeHandler('minimize-window')
