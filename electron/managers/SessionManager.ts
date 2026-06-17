@@ -5,6 +5,7 @@
 
 import { session, Session, Cookie } from 'electron'
 import { ProviderCookieInput, ProviderImportCookiesResponse } from '../../src/types/ipc'
+import { providerCookieLoginUrls } from '../../src/config/providers'
 import { promises as fs } from 'fs'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
@@ -409,6 +410,11 @@ export class SessionManager extends EventEmitter {
       )
       console.log(`[SessionManager] Cleared ${existingCookies.length} existing cookies for ${providerId}`)
 
+      // 根据 provider 登录 URL 推导默认域名，避免非 Google provider 被错误落到 .google.com
+      const loginUrl = providerCookieLoginUrls[providerId] || 'https://example.com'
+      const defaultDomain = new URL(loginUrl).hostname
+      const defaultHostOnlyDomain = defaultDomain.replace(/^www\./, '')
+
       const results = await Promise.all(
         cookies.map(async(cookie) => {
           if (!cookie.name || !cookie.value) {
@@ -416,11 +422,17 @@ export class SessionManager extends EventEmitter {
             return false
           }
 
-          const domain = cookie.domain || '.google.com'
-          const path = cookie.path || '/'
-          const cookieUrl = domain.startsWith('.')
-            ? `https://${domain.slice(1)}`
-            : `https://${domain}`
+          // __Host- 前缀的 Cookie 必须 hostOnly、Secure、Path=/，且不能带 Domain 属性
+          const isHostPrefix = cookie.name.startsWith('__Host-')
+          const isHostOnly = isHostPrefix || cookie.hostOnly === true
+
+          let { domain } = cookie
+          if (!domain) {
+            domain = isHostOnly ? defaultHostOnlyDomain : `.${defaultDomain}`
+          }
+
+          const path = isHostPrefix ? '/' : (cookie.path || '/')
+          const secure = isHostPrefix ? true : (cookie.secure ?? true)
 
           // 优先保留浏览器插件导出的 sameSite；未指定时使用 unspecified，由 Chromium 按默认策略处理
           let sameSite: 'unspecified' | 'no_restriction' | 'lax' | 'strict' = 'unspecified'
@@ -432,18 +444,26 @@ export class SessionManager extends EventEmitter {
             sameSite = 'strict'
           }
 
+          const cookieUrl = domain.startsWith('.')
+            ? `https://${domain.slice(1)}`
+            : `https://${domain}`
+
           try {
-            await electronSession.cookies.set({
+            const cookieDetails: Electron.CookiesSetDetails = {
               url: cookieUrl,
               name: cookie.name,
               value: cookie.value,
-              domain,
               path,
-              secure: cookie.secure ?? true,
+              secure,
               httpOnly: cookie.httpOnly ?? true,
               expirationDate: cookie.expirationDate,
               sameSite
-            })
+            }
+            // hostOnly / __Host- Cookie 不能设置 Domain 属性
+            if (!isHostOnly) {
+              cookieDetails.domain = domain
+            }
+            await electronSession.cookies.set(cookieDetails)
             return true
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -468,12 +488,12 @@ export class SessionManager extends EventEmitter {
 
       // 验证实际写入的 Cookie
       const storedCookies = await electronSession.cookies.get({})
-      const storedGoogleCookies = storedCookies.filter(
-        (cookie) => cookie.domain?.includes('google.com')
+      const storedTargetCookies = storedCookies.filter(
+        (cookie) => cookie.domain?.includes(defaultDomain)
       )
       console.log(
         `[SessionManager] Imported ${imported}/${cookies.length} cookies for ${providerId}. `
-        + `Total stored cookies: ${storedCookies.length}, Google domains: ${storedGoogleCookies.length}`
+        + `Total stored cookies: ${storedCookies.length}, target domain (${defaultDomain}): ${storedTargetCookies.length}`
       )
 
       if (imported === 0) {
