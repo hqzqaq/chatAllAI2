@@ -344,13 +344,13 @@ function getQwenScript(escapedMessage: string): string {
   return `
     (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = 'textarea';
+      const CHAT_INPUT_SELECTOR = '[role="textbox"]';
       const INPUT_SEND_DELAY_MS = 1000;
 
       // --- Input Handling ---
       function findChatInput() {
         const element = document.querySelector(CHAT_INPUT_SELECTOR);
-        if (element && element.tagName === 'TEXTAREA') {
+        if (element) {
           return element;
         }
         return null;
