@@ -23,7 +23,9 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     grok: `
       // 检查grok的登录状态
-      !document.querySelector('[href="/sign-in"]')
+      // 如果 [data-slot="button"] 元素中存在 textContent 为"登录"的按钮，则认为未登录
+      !Array.from(document.querySelectorAll('[data-slot="button"]'))
+        .some(el => el.textContent && el.textContent.trim() === '登录')
     `,
     deepseek: `
       // 检查DeepSeek的登录状态
@@ -42,14 +44,7 @@ export function getLoginCheckScript(providerId: string): string {
         .some(btn => btn.textContent.trim() === '立即登录')
     `,
     copilot: `
-      (function() {
-        const hasProfile = !!document.querySelector('[alt="Profile image"]') ||
-          !!document.querySelector('[data-testid="user-profile-button"]') ||
-          !!document.querySelector('button[aria-label*="Account"]');
-        const hasSignIn = Array.from(document.querySelectorAll('a, button'))
-          .some(el => /sign in|signin|登录|登入/i.test(el.textContent || ''));
-        return hasProfile || !hasSignIn;
-      })()
+      !!document.querySelector('[data-testid="sign-in-exp-landing-header-button"]')
     `,
     glm: '!document.querySelector(".login-btn")',
     yuanbao: `
@@ -62,18 +57,10 @@ export function getLoginCheckScript(providerId: string): string {
       (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
     `,
     gemini: `
-      (function() {
-        const hasProfile = !!document.querySelector('.gb_be') ||
-          !!document.querySelector('[aria-label*="Google Account"]') ||
-          !!document.querySelector('img[alt*="profile" i]');
-        const inApp = location.pathname === '/app' || location.pathname.startsWith('/app/');
-        const hasSignIn = !!document.querySelector('a[href*="signin"]') ||
-          !!document.querySelector('a[href*="accounts.google.com"]');
-        return (hasProfile || inApp) && !hasSignIn;
-      })()
+      !!document.querySelector('[class="gem-button-content ng-star-inserted"]')
     `,
     chatgpt: `
-      !!document.querySelector('[class="gem-button-content ng-star-inserted"]')
+      !!document.querySelector('[data-testid="login-button"]')
     `,
     mimo: `
       !Array.from(document.querySelectorAll('[type="button"]'))
