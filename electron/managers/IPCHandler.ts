@@ -726,11 +726,14 @@ export class IPCHandler extends EventEmitter {
 
       const result = await this.webViewManager.executeScript(data.providerId, statusMonitorScript)
 
-      if (result) {
-        this.log(`AI status monitoring started successfully for ${data.webviewId}`)
-        return { success: true }
+      // executeScript 返回 null 表示 webview 不存在；
+      // 返回 undefined 表示脚本已成功执行（监控脚本为 IIFE，无返回值）。
+      // executeJavaScript 在脚本抛错时会 reject，走到 catch 分支。
+      if (result === null) {
+        throw new Error(`WebView not found for provider ${data.providerId}`)
       }
-      throw new Error('Failed to start AI status monitoring script.')
+      this.log(`AI status monitoring started successfully for ${data.webviewId}`)
+      return { success: true }
     } catch (error) {
       this.log(`Failed to start AI status monitoring for ${data.webviewId}:`, error)
       return {
