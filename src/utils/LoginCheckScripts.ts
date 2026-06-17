@@ -42,8 +42,14 @@ export function getLoginCheckScript(providerId: string): string {
         .some(btn => btn.textContent.trim() === '立即登录')
     `,
     copilot: `
-      // 检查Copilot的登录状态
-      !(document.querySelector('[alt="Profile image"]'))
+      (function() {
+        const hasProfile = !!document.querySelector('[alt="Profile image"]') ||
+          !!document.querySelector('[data-testid="user-profile-button"]') ||
+          !!document.querySelector('button[aria-label*="Account"]');
+        const hasSignIn = Array.from(document.querySelectorAll('a, button'))
+          .some(el => /sign in|signin|登录|登入/i.test(el.textContent || ''));
+        return hasProfile || !hasSignIn;
+      })()
     `,
     glm: '!document.querySelector(".login-btn")',
     yuanbao: `

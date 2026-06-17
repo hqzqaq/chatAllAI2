@@ -29,12 +29,12 @@
 
       <div class="header-right">
         <el-button
-          v-if="supportsCookieLogin && !props.provider.isLoggedIn"
+          v-if="supportsCookieLogin"
           :icon="User"
-          type="warning"
+          :type="props.provider.isLoggedIn ? 'info' : 'warning'"
           size="small"
           circle
-          title="Cookie 登录"
+          :title="props.provider.isLoggedIn ? '重新导入 Cookie' : 'Cookie 登录'"
           @click="openCookieLoginDialog"
         />
         <el-button
@@ -176,7 +176,7 @@
     <!-- Cookie 登录对话框 -->
     <el-dialog
       v-model="cookieLoginDialogVisible"
-      :title="`${props.provider.name} - Cookie 登录`"
+      :title="`${props.provider.name} - ${props.provider.isLoggedIn ? '重新导入 Cookie' : 'Cookie 登录'}`"
       width="560px"
       :close-on-click-modal="false"
       :append-to-body="true"
@@ -186,7 +186,9 @@
     >
       <div class="cookie-login-content">
         <p class="cookie-login-desc">
-          请在系统浏览器中登录 {{ props.provider.name }} 后，将浏览器开发者工具中复制的 Cookie JSON 粘贴到下方。
+          {{ props.provider.isLoggedIn
+            ? '当前已登录，如需切换账号或刷新登录态，请'
+            : '请在系统浏览器中登录' }} {{ props.provider.name }} 后，将浏览器开发者工具中复制的 Cookie JSON 粘贴到下方。
         </p>
         <div class="cookie-login-actions">
           <el-button

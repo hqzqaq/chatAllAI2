@@ -25,7 +25,6 @@ export function getStatusMonitorScript(providerId: string): string {
     glm: getGLMStatusMonitorScript,
     yuanbao: getYuanBaoStatusMonitorScript,
     miromind: getMiromindStatusMonitorScript,
-    gemini: getGeminiStatusMonitorScript,
     chatgpt: getChatGPTStatusMonitorScript,
     mimo: getMimoStatusMonitorScript,
     minimax: getMinimaxStatusMonitorScript
