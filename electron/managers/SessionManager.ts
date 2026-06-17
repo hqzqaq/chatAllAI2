@@ -115,9 +115,9 @@ export class SessionManager extends EventEmitter {
 
     // 如果提供了代理配置，立即设置
     if (proxyRules) {
-      console.log(`[Gemini Fix] Setting proxy for ${providerId}: ${proxyRules}`)
+      console.log(`[${providerId}] Setting proxy: ${proxyRules}`)
       await electronSession.setProxy({ proxyRules })
-      console.log(`[Gemini Fix] Proxy set successfully for ${providerId}`)
+      console.log(`[${providerId}] Proxy set successfully`)
     }
 
     // 存储会话
@@ -167,7 +167,7 @@ export class SessionManager extends EventEmitter {
 
   /**
    * 配置会话
-   * 针对Gemini添加特殊的请求头拦截和Cookie处理
+   * 针对指定的provider添加特殊的请求头拦截和Cookie处理
    */
   private async configureSession(electronSession: Session, providerId: string): Promise<void> {
     // 设置用户代理
@@ -387,7 +387,7 @@ export class SessionManager extends EventEmitter {
 
   /**
    * 导入 Cookie 到指定 provider 的会话中
-   * 用于 Gemini 等需要通过系统浏览器登录后再注入登录态的场景
+   * 用于 provider 等需要通过系统浏览器登录后再注入登录态的场景
    */
   async importCookies(
     providerId: string,

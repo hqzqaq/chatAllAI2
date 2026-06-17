@@ -466,9 +466,9 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
 }
 
 /**
- * Gemini状态监控脚本
+ * 通用状态监控脚本
  */
-function getGeminiStatusMonitorScript(providerId: string): string {
+function getProviderStatusMonitorScript(providerId: string): string {
   return getGenericStatusMonitorScript(providerId, '[data-test-id="chat-history-container"]')
 }
 
