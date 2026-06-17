@@ -119,9 +119,13 @@ interface Props {
   availableProviders: AIProvider[]
   /** 当前选中的模型ID */
   selectedProviderId: string
+  /** 是否折叠 */
+  collapsed?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  collapsed: true
+})
 
 /**
  * 组件事件
@@ -140,7 +144,12 @@ const emit = defineEmits<Emits>()
 const layoutStore = useLayoutStore()
 
 // 折叠状态 - 默认收起
-const isCollapsed = ref(true)
+const isCollapsed = ref(props.collapsed)
+
+// 监听父组件折叠状态变化并同步
+watch(() => props.collapsed, (newCollapsed) => {
+  isCollapsed.value = newCollapsed
+})
 
 // 最大化状态
 const isMaximized = ref(false)

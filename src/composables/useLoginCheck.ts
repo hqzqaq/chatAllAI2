@@ -39,13 +39,18 @@ export function useLoginCheck(provider: AIProvider) {
   ) {
     if (loginCheckTimer.value) return
 
+    // 记录上一次登录状态，仅在从未登录变为已登录时触发回调，
+    // 避免已登录后每 10 秒重复调用（如重复保存 session）
+    let wasLoggedIn = false
+
     loginCheckTimer.value = setInterval(() => {
       const currentProviderId = providerIdFn()
       if (currentProviderId && !isLoading.value) {
         checkLoginStatus().then((isLoggedIn) => {
-          if (isLoggedIn) {
+          if (isLoggedIn && !wasLoggedIn) {
             onLoggedIn()
           }
+          wasLoggedIn = isLoggedIn
         })
       }
     }, 10 * 1000)
