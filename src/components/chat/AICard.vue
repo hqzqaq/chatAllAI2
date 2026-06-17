@@ -29,6 +29,15 @@
 
       <div class="header-right">
         <el-button
+          v-if="supportsCookieLogin && !props.provider.isLoggedIn"
+          :icon="User"
+          type="warning"
+          size="small"
+          circle
+          title="Cookie 登录"
+          @click="openCookieLoginDialog"
+        />
+        <el-button
           :icon="Connection"
           size="small"
           circle
@@ -164,12 +173,64 @@
       <el-icon><Rank /></el-icon>
     </div>
 
+    <!-- Cookie 登录对话框 -->
+    <el-dialog
+      v-model="cookieLoginDialogVisible"
+      :title="`${props.provider.name} - Cookie 登录`"
+      width="560px"
+      :close-on-click-modal="false"
+      :append-to-body="true"
+      :align-center="true"
+      destroy-on-close
+      @closed="handleCookieLoginDialogClosed"
+    >
+      <div class="cookie-login-content">
+        <p class="cookie-login-desc">
+          请在系统浏览器中登录 {{ props.provider.name }} 后，将浏览器开发者工具中复制的 Cookie JSON 粘贴到下方。
+        </p>
+        <div class="cookie-login-actions">
+          <el-button
+            type="primary"
+            @click="openProviderSystemLogin"
+          >
+            打开系统浏览器登录
+          </el-button>
+        </div>
+        <div class="cookie-login-section">
+          <p class="cookie-login-tip">
+            请粘贴 Cookie JSON（通常可从浏览器扩展如 Cookie-Editor 导出）。
+          </p>
+          <el-input
+            v-model="cookieLoginInput"
+            type="textarea"
+            :rows="6"
+            placeholder="[{&quot;name&quot;:&quot;SID&quot;,&quot;value&quot;:&quot;...&quot;}, ...]"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cookieLoginDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="isImportingCookies"
+            @click="handleImportProviderCookies"
+          >
+            导入 Cookie
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 代理配置对话框 -->
     <el-dialog
       v-model="proxyDialogVisible"
       :title="`${props.provider.name} - 代理配置`"
       width="500px"
       :close-on-click-modal="false"
+      :append-to-body="true"
+      :align-center="true"
+      destroy-on-close
     >
       <el-form
         ref="proxyFormRef"
@@ -255,6 +316,8 @@ import {
 import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
 import type { AIProvider, CardConfig } from '../../types'
+import type { ProviderCookieInput } from '../../types/ipc'
+import { providerCookieLoginUrls } from '../../config/providers'
 import { useChatStore, useLayoutStore } from '../../stores'
 import { storage } from '../../utils/storage'
 
@@ -285,6 +348,12 @@ const isRefreshing = ref(false)
 const isLoading = ref(false)
 const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
 const proxyDialogVisible = ref(false)
+const cookieLoginDialogVisible = ref(false)
+const cookieLoginInput = ref('')
+const isImportingCookies = ref(false)
+
+// 当前 provider 是否支持系统浏览器登录 + Cookie 导入
+const supportsCookieLogin = computed(() => !!providerCookieLoginUrls[props.provider.id])
 
 // 使用props提供的minimized/maximized状态，或者回退到config中的状态
 const resolvedIsMinimized = computed(() => props.minimized ?? props.config?.isMinimized ?? false)
@@ -448,6 +517,81 @@ const openDevTools = async(): Promise<void> => {
   } catch (error) {
     console.error(`Failed to open devtools for ${props.provider.name}:`, error)
     ElMessage.error(`打开 ${props.provider.name} 控制台失败`)
+  }
+}
+
+/**
+ * 打开 Cookie 登录对话框
+ */
+const openCookieLoginDialog = (): void => {
+  cookieLoginDialogVisible.value = true
+  // 打开对话框时通知布局层隐藏原生 WebContentsView，避免覆盖 DOM 模态层
+  layoutStore.pushDialogLayer()
+}
+
+/**
+ * Cookie 登录对话框关闭后清理状态
+ */
+const handleCookieLoginDialogClosed = (): void => {
+  cookieLoginInput.value = ''
+  layoutStore.popDialogLayer()
+}
+
+/**
+ * 打开系统浏览器登录页面
+ */
+const openProviderSystemLogin = async(): Promise<void> => {
+  try {
+    await window.electronAPI.providerOpenSystemLogin(props.provider.id)
+    ElMessage.success(`已在系统浏览器中打开 ${props.provider.name} 登录页`)
+  } catch (error) {
+    ElMessage.error('打开系统浏览器失败')
+    console.error('[AICard] Failed to open provider system login:', error)
+  }
+}
+
+/**
+ * 解析并导入用户粘贴的 Cookie JSON
+ */
+const handleImportProviderCookies = async(): Promise<void> => {
+  if (!cookieLoginInput.value.trim()) {
+    ElMessage.warning('请输入 Cookie 数据')
+    return
+  }
+
+  isImportingCookies.value = true
+  try {
+    const parsed = JSON.parse(cookieLoginInput.value) as ProviderCookieInput[]
+    const cookies = Array.isArray(parsed) ? parsed : [parsed]
+
+    if (cookies.length === 0) {
+      ElMessage.warning('未解析到有效的 Cookie')
+      return
+    }
+
+    const result = await window.electronAPI.providerImportCookies({
+      providerId: props.provider.id,
+      cookies
+    })
+
+    if (result.success && result.imported > 0) {
+      ElMessage.success(`成功导入 ${result.imported} 个 Cookie`)
+      cookieLoginDialogVisible.value = false
+      cookieLoginInput.value = ''
+      // 刷新 WebView 以使用新注入的 Cookie
+      if (webViewRef.value) {
+        webViewRef.value.refresh()
+      } else {
+        window.electronAPI.reloadWebView(props.provider.id)
+      }
+    } else {
+      ElMessage.error(result.error || 'Cookie 导入失败')
+    }
+  } catch (error) {
+    ElMessage.error('Cookie 格式错误，请检查 JSON')
+    console.error('[AICard] Failed to parse provider cookies:', error)
+  } finally {
+    isImportingCookies.value = false
   }
 }
 
@@ -841,6 +985,10 @@ onUnmounted(() => {
   if (proxyDialogVisible.value) {
     layoutStore.popDialogLayer()
   }
+  // 组件卸载时如果 Cookie 登录对话框还开着，释放占用的模态层计数
+  if (cookieLoginDialogVisible.value) {
+    layoutStore.popDialogLayer()
+  }
 })
 </script>
 
@@ -1046,5 +1194,35 @@ onUnmounted(() => {
 .resize-handle:hover {
   color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
+}
+
+.cookie-login-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cookie-login-desc {
+  color: var(--el-text-color-regular);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cookie-login-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.cookie-login-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cookie-login-tip {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
 }
 </style>

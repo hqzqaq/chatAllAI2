@@ -49,6 +49,7 @@ import { getLoginCheckScript } from '@/utils/LoginCheckScripts'
 import { useLoginCheck } from '@/composables/useLoginCheck'
 import { useSessionPersistence } from '@/composables/useSessionPersistence'
 import { useWebViewEvents } from '@/composables/useWebViewEvents'
+import { useLayoutStore } from '@/stores'
 
 interface Props {
   provider: AIProvider
@@ -73,6 +74,7 @@ interface Emits {
 }
 
 const emit = defineEmits<Emits>()
+const layoutStore = useLayoutStore()
 
 const containerRef = ref<HTMLElement | null>(null)
 const wrapperRef = ref<HTMLElement | null>(null)
@@ -157,6 +159,7 @@ async function checkStatusAndNotify(): Promise<void> {
       script: getLoginCheckScriptForProvider()
     })
     const isLoggedIn = Boolean(result)
+
     if (isLoggedIn !== props.provider.isLoggedIn) {
       emit('login-status-changed', isLoggedIn)
       if (isLoggedIn && window.electronAPI) {
@@ -218,6 +221,19 @@ function findClipParent(element: HTMLElement): HTMLElement | null {
 
 function updateBounds(): void {
   if (!containerRef.value || !isViewCreated.value) return
+
+  // 任意 Element Plus 模态层打开时，强制隐藏原生 WebContentsView，
+  // 避免其覆盖到 DOM 模态层之上
+  if (layoutStore.dialogLayerCount > 0) {
+    if (!isHiddenByClip) {
+      isHiddenByClip = true
+      window.electronAPI.setWebViewVisibility({
+        providerId: props.provider.id,
+        visible: false
+      }).catch(() => {})
+    }
+    return
+  }
 
   const rect = containerRef.value.getBoundingClientRect()
 
