@@ -221,8 +221,12 @@ function updateBounds(): void {
 
   const rect = containerRef.value.getBoundingClientRect()
 
+  // 最大化卡片使用 fixed 定位并覆盖整个视口，不应被 cards-grid 等滚动容器裁剪，
+  // 否则 native WebContentsView 会被限制在网格可见区域内，导致顶部空白或内容截断。
+  const isMaximized = !!containerRef.value.closest('.ai-card.maximized')
+
   // 查找裁剪父容器，限制 WebContentsView 不超出其可见区域
-  const clipParent = findClipParent(containerRef.value)
+  const clipParent = isMaximized ? null : findClipParent(containerRef.value)
 
   let currentBounds: { x: number; y: number; width: number; height: number } | null = null
 
