@@ -7,6 +7,16 @@ export interface ProviderConfig {
   icon: string
 }
 
+/**
+ * 支持系统浏览器登录 + Cookie 导入的 provider 及其登录入口 URL
+ */
+export const providerCookieLoginUrls: Record<string, string> = {
+  gemini: 'https://gemini.google.com/app',
+  chatgpt: 'https://chat.openai.com',
+  grok: 'https://grok.com',
+  copilot: 'https://copilot.microsoft.com'
+}
+
 export const providerConfigs: ProviderConfig[] = [
   {
     id: 'deepseek',

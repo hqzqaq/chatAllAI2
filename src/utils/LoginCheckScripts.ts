@@ -56,10 +56,18 @@ export function getLoginCheckScript(providerId: string): string {
       (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
     `,
     gemini: `
-      !!document.querySelector('.gb_be')
+      (function() {
+        const hasProfile = !!document.querySelector('.gb_be') ||
+          !!document.querySelector('[aria-label*="Google Account"]') ||
+          !!document.querySelector('img[alt*="profile" i]');
+        const inApp = location.pathname === '/app' || location.pathname.startsWith('/app/');
+        const hasSignIn = !!document.querySelector('a[href*="signin"]') ||
+          !!document.querySelector('a[href*="accounts.google.com"]');
+        return (hasProfile || inApp) && !hasSignIn;
+      })()
     `,
     chatgpt: `
-      !!document.querySelector('[alt="Profile image"]')
+      !!document.querySelector('[class="gem-button-content ng-star-inserted"]')
     `,
     mimo: `
       !Array.from(document.querySelectorAll('[type="button"]'))
