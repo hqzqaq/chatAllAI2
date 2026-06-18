@@ -57,7 +57,7 @@ export function getLoginCheckScript(providerId: string): string {
       (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
     `,
     gemini: `
-      !!document.querySelector('[class="gem-button-content ng-star-inserted"]')
+      !document.querySelector('[data-test-id="sign-in-button"]')
     `,
     chatgpt: `
       !!document.querySelector('[data-testid="login-button"]')
