@@ -108,13 +108,13 @@ export default defineConfig({
           }
           const info = assetInfo.names
           const extType = info[info.length - 1]
-          for (const key in assetInfo.names) {
-            if (/\.(png|jpe?g|gif|svg)(\?.*)?$/.test(key)) {
-              return `images/[name]-[hash].${extType}`
-            }
-            if (/\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(key)) {
-              return `fonts/[name]-[hash].${extType}`
-            }
+          const isImage = Object.keys(assetInfo.names).some((key) => /\.(png|jpe?g|gif|svg)(\?.*)?$/.test(key))
+          if (isImage) {
+            return `images/[name]-[hash].${extType}`
+          }
+          const isFont = Object.keys(assetInfo.names).some((key) => /\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(key))
+          if (isFont) {
+            return `fonts/[name]-[hash].${extType}`
           }
           return `assets/[name]-[hash].${extType}`
         }

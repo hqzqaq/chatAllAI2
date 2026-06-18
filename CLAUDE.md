@@ -63,3 +63,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## 规则
+1、在代码中添加必要的释释，说明每个函数、类、变量等的作用和参数
+2、代码完成之后，需要执行 eslint 代码质量检查，确保代码符合 eslint 规范

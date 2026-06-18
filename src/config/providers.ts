@@ -7,6 +7,16 @@ export interface ProviderConfig {
   icon: string
 }
 
+/**
+ * 支持系统浏览器登录 + Cookie 导入的 provider 及其登录入口 URL
+ */
+export const providerCookieLoginUrls: Record<string, string> = {
+  gemini: 'https://gemini.google.com/app',
+  chatgpt: 'https://chat.openai.com',
+  grok: 'https://grok.com'
+  // 注意：Copilot 使用 MSAL，登录态依赖 localStorage 和跨域 live.com 票据，仅导入 Cookie 无法生效，故不显示按钮
+}
+
 export const providerConfigs: ProviderConfig[] = [
   {
     id: 'deepseek',

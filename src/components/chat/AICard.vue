@@ -29,6 +29,15 @@
 
       <div class="header-right">
         <el-button
+          v-if="supportsCookieLogin"
+          :icon="User"
+          :type="props.provider.isLoggedIn ? 'info' : 'warning'"
+          size="small"
+          circle
+          :title="props.provider.isLoggedIn ? '重新导入 Cookie' : 'Cookie 登录'"
+          @click="openCookieLoginDialog"
+        />
+        <el-button
           :icon="Connection"
           size="small"
           circle
@@ -164,12 +173,66 @@
       <el-icon><Rank /></el-icon>
     </div>
 
+    <!-- Cookie 登录对话框 -->
+    <el-dialog
+      v-model="cookieLoginDialogVisible"
+      :title="`${props.provider.name} - ${props.provider.isLoggedIn ? '重新导入 Cookie' : 'Cookie 登录'}`"
+      width="560px"
+      :close-on-click-modal="false"
+      :append-to-body="true"
+      :align-center="true"
+      destroy-on-close
+      @closed="handleCookieLoginDialogClosed"
+    >
+      <div class="cookie-login-content">
+        <p class="cookie-login-desc">
+          {{ props.provider.isLoggedIn
+            ? '当前已登录，如需切换账号或刷新登录态，请'
+            : '请在系统浏览器中登录' }} {{ props.provider.name }} 后，将浏览器开发者工具中复制的 Cookie JSON 粘贴到下方。
+        </p>
+        <div class="cookie-login-actions">
+          <el-button
+            type="primary"
+            @click="openProviderSystemLogin"
+          >
+            打开系统浏览器登录
+          </el-button>
+        </div>
+        <div class="cookie-login-section">
+          <p class="cookie-login-tip">
+            请粘贴 Cookie JSON（通常可从浏览器扩展如 Cookie-Editor 导出）。
+          </p>
+          <el-input
+            v-model="cookieLoginInput"
+            type="textarea"
+            :rows="6"
+            placeholder="[{&quot;name&quot;:&quot;SID&quot;,&quot;value&quot;:&quot;...&quot;}, ...]"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cookieLoginDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="isImportingCookies"
+            @click="handleImportProviderCookies"
+          >
+            导入 Cookie
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 代理配置对话框 -->
     <el-dialog
       v-model="proxyDialogVisible"
       :title="`${props.provider.name} - 代理配置`"
       width="500px"
       :close-on-click-modal="false"
+      :append-to-body="true"
+      :align-center="true"
+      destroy-on-close
     >
       <el-form
         ref="proxyFormRef"
@@ -237,7 +300,7 @@
 
 <script setup lang="ts">
 import {
-  computed, ref, onMounted, nextTick
+  computed, ref, onMounted, onUnmounted, nextTick, watch
 } from 'vue'
 import {
   ArrowUp,
@@ -255,6 +318,8 @@ import {
 import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
 import type { AIProvider, CardConfig } from '../../types'
+import type { ProviderCookieInput } from '../../types/ipc'
+import { providerCookieLoginUrls } from '../../config/providers'
 import { useChatStore, useLayoutStore } from '../../stores'
 import { storage } from '../../utils/storage'
 
@@ -267,13 +332,13 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  config: undefined,
   minimized: undefined,
   maximized: undefined
 })
 
 // Emits
-const emit = defineEmits<{
-  (e: 'toggle-minimized'): void
+const emit = defineEmits<{(e: 'toggle-minimized'): void
   (e: 'toggle-maximized'): void
 }>()
 
@@ -285,7 +350,12 @@ const isRefreshing = ref(false)
 const isLoading = ref(false)
 const webViewRef = ref<InstanceType<typeof WebView> | null>(null)
 const proxyDialogVisible = ref(false)
-const proxyFormRef = ref()
+const cookieLoginDialogVisible = ref(false)
+const cookieLoginInput = ref('')
+const isImportingCookies = ref(false)
+
+// 当前 provider 是否支持系统浏览器登录 + Cookie 导入
+const supportsCookieLogin = computed(() => !!providerCookieLoginUrls[props.provider.id])
 
 // 使用props提供的minimized/maximized状态，或者回退到config中的状态
 const resolvedIsMinimized = computed(() => props.minimized ?? props.config?.isMinimized ?? false)
@@ -303,47 +373,58 @@ const proxyConfig = ref({
 // 计算属性
 const sendingStatus = computed(() => chatStore.sendingStatus[props.provider.id] || 'idle')
 
-const cardStyle = computed(() => {
+const cardStyle = computed((): Record<string, string | number> => {
   if (!props.config) return {}
 
   const isHidden = props.config.isHidden === true
   const isMinimized = resolvedIsMinimized.value
 
+  if (isHidden) {
+    return {
+      position: 'absolute',
+      left: '-99999px',
+      top: '-99999px',
+      width: '1px',
+      height: '1px',
+      zIndex: -1,
+      opacity: 0
+    }
+  }
+
   const width = typeof props.config.size.width === 'string'
     ? props.config.size.width
     : `${props.config.size.width}px`
-  const height = isMinimized
-    ? 'auto'
-    : (typeof props.config.size.height === 'string'
-      ? props.config.size.height
-      : `${props.config.size.height}px`)
+  // 自适应：非最小化时让卡片撑满网格行高，避免全屏时上下卡片间出现大片空白
+  // 最小高度保留 600px，确保卡片有足够可视区域
+  let height: string
+  let minHeight: string
+  if (isMinimized) {
+    height = 'auto'
+    minHeight = '60px'
+  } else {
+    height = '100%'
+    minHeight = '600px'
+  }
 
   return {
     width,
     height,
-    minHeight: isMinimized ? 'auto' : '0',
+    minHeight,
     zIndex: props.config.zIndex,
     transition: 'all 0.3s ease',
-    visibility: isHidden ? 'hidden' : 'visible',
-    opacity: isHidden ? 0 : 1
+    visibility: 'visible',
+    opacity: 1
   }
 })
 
-const webviewStyle = computed(() => {
+const webviewStyle = computed((): Record<string, string> => {
+  // webview 容器使用 flex: 1 自适应填充卡片高度，无需再设置固定高度
   if (!props.config) return {}
-
   if (resolvedIsMinimized.value) return {}
-
-  return {
-    height: `${props.config.size.height - 120}px`
-  }
+  return {}
 })
 
-const shouldShowWebView = computed(
-  () =>
-    // 只有在provider启用且不在初始加载状态时才显示WebView
-    props.provider.isEnabled && props.provider.loadingState !== 'idle'
-)
+const shouldShowWebView = computed(() => props.provider.isEnabled && props.provider.loadingState !== 'idle')
 
 const webviewWidth = computed(() => {
   const width = props.config?.size.width
@@ -429,12 +510,8 @@ const toggleMaximized = (): void => {
  */
 const openDevTools = async(): Promise<void> => {
   try {
-    if (window.electronAPI && window.electronAPI.openDevTools) {
-      await window.electronAPI.openDevTools(props.provider.webviewId)
-      ElMessage.success(`${props.provider.name} 控制台已打开`)
-    } else if (webViewRef.value?.$el?.openDevTools) {
-      // 直接调用WebView元素的openDevTools方法
-      webViewRef.value.$el.openDevTools()
+    if (window.electronAPI && window.electronAPI.openWebViewDevTools) {
+      await window.electronAPI.openWebViewDevTools(props.provider.id)
       ElMessage.success(`${props.provider.name} 控制台已打开`)
     } else {
       ElMessage.error('无法打开控制台：WebView未就绪')
@@ -446,13 +523,88 @@ const openDevTools = async(): Promise<void> => {
 }
 
 /**
+ * 打开 Cookie 登录对话框
+ */
+const openCookieLoginDialog = (): void => {
+  cookieLoginDialogVisible.value = true
+  // 打开对话框时通知布局层隐藏原生 WebContentsView，避免覆盖 DOM 模态层
+  layoutStore.pushDialogLayer()
+}
+
+/**
+ * Cookie 登录对话框关闭后清理状态
+ */
+const handleCookieLoginDialogClosed = (): void => {
+  cookieLoginInput.value = ''
+  layoutStore.popDialogLayer()
+}
+
+/**
+ * 打开系统浏览器登录页面
+ */
+const openProviderSystemLogin = async(): Promise<void> => {
+  try {
+    await window.electronAPI.providerOpenSystemLogin(props.provider.id)
+    ElMessage.success(`已在系统浏览器中打开 ${props.provider.name} 登录页`)
+  } catch (error) {
+    ElMessage.error('打开系统浏览器失败')
+    console.error('[AICard] Failed to open provider system login:', error)
+  }
+}
+
+/**
+ * 解析并导入用户粘贴的 Cookie JSON
+ */
+const handleImportProviderCookies = async(): Promise<void> => {
+  if (!cookieLoginInput.value.trim()) {
+    ElMessage.warning('请输入 Cookie 数据')
+    return
+  }
+
+  isImportingCookies.value = true
+  try {
+    const parsed = JSON.parse(cookieLoginInput.value) as ProviderCookieInput[]
+    const cookies = Array.isArray(parsed) ? parsed : [parsed]
+
+    if (cookies.length === 0) {
+      ElMessage.warning('未解析到有效的 Cookie')
+      return
+    }
+
+    const result = await window.electronAPI.providerImportCookies({
+      providerId: props.provider.id,
+      cookies
+    })
+
+    if (result.success && result.imported > 0) {
+      ElMessage.success(`成功导入 ${result.imported} 个 Cookie`)
+      cookieLoginDialogVisible.value = false
+      cookieLoginInput.value = ''
+      // 刷新 WebView 以使用新注入的 Cookie
+      if (webViewRef.value) {
+        webViewRef.value.refresh()
+      } else {
+        window.electronAPI.reloadWebView(props.provider.id)
+      }
+    } else {
+      ElMessage.error(result.error || 'Cookie 导入失败')
+    }
+  } catch (error) {
+    ElMessage.error('Cookie 格式错误，请检查 JSON')
+    console.error('[AICard] Failed to parse provider cookies:', error)
+  } finally {
+    isImportingCookies.value = false
+  }
+}
+
+/**
  * 刷新WebView
  */
 const refreshWebView = async(): Promise<void> => {
   isRefreshing.value = true
   try {
     if (window.electronAPI) {
-      await window.electronAPI.refreshWebView(props.provider.webviewId)
+      await window.electronAPI.reloadWebView(props.provider.id)
       ElMessage.success(`${props.provider.name} 已刷新`)
     }
   } catch (error) {
@@ -600,8 +752,8 @@ const startResize = (event: MouseEvent): void => {
 
   const startX = event.clientX
   const startY = event.clientY
-  const startWidth = props.config?.size.width || 300
-  const startHeight = props.config?.size.height || 400
+  const startWidth = typeof props.config?.size.width === 'number' ? props.config.size.width : 300
+  const startHeight = typeof props.config?.size.height === 'number' ? props.config.size.height : 400
 
   const handleMouseMove = (e: MouseEvent): void => {
     const deltaX = e.clientX - startX
@@ -664,7 +816,7 @@ const saveProxyConfig = async(): Promise<void> => {
       }
 
       // 验证端口号
-      const port = parseInt(proxyConfig.value.port)
+      const port = parseInt(proxyConfig.value.port, 10)
       if (port < 1 || port > 65535) {
         ElMessage.error('端口号必须在1-65535之间')
         return
@@ -731,7 +883,7 @@ const applyProxyConfig = async(): Promise<void> => {
 
       // 通过IPC通知主进程设置代理
       await window.electronAPI.setProxy({
-        webviewId: props.provider.webviewId,
+        webviewId: props.provider.id,
         proxyRules: proxyUrl,
         enabled: true
       })
@@ -740,7 +892,7 @@ const applyProxyConfig = async(): Promise<void> => {
     } else {
       // 禁用代理
       await window.electronAPI.setProxy({
-        webviewId: props.provider.webviewId,
+        webviewId: props.provider.id,
         proxyRules: 'direct://',
         enabled: false
       })
@@ -798,6 +950,48 @@ onMounted(() => {
     enableWebView()
   }
 })
+
+// 监听 isHidden 变化，直接控制原生 WebContentsView 显隐
+// 使用 nextTick 确保在 DOM 更新之后执行 IPC，避免视图闪烁
+watch(
+  () => props.config?.isHidden,
+  async(isHidden) => {
+    if (!window.electronAPI?.setWebViewVisibility) return
+    await nextTick()
+    window.electronAPI.setWebViewVisibility({
+      providerId: props.provider.id,
+      visible: !isHidden
+    }).catch(() => {})
+  }
+)
+
+// 代理配置对话框打开时通知 useViewLayering 隐藏所有原生 AI 卡片视图，
+// 避免 Electron WebContentsView 覆盖到 DOM 模态层之上
+watch(proxyDialogVisible, (visible, prevVisible) => {
+  if (!prevVisible && visible) {
+    layoutStore.pushDialogLayer()
+  } else if (prevVisible && !visible) {
+    layoutStore.popDialogLayer()
+  }
+})
+
+onUnmounted(() => {
+  // 组件卸载时确保原生视图恢复可见
+  if (window.electronAPI?.setWebViewVisibility) {
+    window.electronAPI.setWebViewVisibility({
+      providerId: props.provider.id,
+      visible: true
+    }).catch(() => {})
+  }
+  // 组件卸载时如果代理对话框还开着，释放占用的模态层计数
+  if (proxyDialogVisible.value) {
+    layoutStore.popDialogLayer()
+  }
+  // 组件卸载时如果 Cookie 登录对话框还开着，释放占用的模态层计数
+  if (cookieLoginDialogVisible.value) {
+    layoutStore.popDialogLayer()
+  }
+})
 </script>
 
 <style scoped>
@@ -829,7 +1023,7 @@ onMounted(() => {
   left: 16px !important;
   width: calc(100vw - 32px) !important;
   height: calc(100vh - 120px) !important;
-  z-index: 1000 !important;
+  z-index: 200 !important;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
   border-color: var(--el-color-primary);
 }
@@ -844,7 +1038,6 @@ onMounted(() => {
 
 /* 为卡片添加键盘可访问性 */
 .ai-card {
-  tabindex: 0;
   cursor: pointer;
 }
 
@@ -1003,5 +1196,35 @@ onMounted(() => {
 .resize-handle:hover {
   color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
+}
+
+.cookie-login-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cookie-login-desc {
+  color: var(--el-text-color-regular);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cookie-login-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.cookie-login-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cookie-login-tip {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
 }
 </style>

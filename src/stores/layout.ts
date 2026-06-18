@@ -10,6 +10,26 @@ export const useLayoutStore = defineStore('layout', () => {
   // 卡片配置
   const cardConfigs = ref<Record<string, CardConfig>>({})
 
+  /**
+   * 原生视图层级状态
+   * - normal: 所有 AI 卡片原生视图可见
+   * - sidebar-expanded: 侧边栏展开，AI 卡片原生视图隐藏
+   * - card-maximized: 某张卡片最大化，仅该卡片原生视图可见
+   */
+  const viewLayerState = ref<'normal' | 'sidebar-expanded' | 'card-maximized'>('normal')
+
+  /**
+   * 当前最大化的卡片 ID，无最大化卡片时为 null
+   */
+  const maximizedCardId = ref<string | null>(null)
+
+  /**
+   * 打开的模态层（Dialog）数量
+   * 任何 Element Plus el-dialog 打开时需要 +1，关闭时需要 -1
+   * 当 > 0 时，原生 AI 卡片视图会被全部隐藏，避免遮挡 DOM 模态层
+   */
+  const dialogLayerCount = ref<number>(0)
+
   // 网格布局设置 - 移除行数限制
   const gridSettings = ref({
     columns: 3,
@@ -130,7 +150,10 @@ export const useLayoutStore = defineStore('layout', () => {
       const config = cardConfigs.value[providerId]
 
       // 保存原始状态
-      config.originalSize = { ...config.size }
+      config.originalSize = {
+        width: typeof config.size.width === 'number' ? config.size.width : parseInt(config.size.width, 10) || 800,
+        height: typeof config.size.height === 'number' ? config.size.height : parseInt(config.size.height, 10) || 600
+      }
       config.originalPosition = { ...config.position }
 
       // 设置最大化状态
@@ -146,7 +169,7 @@ export const useLayoutStore = defineStore('layout', () => {
         x: 16, // 左边距
         y: 16 // 上边距
       }
-      config.zIndex = 1000 // 设置最高z-index
+      config.zIndex = 200 // 最大化卡片使用最高 z-index
 
       // 设置其他卡片为隐藏状态（但不销毁WebView）
       Object.keys(cardConfigs.value).forEach((id) => {
@@ -154,6 +177,10 @@ export const useLayoutStore = defineStore('layout', () => {
           cardConfigs.value[id].isHidden = true // 使用isHidden而不是isVisible
         }
       })
+
+      // 更新原生视图层级状态
+      viewLayerState.value = 'card-maximized'
+      maximizedCardId.value = providerId
 
       saveLayoutConfig()
     }
@@ -182,6 +209,10 @@ export const useLayoutStore = defineStore('layout', () => {
           cardConfigs.value[id].isHidden = false
         })
 
+        // 重置原生视图层级状态
+        viewLayerState.value = 'normal'
+        maximizedCardId.value = null
+
         // 重新计算布局
         recalculateLayout()
         saveLayoutConfig()
@@ -208,6 +239,18 @@ export const useLayoutStore = defineStore('layout', () => {
   const updateWindowSize = (width: number, height: number): void => {
     windowSize.value = { width, height }
 
+    // 更新最大化卡片的尺寸适配新窗口
+    if (viewLayerState.value === 'card-maximized' && maximizedCardId.value) {
+      const maximizedConfig = cardConfigs.value[maximizedCardId.value]
+      if (maximizedConfig) {
+        maximizedConfig.size = {
+          width: width - 32,
+          height: height - 120
+        }
+      }
+      return
+    }
+
     // 根据窗口大小自动调整网格列数，但不覆盖用户手动设置
     if (width < 800) {
       gridSettings.value.columns = Math.min(gridSettings.value.columns, 1)
@@ -221,38 +264,37 @@ export const useLayoutStore = defineStore('layout', () => {
 
   /**
    * 重新计算布局 - 支持自动扩展行数，无行数限制
+   * 跳过已隐藏的卡片和最大化卡片
    */
   const recalculateLayout = (): void => {
-    const visibleCards = Object.values(cardConfigs.value).filter((config) => config.isVisible && !config.isMaximized)
+    const visibleCards = Object.values(cardConfigs.value).filter(
+      (config) => config.isVisible && !config.isMaximized && !config.isHidden
+    )
 
     visibleCards.forEach((config, index) => {
       const col = index % gridSettings.value.columns
       const row = Math.floor(index / gridSettings.value.columns)
 
-      // 移除行数限制，所有卡片都可见
-      const newConfig = {
-        ...config,
-        isHidden: false,
+      Object.assign(config, {
         position: {
           x: col * (cardWidth.value + gridSettings.value.gap) + gridSettings.value.gap,
           y: row * (cardHeight.value + gridSettings.value.gap) + gridSettings.value.gap
         }
-      }
-
-      // 更新卡片配置
-      Object.assign(config, newConfig)
+      })
 
       if (!config.isMinimized) {
-        // 更新卡片大小
-        Object.assign(config.size, {
-          width: cardWidth.value,
-          height: cardHeight.value
+        Object.assign(config, {
+          size: {
+            width: cardWidth.value,
+            height: cardHeight.value
+          }
         })
       } else {
-        // 最小化状态下，保持宽度但设置较小的高度
-        Object.assign(config.size, {
-          width: cardWidth.value,
-          height: 60 // 最小化后的高度
+        Object.assign(config, {
+          size: {
+            width: cardWidth.value,
+            height: 60
+          }
         })
       }
     })
@@ -335,6 +377,42 @@ export const useLayoutStore = defineStore('layout', () => {
     }
   }
 
+  /**
+   * 侧边栏展开时调用：隐藏所有 AI 卡片原生视图
+   */
+  const onSidebarExpand = (): void => {
+    if (viewLayerState.value !== 'card-maximized') {
+      viewLayerState.value = 'sidebar-expanded'
+    }
+  }
+
+  /**
+   * 侧边栏收起时调用：恢复 AI 卡片原生视图
+   */
+  const onSidebarCollapse = (): void => {
+    if (viewLayerState.value === 'sidebar-expanded') {
+      viewLayerState.value = 'normal'
+    }
+  }
+
+  /**
+   * 注册一个模态层（Dialog）打开
+   * 多个 dialog 嵌套打开时通过引用计数管理，全部关闭后才会恢复 AI 卡片视图
+   */
+  const pushDialogLayer = (): void => {
+    dialogLayerCount.value += 1
+  }
+
+  /**
+   * 注销一个模态层（Dialog）关闭
+   * 引用计数做最小值保护，避免异常路径导致计数为负
+   */
+  const popDialogLayer = (): void => {
+    if (dialogLayerCount.value > 0) {
+      dialogLayerCount.value -= 1
+    }
+  }
+
   return {
     cardConfigs,
     gridSettings,
@@ -344,6 +422,9 @@ export const useLayoutStore = defineStore('layout', () => {
     availableHeight,
     cardWidth,
     cardHeight,
+    viewLayerState,
+    maximizedCardId,
+    dialogLayerCount,
     initializeCardConfigs,
     updateCardPosition,
     updateCardSize,
@@ -359,6 +440,10 @@ export const useLayoutStore = defineStore('layout', () => {
     saveLayoutConfig,
     loadLayoutConfig,
     getCardConfig,
-    updateCardTitle
+    updateCardTitle,
+    onSidebarExpand,
+    onSidebarCollapse,
+    pushDialogLayer,
+    popDialogLayer
   }
 })

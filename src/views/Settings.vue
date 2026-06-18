@@ -127,7 +127,76 @@
             label="脚本配置"
             name="scripts"
           >
+            <div class="script-config-header">
+              <el-tag
+                v-if="customProviderCount > 0"
+                type="info"
+                size="small"
+              >
+                已添加 {{ customProviderCount }} 个自定义模型
+              </el-tag>
+            </div>
             <ScriptEditor />
+          </el-tab-pane>
+
+          <!-- 提供商管理 -->
+          <el-tab-pane
+            label="提供商管理"
+            name="providers"
+          >
+            <div class="settings-section">
+              <h3>自定义提供商</h3>
+              <p class="section-desc">
+                管理您添加的自定义AI模型网站
+              </p>
+              <el-table
+                v-if="customProviders.length > 0"
+                :data="customProviders"
+                style="width: 100%"
+              >
+                <el-table-column
+                  prop="name"
+                  label="名称"
+                  width="150"
+                />
+                <el-table-column
+                  prop="url"
+                  label="URL"
+                />
+                <el-table-column
+                  label="操作"
+                  width="140"
+                >
+                  <template #default="{ row }">
+                    <el-button
+                      type="primary"
+                      size="small"
+                      text
+                      @click="handleEditProvider(row)"
+                    >
+                      编辑
+                    </el-button>
+                    <el-button
+                      type="danger"
+                      size="small"
+                      text
+                      @click="handleRemoveProvider(row.id, row.name)"
+                    >
+                      删除
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty
+                v-else
+                description="暂无自定义提供商，可在聊天界面点击「添加模型」按钮添加"
+              />
+              <AddProviderDialog
+                v-model="editDialogVisible"
+                :edit-provider="editingProvider"
+                @updated="handleProviderUpdated"
+              />
+            </div>
           </el-tab-pane>
 
           <!-- 关于 -->
@@ -179,9 +248,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Setting, ChatDotRound } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import SessionStatus from '../components/session/SessionStatus.vue'
 import ScriptEditor from '../components/settings/ScriptEditor.vue'
+import AddProviderDialog from '../components/chat/AddProviderDialog.vue'
 import { useAppStore, useLayoutStore, useChatStore } from '../stores'
 
 const appStore = useAppStore()
@@ -190,12 +260,52 @@ const chatStore = useChatStore()
 
 // 响应式数据
 const activeTab = ref('general')
+const editDialogVisible = ref(false)
+const editingProvider = ref<{ id: string; name: string; url: string; icon?: string } | null>(null)
 
 // 计算属性
 const userPreferences = computed(() => appStore.userPreferences)
 const gridSettings = computed(() => layoutStore.gridSettings)
 const appVersion = computed(() => appStore.appVersion)
 const providers = computed(() => chatStore.providers)
+const customProviders = computed(() => chatStore.customProviders)
+const customProviderCount = computed(() => chatStore.customProviders.length)
+
+const handleEditProvider = (row: { id: string; name: string; url: string; icon?: string }): void => {
+  editingProvider.value = {
+    id: row.id,
+    name: row.name,
+    url: row.url,
+    icon: row.icon
+  }
+  editDialogVisible.value = true
+}
+
+const handleProviderUpdated = (): void => {
+  editingProvider.value = null
+}
+
+const handleRemoveProvider = async(providerId: string, providerName: string): Promise<void> => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除自定义提供商 "${providerName}" 吗？相关的脚本配置将保留。`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    const success = chatStore.removeCustomProvider(providerId)
+    if (success) {
+      ElMessage.success(`已删除提供商: ${providerName}`)
+    } else {
+      ElMessage.error('删除失败')
+    }
+  } catch {
+    ElMessage.info('已取消删除')
+  }
+}
 console.log(chatStore.providers)
 // 静态数据
 const techStack = ['Electron', 'Vue 3', 'TypeScript', 'Vite', 'Element Plus', 'Pinia', 'Vue Router']
@@ -360,5 +470,15 @@ onMounted(() => {
 .system-info p {
   margin: 8px 0;
   color: var(--el-text-color-regular);
+}
+
+.script-config-header {
+  margin-bottom: 12px;
+}
+
+.section-desc {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  margin: 0 0 16px 0;
 }
 </style>

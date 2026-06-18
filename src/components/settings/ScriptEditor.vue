@@ -32,12 +32,25 @@
             class="control-select"
             filterable
           >
-            <el-option
-              v-for="item in PROVIDERS"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option-group label="内置">
+              <el-option
+                v-for="item in builtInProviderOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-option-group>
+            <el-option-group
+              v-if="customProviderOptions.length > 0"
+              label="自定义"
+            >
+              <el-option
+                v-for="item in customProviderOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-option-group>
           </el-select>
         </div>
 
@@ -135,27 +148,23 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useScriptConfigStore } from '../../stores/scriptConfig'
+import { useChatStore } from '../../stores'
 import { SCRIPT_TYPES } from '../../types'
 import { SCRIPT_TEMPLATES } from '../../utils/ScriptTemplates'
 import type { ScriptType, ScriptConfigExport } from '../../types'
 
-const PROVIDERS = [
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'doubao', label: '豆包' },
-  { value: 'qwen', label: '通义千问' },
-  { value: 'kimi', label: 'Kimi' },
-  { value: 'grok', label: 'Grok' },
-  { value: 'copilot', label: 'Copilot' },
-  { value: 'glm', label: 'GLM' },
-  { value: 'yuanbao', label: '元宝' },
-  { value: 'miromind', label: 'MiroThinker' },
-  { value: 'gemini', label: 'Gemini' },
-  { value: 'chatgpt', label: 'ChatGPT' },
-  { value: 'mimo', label: 'mimo' },
-  { value: 'minimax', label: 'Minimax' }
-]
-
+const chatStore = useChatStore()
 const scriptConfigStore = useScriptConfigStore()
+
+const builtInProviderOptions = computed(() => chatStore.builtInProviders.map((p) => ({
+  value: p.id,
+  label: p.name
+})))
+
+const customProviderOptions = computed(() => chatStore.customProviders.map((p) => ({
+  value: p.id,
+  label: `${p.name} (自定义)`
+})))
 
 const scriptType = ref<ScriptType>('getLLMLastMessage')
 const providerId = ref('deepseek')
@@ -231,7 +240,8 @@ const handleSave = () => {
 
 const handleReset = async() => {
   try {
-    const providerLabel = PROVIDERS.find((p) => p.value === providerId.value)?.label || providerId.value
+    const provider = chatStore.providers.find((p) => p.id === providerId.value)
+    const providerLabel = provider?.name || providerId.value
     await ElMessageBox.confirm(
       `确定要将 "${currentScriptLabel.value}" (${providerLabel}) 重置为默认脚本吗？`,
       '确认重置',

@@ -59,6 +59,14 @@
                 >
                 <span class="provider-name">{{ provider.name }}</span>
                 <el-tag
+                  v-if="provider.isCustom"
+                  type="info"
+                  size="small"
+                  class="custom-tag"
+                >
+                  自定义
+                </el-tag>
+                <el-tag
                   v-if="getProviderAIStatus(provider.id) === 'responding'"
                   type="warning"
                   size="small"
@@ -82,6 +90,17 @@
                 </el-icon>
               </div>
             </el-checkbox>
+            <div
+              class="provider-checkbox add-provider-btn"
+              @click="handleAddProvider"
+            >
+              <div class="provider-option add-option">
+                <el-icon class="add-icon">
+                  <Plus />
+                </el-icon>
+                <span class="provider-name">添加模型</span>
+              </div>
+            </div>
           </el-checkbox-group>
         </div>
 
@@ -241,6 +260,11 @@
       @apply-prompt="handleApplyPrompt"
     />
 
+    <AddProviderDialog
+      v-model="addProviderVisible"
+      @added="handleProviderAdded"
+    />
+
     <input
       ref="fileInputRef"
       type="file"
@@ -266,11 +290,13 @@ import { messageDispatcher } from '../../services/MessageDispatcher'
 import type { MessageSendResult, AttachedFileInfo } from '../../services/MessageDispatcher'
 import type { AIProvider } from '@/types'
 import PromptManager from './PromptManager.vue'
+import AddProviderDialog from './AddProviderDialog.vue'
 
 const chatStore = useChatStore()
 
 // 组件事件
 const emit = defineEmits<{(e: 'summary'): void
+  (e: 'update:collapsed', collapsed: boolean): void
 }>()
 
 const draggedProvider = ref<AIProvider | null>(null)
@@ -310,6 +336,17 @@ const aiStatusMap = ref<{ [providerId: string]: 'waiting_input' | 'responding' |
 // Prompt 管理器
 const promptManagerVisible = ref<boolean>(false)
 
+// 添加模型对话框
+const addProviderVisible = ref<boolean>(false)
+
+const handleAddProvider = (): void => {
+  addProviderVisible.value = true
+}
+
+const handleProviderAdded = (_providerId: string): void => {
+  // 新添加的提供商会自动出现在 sortedProviders 中
+}
+
 // 快捷 Prompt 管理
 const quickPrompt = ref<string>('')
 
@@ -346,6 +383,7 @@ const saveCollapsedState = (): void => {
  */
 const toggleCollapse = (): void => {
   isCollapsed.value = !isCollapsed.value
+  emit('update:collapsed', isCollapsed.value)
   saveCollapsedState()
 }
 
@@ -415,9 +453,10 @@ const applySelectedProviders = (): void => {
 
 // 处理提供商选择变化
 const handleProviderSelection = (value: string[]): void => {
-  availableProviders.value.forEach((item: AIProvider) => {
-    if (!value.includes(item.id)) {
-      item.isLoggedIn = false
+  availableProviders.value.forEach((it: AIProvider) => {
+    if (!value.includes(it.id)) {
+      // eslint-disable-next-line no-param-reassign
+      it.isLoggedIn = false
     }
   })
   applySelectedProviders()
@@ -425,8 +464,9 @@ const handleProviderSelection = (value: string[]): void => {
 
 const handleDragStart = (event: DragEvent, provider: AIProvider): void => {
   draggedProvider.value = provider
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
+  const { dataTransfer } = event
+  if (dataTransfer) {
+    dataTransfer.effectAllowed = 'move'
   }
   const target = event.target as HTMLElement
   const checkbox = target.closest('.provider-checkbox')
@@ -437,8 +477,9 @@ const handleDragStart = (event: DragEvent, provider: AIProvider): void => {
 
 const handleDragOver = (event: DragEvent): void => {
   event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+  const { dataTransfer } = event
+  if (dataTransfer) {
+    dataTransfer.dropEffect = 'move'
   }
   const target = event.target as HTMLElement
   const checkbox = target.closest('.provider-checkbox')
@@ -496,7 +537,9 @@ const handleIconError = (event: Event): void => {
 }
 
 // AI状态相关方法
-const getProviderAIStatus = (providerId: string): 'waiting_input' | 'responding' | 'completed' | undefined => aiStatusMap.value[providerId]
+const getProviderAIStatus = (
+  providerId: string
+): 'waiting_input' | 'responding' | 'completed' | undefined => aiStatusMap.value[providerId]
 
 const updateAIStatus = (providerId: string, status: 'waiting_input' | 'responding' | 'completed'): void => {
   aiStatusMap.value[providerId] = status
@@ -511,15 +554,17 @@ const stopAIStatusMonitoring = async(): Promise<void> => {
     if (window.electronAPI) {
       const { loggedInProviders } = chatStore
 
-      for (const provider of loggedInProviders) {
-        const result = await window.electronAPI.stopAIStatusMonitoring({
-          providerId: provider.id
-        })
+      await Promise.all(
+        loggedInProviders.map(async(provider) => {
+          const result = await window.electronAPI?.stopAIStatusMonitoring({
+            providerId: provider.id
+          })
 
-        if (result.success) {
-          console.log(`AI状态监控已停止: ${provider.name}`)
-        }
-      }
+          if (result?.success) {
+            console.log(`AI状态监控已停止: ${provider.name}`)
+          }
+        })
+      )
     }
   } catch (error) {
     console.error('停止AI状态监控失败:', error)
@@ -554,7 +599,9 @@ const loggedInCount = computed(() => chatStore.loggedInCount)
 const totalProviders = computed(() => chatStore.totalProviders)
 
 // 已选中且已登录的提供商数量
-const connectedProviders = computed(() => availableProviders.value.filter((provider) => provider.isLoggedIn && selectedProviders.value.includes(provider.id)))
+const connectedProviders = computed(() => availableProviders.value.filter(
+  (provider) => provider.isLoggedIn && selectedProviders.value.includes(provider.id)
+))
 
 const connectedCount = computed(() => connectedProviders.value.length)
 
@@ -563,15 +610,19 @@ const hasSendingMessages = computed(() => messageDispatcher.hasSendingMessages()
 // AI状态相关计算属性
 const hasRespondingAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'responding'))
 
-const respondingAICount = computed(() => Object.values(aiStatusMap.value).filter((status) => status === 'responding').length)
+const respondingAICount = computed(
+  () => Object.values(aiStatusMap.value).filter((status) => status === 'responding').length
+)
 
 // 是否有AI已完成回答（用于判断是否可以总结）
 const hasCompletedAI = computed(() => Object.values(aiStatusMap.value).some((status) => status === 'completed'))
 
 // 是否可以进行总结
-const canSummarize = computed(() =>
+// eslint-disable-next-line arrow-body-style
+const canSummarize = computed(() => {
   // 至少有一个AI已完成回答，且没有AI正在回答中
-  hasCompletedAI.value && !hasRespondingAI.value && loggedInCount.value > 0)
+  return hasCompletedAI.value && !hasRespondingAI.value && loggedInCount.value > 0
+})
 
 const inputPlaceholder = computed(() => {
   if (loggedInCount.value === 0) {
@@ -1199,9 +1250,17 @@ const handleApplyPrompt = (prompt: any, userInput?: string): void => {
 
   const now = new Date()
   const date = now.toISOString().split('T')[0]
-  const datetime = now.toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-  }).replace(/\//g, '-')
+  const datetime = now
+    .toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+    .replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
@@ -1229,9 +1288,17 @@ const handleApplyQuickPrompt = (): void => {
 
   const now = new Date()
   const date = now.toISOString().split('T')[0]
-  const datetime = now.toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-  }).replace(/\//g, '-')
+  const datetime = now
+    .toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+    .replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
@@ -1286,7 +1353,9 @@ onMounted(() => {
   }
 
   // 监听登录状态变化事件
-  window.addEventListener('login-status-changed', handleLoginStatusChanged as EventListener)
+  // eslint-disable-next-line no-undef
+  const eventHandler = handleLoginStatusChanged as unknown as EventListener
+  window.addEventListener('login-status-changed', eventHandler)
 
   // 组件挂载后，加载用户偏好的高度
   nextTick(() => {
@@ -1332,9 +1401,9 @@ const startAIStatusMonitoringForLoggedInProviders = async(): Promise<void> => {
 
   console.log(`为${loggedInProviders.length}个已登录提供商启动AI状态监控`)
 
-  for (const provider of loggedInProviders) {
-    await startAIStatusMonitoringForProvider(provider.id)
-  }
+  await Promise.all(
+    loggedInProviders.map((provider) => startAIStatusMonitoringForProvider(provider.id))
+  )
 }
 
 /**
@@ -1760,6 +1829,41 @@ onUnmounted(() => {
   box-shadow: none;
 }
 
+.custom-tag {
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #e8f4fd;
+  border-color: #b3d8fd;
+  color: #409eff;
+}
+
+.add-provider-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  min-height: 60px;
+}
+
+.add-option {
+  border: 2px dashed #c0c4cc;
+  background: #fafafa;
+  color: #909399;
+  justify-content: center;
+}
+
+.add-option:hover {
+  border-color: #409eff;
+  color: #409eff;
+  background: #ecf5ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+}
+
+.add-icon {
+  font-size: 20px;
+}
+
 /* 响应式布局优化 */
 @media (max-width: 1200px) {
   .provider-option {
@@ -1890,8 +1994,7 @@ onUnmounted(() => {
   width: 16px;
   height: 16px;
   cursor: ns-resize;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23909399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23909399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   opacity: 0.5;

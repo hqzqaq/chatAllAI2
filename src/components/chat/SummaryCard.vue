@@ -23,12 +23,12 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  config: undefined,
   maximized: undefined,
   minimized: undefined
 })
 
-const emit = defineEmits<{
-  (e: 'toggle-minimized'): void
+const emit = defineEmits<{(e: 'toggle-minimized'): void
   (e: 'toggle-maximized'): void
 }>()
 
@@ -38,13 +38,9 @@ const internalMaximized = ref(false)
 const hasExternalMaximized = computed(() => props.maximized !== undefined)
 const hasExternalMinimized = computed(() => props.minimized !== undefined)
 
-const resolvedMaximized = computed(() =>
-  hasExternalMaximized.value ? props.maximized : internalMaximized.value
-)
+const resolvedMaximized = computed(() => (hasExternalMaximized.value ? props.maximized : internalMaximized.value))
 
-const resolvedMinimized = computed(() =>
-  hasExternalMinimized.value ? props.minimized : internalMinimized.value
-)
+const resolvedMinimized = computed(() => (hasExternalMinimized.value ? props.minimized : internalMinimized.value))
 
 const toggleMinimized = () => {
   if (hasExternalMinimized.value) {

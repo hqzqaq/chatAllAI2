@@ -73,17 +73,35 @@ if (isGoogleDomain()) {
     window.chrome.runtime = {
       // @ts-ignore
       OnInstalledReason: {
-        CHROME_UPDATE: 'chrome_update', EXTENSION_UPDATE: 'extension_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update'
+        CHROME_UPDATE: 'chrome_update',
+        EXTENSION_UPDATE: 'extension_update',
+        INSTALL: 'install',
+        SHARED_MODULE_UPDATE: 'shared_module_update'
       },
       // @ts-ignore
-      OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' },
+      OnRestartRequiredReason: {
+        APP_UPDATE: 'app_update',
+        OS_UPDATE: 'os_update',
+        PERIODIC: 'periodic'
+      },
       // @ts-ignore
       PlatformArch: {
-        ARM: 'arm', ARM64: 'arm64', MIPS: 'mips', MIPS64: 'mips64', X86_32: 'x86-32', X86_64: 'x86-64'
+        ARM: 'arm',
+        ARM64: 'arm64',
+        MIPS: 'mips',
+        MIPS64: 'mips64',
+        X86_32: 'x86-32',
+        X86_64: 'x86-64'
       },
       // @ts-ignore
       PlatformNaclArch: {
-        ARM: 'arm', MIPS: 'mips', MIPS64: 'mips64', MIPS64EL: 'mips64el', MIPSEL: 'mipsel', X86_32: 'x86-32', X86_64: 'x86-64'
+        ARM: 'arm',
+        MIPS: 'mips',
+        MIPS64: 'mips64',
+        MIPS64EL: 'mips64el',
+        MIPSEL: 'mipsel',
+        X86_32: 'x86-32',
+        X86_64: 'x86-64'
       },
       // @ts-ignore
       PlatformOs: {
@@ -99,7 +117,10 @@ if (isGoogleDomain()) {
   try {
     if (document.featurePolicy) {
       const originalAllowsFeature = document.featurePolicy.allowsFeature
-      document.featurePolicy.allowsFeature = function(feature: string, origin?: string) {
+      document.featurePolicy.allowsFeature = function allowsFeatureOverride(
+        feature: string,
+        origin?: string
+      ) {
         // 对于ch-ua-form-factors返回false，避免错误
         if (feature === 'ch-ua-form-factors') {
           return false

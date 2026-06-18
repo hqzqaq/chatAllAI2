@@ -120,6 +120,67 @@ export const SCRIPT_TEMPLATES: Record<string, string> = {
   }
 })()`,
 
+  fileUpload: `/**
+ * 文件上传脚本
+ * 
+ * 此脚本在AI网站的WebView中执行，用于将文件上传到AI对话中。
+ * 
+ * 参数: 
+ *   {name} - 文件名
+ *   {mimeType} - 文件MIME类型
+ *   {base64} - 文件的base64编码内容
+ * 
+ * 返回值: object - { success: boolean, message: string }
+ * 
+ * 实现要点：
+ * 1. 将base64转换为File对象
+ * 2. 查找页面上的文件上传机制（file input 或拖拽上传）
+ * 3. 注入文件或触发拖拽事件
+ * 4. 返回操作结果
+ * 
+ * 示例实现：
+ */
+(function() {
+  // base64 转 File 对象
+  function base64ToFile() {
+    var base64 = '{base64}';
+    var name = '{name}';
+    var mimeType = '{mimeType}';
+    var byteChars = atob(base64);
+    var bytes = new Uint8Array(byteChars.length);
+    for (var i = 0; i < byteChars.length; i++) {
+      bytes[i] = byteChars.charCodeAt(i);
+    }
+    var blob = new Blob([bytes], { type: mimeType });
+    return new File([blob], name, { type: mimeType, lastModified: Date.now() });
+  }
+
+  var file = base64ToFile();
+
+  // 策略1: 查找 file input 并注入
+  var fileInput = document.querySelector('input[type="file"]');
+  if (fileInput) {
+    var dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    return { success: true, message: 'File injected into input' };
+  }
+
+  // 策略2: 拖拽上传
+  var dropTarget = document.querySelector('textarea') 
+    || document.querySelector('[contenteditable="true"]') 
+    || document.body;
+  var dragData = new DataTransfer();
+  dragData.items.add(file);
+  ['dragenter', 'dragover', 'drop'].forEach(function(type) {
+    var evt = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dragData });
+    dropTarget.dispatchEvent(evt);
+  });
+
+  return { success: true, message: 'Drag-drop upload dispatched' };
+})()`,
+
   statusMonitor: `/**
  * AI状态监控脚本
  * 

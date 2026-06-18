@@ -3,6 +3,8 @@
  * 负责统一输入消息的分发和状态管理
  */
 
+/* eslint-disable max-classes-per-file */
+
 import type { AIProvider, Message } from '../types'
 import { getNewChatScript } from '../utils/NewChatScripts'
 
@@ -358,7 +360,7 @@ export class MessageDispatcher extends BrowserEventEmitter {
       // 通过IPC发送脚本到WebView
       if (window.electronAPI) {
         await Promise.race([
-          window.electronAPI.executeScriptInWebView(provider.webviewId, script),
+          window.electronAPI.executeWebViewScript({ providerId: provider.id, script }),
           this.createTimeoutPromise(this.config.timeout)
         ])
 
@@ -567,7 +569,11 @@ export class MessageDispatcher extends BrowserEventEmitter {
    * 延迟函数
    */
   private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms))
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve()
+      }, ms)
+    })
   }
 
   /**

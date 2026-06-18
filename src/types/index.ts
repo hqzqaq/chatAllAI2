@@ -57,6 +57,27 @@ export interface AIProvider {
   lastError?: string
   retryCount?: number
   lastActiveTime?: Date
+  isCustom?: boolean
+}
+
+/**
+ * 自定义提供商配置（用于持久化）
+ */
+export interface CustomProviderConfig {
+  id: string
+  name: string
+  url: string
+  icon: string
+  createdAt: string
+}
+
+/**
+ * 添加提供商表单数据
+ */
+export interface AddProviderFormData {
+  name: string
+  url: string
+  icon: string
 }
 
 /**
@@ -100,7 +121,7 @@ export interface CardConfig {
   id: string
   providerId: string
   position: { x: number; y: number }
-  size: { width: number; height: number }
+  size: { width: number | string; height: number | string }
   isVisible: boolean
   isHidden?: boolean // 新增：临时隐藏状态，用于最大化时隐藏其他卡片但不销毁WebView
   isMinimized: boolean

@@ -23,7 +23,9 @@ export function getLoginCheckScript(providerId: string): string {
     `,
     grok: `
       // 检查grok的登录状态
-      !document.querySelector('[href="/sign-in"]')
+      // 如果 [data-slot="button"] 元素中存在 textContent 为"登录"的按钮，则认为未登录
+      !Array.from(document.querySelectorAll('[data-slot="button"]'))
+        .some(el => el.textContent && el.textContent.trim() === '登录')
     `,
     deepseek: `
       // 检查DeepSeek的登录状态
@@ -42,8 +44,7 @@ export function getLoginCheckScript(providerId: string): string {
         .some(btn => btn.textContent.trim() === '立即登录')
     `,
     copilot: `
-      // 检查Copilot的登录状态
-      !(document.querySelector('[alt="Profile image"]'))
+      !!document.querySelector('[data-testid="sign-in-exp-landing-header-button"]')
     `,
     glm: '!document.querySelector(".login-btn")',
     yuanbao: `
@@ -56,10 +57,10 @@ export function getLoginCheckScript(providerId: string): string {
       (document.querySelector('[class="ant-space-item"]').innerText === '登录'))
     `,
     gemini: `
-      !!document.querySelector('.gb_be')
+      !document.querySelector('[data-test-id="sign-in-button"]')
     `,
     chatgpt: `
-      !!document.querySelector('[alt="Profile image"]')
+      !!document.querySelector('[data-testid="login-button"]')
     `,
     mimo: `
       !Array.from(document.querySelectorAll('[type="button"]'))
@@ -71,5 +72,5 @@ export function getLoginCheckScript(providerId: string): string {
     `
   }
 
-  return resolveScript(providerId, 'loginCheck', scripts[providerId] || 'false')
+  return resolveScript(providerId, 'loginCheck', scripts[providerId] || '(() => { try { return false; } catch (e) { return false; } })()')
 }

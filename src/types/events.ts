@@ -2,6 +2,8 @@
  * 事件类型定义
  */
 
+/* eslint-disable no-shadow */
+
 /**
  * 事件类型枚举
  */

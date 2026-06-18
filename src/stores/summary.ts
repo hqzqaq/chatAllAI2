@@ -45,7 +45,9 @@ export const useSummaryStore = defineStore('summary', () => {
   const isSummarizing = computed(() => status.value === 'collecting' || status.value === 'summarizing')
 
   // 是否可以开始新的总结
-  const canStartSummary = computed(() => status.value === 'idle' || status.value === 'completed' || status.value === 'error')
+  const canStartSummary = computed(
+    () => status.value === 'idle' || status.value === 'completed' || status.value === 'error'
+  )
 
   // 是否有完成的总结
   const hasCompletedSummary = computed(() => status.value === 'completed' && currentSummary.value !== null)
@@ -206,10 +208,12 @@ export const useSummaryStore = defineStore('summary', () => {
    * @param id 总结ID
    * @returns 是否成功加载
    */
-  const loadSummaryFromHistory = (id: string): boolean =>
+  const loadSummaryFromHistory = (id: string): boolean => {
     // 这里可以实现从本地存储加载完整总结的逻辑
     // 目前仅返回false，表示需要从服务重新获取
-    false
+    console.log(`尝试从历史记录加载总结: ${id}`)
+    return false
+  }
 
   /**
    * 删除历史记录项

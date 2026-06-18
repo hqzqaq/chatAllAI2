@@ -10,6 +10,7 @@ import type { AIProvider } from '../types'
 import type { SummaryResult, AIResponse, SummaryOptions } from '../types/summary'
 import { getSendMessageScript } from '../utils/GetLLMLastMessage'
 import { generateSummaryPrompt } from '../utils/SummaryPrompts'
+import { parseProviderIdFromElementId } from '../utils/webviewHelper'
 import { useSummaryStore } from '../stores/summary'
 import { ElMessage } from 'element-plus'
 
@@ -45,14 +46,16 @@ export class SummaryService {
   async collectResponses(providers: AIProvider[]): Promise<CollectResult> {
     const summaryStore = useSummaryStore()
     const responses: AIResponse[] = []
-    let successCount = 0
 
     console.log(`开始收集 ${providers.length} 个AI的回答`)
 
-    // 并发收集所有AI的回答
-    const collectPromises = providers.map(async(provider, index) => {
+    // 串行收集所有AI的回答，避免并发执行脚本导致竞态条件
+    // eslint-disable-next-line no-await-in-loop
+    for (let i = 0; i < providers.length; i += 1) {
+      const provider = providers[i]
       try {
         console.log(`正在收集 ${provider.name} 的回答...`)
+        // eslint-disable-next-line no-await-in-loop
         const content = await this.fetchResponseFromProvider(provider)
 
         const response: AIResponse = {
@@ -64,13 +67,11 @@ export class SummaryService {
         }
 
         responses.push(response)
-        successCount++
 
         // 更新进度
-        summaryStore.setCollectingStatus(successCount, providers.length, response)
+        summaryStore.setCollectingStatus(responses.length, providers.length, response)
 
         console.log(`成功收集 ${provider.name} 的回答`)
-        return response
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '获取失败'
         console.error(`收集 ${provider.name} 的回答失败:`, errorMessage)
@@ -87,39 +88,27 @@ export class SummaryService {
         responses.push(response)
 
         // 更新进度
-        summaryStore.setCollectingStatus(successCount, providers.length, response)
-
-        return response
+        summaryStore.setCollectingStatus(responses.length, providers.length, response)
       }
-    })
+    }
 
-    await Promise.all(collectPromises)
-
-    // 按原始顺序排序
-    const sortedResponses = providers.map((provider) => responses.find((r) => r.providerId === provider.id) || {
-      providerId: provider.id,
-      providerName: provider.name,
-      content: '',
-      timestamp: new Date(),
-      success: false,
-      error: '未找到响应'
-    })
-
-    const successResponses = sortedResponses.filter((r) => r.success && typeof r.content === 'string' && r.content.trim())
+    const successResponses = responses.filter(
+      (r) => r.success && typeof r.content === 'string' && r.content.trim()
+    )
 
     console.log(`收集完成: ${successResponses.length}/${providers.length} 个AI回答成功`)
 
     if (successResponses.length === 0) {
       return {
         success: false,
-        responses: sortedResponses,
+        responses,
         error: '未能获取任何AI的回答，请检查AI是否已完成回答'
       }
     }
 
     return {
       success: true,
-      responses: sortedResponses
+      responses
     }
   }
 
@@ -144,12 +133,14 @@ export class SummaryService {
     let lastError: Error | null = null
     const maxRetries = 3
 
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const tryFetch = async(attempt: number): Promise<string> => {
       try {
         // 执行脚本获取回答
         const result = await Promise.race([
-          window.electronAPI.executeScriptInWebView(provider.webviewId, script),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('获取回答超时')), 10000))
+          window.electronAPI.executeWebViewScript({ providerId: provider.id, script }),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('获取回答超时')), 10000)
+          })
         ])
 
         if (typeof result === 'string') {
@@ -163,16 +154,21 @@ export class SummaryService {
         throw new Error('获取到的回答为空')
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
-        console.warn(`获取 ${provider.name} 回答失败 (尝试 ${attempt + 1}/${maxRetries}):`, lastError.message)
+        console.warn(
+          `获取 ${provider.name} 回答失败 (尝试 ${attempt + 1}/${maxRetries}):`,
+          lastError.message
+        )
 
         if (attempt < maxRetries - 1) {
           // 等待后重试
           await this.delay(1000 * (attempt + 1))
+          return tryFetch(attempt + 1)
         }
+        throw lastError
       }
     }
 
-    throw lastError || new Error(`获取 ${provider.name} 回答失败`)
+    return tryFetch(0)
   }
 
   /**
@@ -181,16 +177,29 @@ export class SummaryService {
    * @param timeout 超时时间（毫秒）
    * @returns 是否准备好
    */
-  private async waitForWebViewReady(webviewId: string, timeout: number = 10000): Promise<boolean> {
+  private async waitForWebViewReady(
+    webviewId: string,
+    timeout: number = 10000
+  ): Promise<boolean> {
     console.log(`等待WebView ${webviewId} 准备好...`)
     const startTime = Date.now()
     const checkInterval = 1000 // 每1秒检查一次
+    const maxAttempts = Math.ceil(timeout / checkInterval)
 
-    while (Date.now() - startTime < timeout) {
+    const checkReady = async(attempt: number): Promise<boolean> => {
+      if (attempt >= maxAttempts) {
+        console.error(`等待WebView ${webviewId} 超时`)
+        return false
+      }
+
       try {
         // 尝试执行一个简单的脚本检查WebView是否可用
         if (window.electronAPI) {
-          const result = await window.electronAPI.executeScriptInWebView(webviewId, '(() => { return document.readyState })()')
+          const providerIdForCheck = parseProviderIdFromElementId(webviewId)
+          const result = await window.electronAPI.executeWebViewScript({
+            providerId: providerIdForCheck,
+            script: '(() => { return document.readyState })()'
+          })
           console.log(`WebView ${webviewId} 状态: ${result}`)
           if (result) {
             console.log(`WebView ${webviewId} 已准备好`)
@@ -204,10 +213,10 @@ export class SummaryService {
 
       // 等待一段时间后再次检查
       await this.delay(checkInterval)
+      return checkReady(attempt + 1)
     }
 
-    console.error(`等待WebView ${webviewId} 超时`)
-    return false
+    return checkReady(0)
   }
 
   /**
@@ -217,7 +226,11 @@ export class SummaryService {
    * @param summaryWebviewId 总结模型的WebView ID（可选，用于独立侧边栏）
    * @returns 发送结果
    */
-  async sendSummaryRequest(summaryProvider: AIProvider, prompt: string, summaryWebviewId?: string): Promise<SendMessageResult> {
+  async sendSummaryRequest(
+    summaryProvider: AIProvider,
+    prompt: string,
+    summaryWebviewId?: string
+  ): Promise<SendMessageResult> {
     console.log(`正在发送总结请求到 ${summaryProvider.name}...`)
 
     if (!window.electronAPI) {
@@ -381,7 +394,9 @@ export class SummaryService {
    * @returns Promise
    */
   private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms))
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms)
+    })
   }
 }
 

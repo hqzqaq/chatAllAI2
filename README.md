@@ -644,7 +644,35 @@ MIT License
 
 ## 版本更新记录
 
+### v1.2.0
+- **功能新增**：实现自定义 AI 提供商管理功能
+  - 新增 `AddProviderDialog` 组件，支持在应用内添加/编辑自定义 AI 模型
+  - 在统一输入组件中新增"添加模型"入口，支持快速接入未内置的 AI 网站
+  - 在设置页新增"提供商管理"模块，提供列表展示、编辑、删除自定义模型
+  - 自定义提供商信息（名称、URL、图标）持久化至 `localStorage`，重启应用后自动恢复
+  - 自定义模型支持上传 PNG / JPG / ICO / SVG 格式图标
+  - chat store 新增 `addCustomProvider` / `updateCustomProvider` / `removeCustomProvider` 等方法，统一内置与自定义提供商的管理入口
+- **优化调整**：优化登录检查脚本与 WebView 日志
+  - 调整 `LoginCheckScripts` 中部分逻辑，提升登录状态检测稳定性
+  - 优化 `useWebViewEvents` 事件回调日志，便于排查 WebView 异常
+- **bug修复**：修复多 AI 会话相关问题
+  - 更新豆包页面消息选择器，适配新 DOM 结构，恢复豆包消息获取功能
+  - 调整 WebView 安全策略（`websecurity`、`disablewebsecurity` 等），提升多站点兼容性
+  - 重构 Electron Cookie 处理逻辑，放宽跨域限制，修复 Google 登录流程
+  - 将 AI 回答收集改为串行执行，避免并发执行脚本导致的竞态条件
+  - 简化 `SummaryService` 结果处理流程，减少无效重排与冗余逻辑
+  - 同步更新 `GetLLMLastMessage` 中豆包选择器
+
 ### v1.1.9
+- **功能新增**：实现多平台文件上传功能
+  - 支持为每个 AI 提供商（目前支持豆包、deepseek、kimi、mimo、元宝）上传文件附件
+  - 添加文件上传脚本基础设施，支持各平台定制化上传逻辑
+  - 支持上传进度反馈和错误处理
+  - 添加文件附件在聊天界面的展示功能
+- **功能增强**：优化 AI 卡片状态管理与布局
+  - 重构 AI 卡片组件，优化状态管理逻辑
+  - 为路由视图添加 `keep-alive` 缓存组件，提升切换性能
+  - 优化 Prompt 编辑器功能
 - **架构重构**：系统性优化项目代码结构
   - 抽取 `src/config/providers.ts` 配置数据层，消除 chat store 中 ~200 行重复对象定义
   - 创建 `createDefaultProvider()` 工厂函数，新增提供商只需填写 4 个可变字段
@@ -797,4 +825,4 @@ MIT License
 
 ---
 
-*本文基于ChatAllAI v1.1.9版本进行分析，技术细节可能随版本更新而变化。*
+*本文基于ChatAllAI v1.2.0版本进行分析，技术细节可能随版本更新而变化。*

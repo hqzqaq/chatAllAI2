@@ -12,32 +12,7 @@
  * @param providerId AI提供商ID
  * @returns 对应的JavaScript脚本字符串
  */
-import { useScriptConfigStore } from '../stores/scriptConfig'
-import type { ScriptType } from '../types'
-
-function resolveScript(
-  providerId: string,
-  scriptType: ScriptType,
-  defaultScript: string,
-  params?: Record<string, string>
-): string {
-  try {
-    const store = useScriptConfigStore()
-    const custom = store.getCustomScript(providerId, scriptType)
-    if (custom) {
-      let result = custom
-      if (params) {
-        Object.keys(params).forEach((key) => {
-          result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), params[key])
-        })
-      }
-      return result
-    }
-  } catch {
-    // Store not available, use default
-  }
-  return defaultScript
-}
+import { resolveScript } from './ScriptResolver'
 
 export function getStatusMonitorScript(providerId: string): string {
   const scripts: Record<string, (id: string) => string> = {
@@ -50,7 +25,6 @@ export function getStatusMonitorScript(providerId: string): string {
     glm: getGLMStatusMonitorScript,
     yuanbao: getYuanBaoStatusMonitorScript,
     miromind: getMiromindStatusMonitorScript,
-    gemini: getGeminiStatusMonitorScript,
     chatgpt: getChatGPTStatusMonitorScript,
     mimo: getMimoStatusMonitorScript,
     minimax: getMinimaxStatusMonitorScript
@@ -491,9 +465,9 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
 }
 
 /**
- * Gemini状态监控脚本
+ * 通用状态监控脚本
  */
-function getGeminiStatusMonitorScript(providerId: string): string {
+function getProviderStatusMonitorScript(providerId: string): string {
   return getGenericStatusMonitorScript(providerId, '[data-test-id="chat-history-container"]')
 }
 

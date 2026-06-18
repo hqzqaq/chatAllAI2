@@ -335,9 +335,121 @@ function getDeepSeekUploadScript(file: UploadFileData): string {
 
 /**
  * Kimi 文件上传脚本
+ * Kimi 使用 contenteditable div（[role="textbox"]）作为输入框
+ * 策略：扫描输入区附近 file input → 查找上传按钮点击 → 注入
  */
 function getKimiUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
+  return `(function() {
+  console.log('[FileUpload:Kimi] ========== START ==========');
+  console.log('[FileUpload:Kimi] File: name=${file.name} type=${file.mimeType}');
+  console.log('[FileUpload:Kimi] URL: ' + window.location.href);
+
+  ${getBase64ToFileCode(file)}
+  ${getInjectToInputCode()}
+
+  var fileObj = base64ToFile();
+  var injectDone = false;
+
+  function tryInject(inputEl) {
+    if (injectDone) return true;
+    if (!inputEl || inputEl.tagName !== 'INPUT' || inputEl.type !== 'file') return false;
+
+    injectToInput(fileObj, inputEl);
+    setTimeout(function() {
+      if (inputEl.files.length > 0) {
+        injectDone = true;
+        console.log('[FileUpload:Kimi] SUCCESS: file injected=' + inputEl.files[0].name);
+      } else {
+        console.warn('[FileUpload:Kimi] FAILED: files.length=0');
+      }
+    }, 300);
+    return true;
+  }
+
+  // Step 1: 以内容输入框为锚点，在附近容器内查找 file input
+  var chatInput = document.querySelector('[role="textbox"][contenteditable="true"]');
+  console.log('[FileUpload:Kimi] Step1: chatInput found=' + !!chatInput);
+
+  if (chatInput) {
+    var container = chatInput.closest('form, [class*="chat"], [class*="input"], [class*="footer"]')
+      || chatInput.parentElement;
+    console.log('[FileUpload:Kimi] container: tag=' + container.tagName + ' class=' + (container.className || '').substring(0, 60));
+
+    var nearbyInputs = container.querySelectorAll('input[type="file"]');
+    console.log('[FileUpload:Kimi] nearby file inputs=' + nearbyInputs.length);
+    if (nearbyInputs.length > 0 && tryInject(nearbyInputs[0])) {
+      return { success: true, message: 'Injected via nearby input' };
+    }
+  }
+
+  // Step 2: 扫描全局 file input
+  var allInputs = document.querySelectorAll('input[type="file"]');
+  console.log('[FileUpload:Kimi] Step2: all file inputs=' + allInputs.length);
+  for (var i = 0; i < allInputs.length; i++) {
+    var s = getComputedStyle(allInputs[i]);
+    console.log('[FileUpload:Kimi]   Input[' + i + ']: display=' + s.display
+      + ' visibility=' + s.visibility + ' accept=' + allInputs[i].getAttribute('accept'));
+  }
+  if (allInputs.length > 0 && tryInject(allInputs[0])) {
+    return { success: true, message: 'Injected via global input' };
+  }
+
+  // Step 3: 查找上传按钮并点击
+  var btnSelectors = [
+    'button[class*="upload"]', 'button[class*="attach"]', 'button[class*="file"]',
+    'button[aria-label*="upload" i]', 'button[aria-label*="attach" i]',
+    '[class*="upload-btn"]', '[class*="attach-btn"]', '[class*="Upload"]',
+    'label[for*="upload"]', 'label[for*="file"]'
+  ];
+  for (var s = 0; s < btnSelectors.length; s++) {
+    var els = document.querySelectorAll(btnSelectors[s]);
+    if (els.length > 0) {
+      for (var e = 0; e < els.length; e++) {
+        console.log('[FileUpload:Kimi] Found btn: ' + btnSelectors[s]
+          + ' text="' + (els[e].textContent || '').substring(0, 40) + '"');
+      }
+    }
+  }
+
+  var uploadBtn = document.querySelector(
+    'button[class*="upload"], button[class*="attach"], label[for*="upload"], [class*="upload-btn"]'
+  );
+  if (uploadBtn && !injectDone) {
+    console.log('[FileUpload:Kimi] Step3: clicking upload button');
+    uploadBtn.click();
+    setTimeout(function() {
+      var newInputs = document.querySelectorAll('input[type="file"]');
+      for (var k = 0; k < newInputs.length; k++) {
+        if (newInputs[k].files.length === 0) {
+          injectToInput(fileObj, newInputs[k]);
+          injectDone = true;
+          console.log('[FileUpload:Kimi] Step3: injected after button click');
+          break;
+        }
+      }
+    }, 1000);
+    return { success: true, message: 'Clicked upload button, waiting for input' };
+  }
+
+  // Step 4: 兜底 - drop 事件
+  if (!injectDone) {
+    var target = chatInput || document.querySelector('[contenteditable="true"]') || document.body;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(fileObj.file);
+      var evt = new DragEvent('drop', { bubbles: true, cancelable: true });
+      Object.defineProperty(evt, 'dataTransfer', { value: dt });
+      target.dispatchEvent(evt);
+      console.log('[FileUpload:Kimi] Step4: drop on', target.tagName);
+      return { success: true, message: 'Drop event dispatched' };
+    } catch(e) {
+      console.warn('[FileUpload:Kimi] Step4: drop failed', e.message);
+    }
+  }
+
+  console.warn('[FileUpload:Kimi] ========== FAILED ==========');
+  return { success: false, message: 'No upload mechanism found on Kimi' };
+})()`
 }
 
 /**
@@ -358,7 +470,8 @@ function getDouBaoUploadScript(file: UploadFileData): string {
 
   function injectFileToInput(inputEl) {
     if (injectDone) return true;
-    console.log('[FileUpload:DouBao] injectFileToInput: tag=' + inputEl.tagName + ' class=' + (inputEl.className || '').substring(0, 60));
+    var className = (inputEl.className || '').substring(0, 60);
+    console.log('[FileUpload:DouBao] injectFileToInput: tag=' + inputEl.tagName + ' class=' + className);
     try {
       var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'files');
       if (!desc || !desc.set) return false;
@@ -622,7 +735,8 @@ function getDouBaoUploadScript(file: UploadFileData): string {
         var dropEvt = new DragEvent('drop', { bubbles: true, cancelable: true });
         Object.defineProperty(dropEvt, 'dataTransfer', { value: dt });
         zones[z].dispatchEvent(dropEvt);
-        console.log('[FileUpload:DouBao] Drop on ' + zones[z].tagName + (zones[z].className ? '.' + zones[z].className.substring(0, 40) : ''));
+        var zoneClass = zones[z].className ? '.' + zones[z].className.substring(0, 40) : '';
+        console.log('[FileUpload:DouBao] Drop on ' + zones[z].tagName + zoneClass);
       } catch(e2) {}
     }
   }
@@ -653,7 +767,72 @@ function getGrokUploadScript(file: UploadFileData): string {
  * 元宝 文件上传脚本
  */
 function getYuanBaoUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
+  return `(function() {
+  console.log('[FileUpload:YuanBao] ========== START ==========');
+  console.log('[FileUpload:YuanBao] File: name=${file.name} type=${file.mimeType}');
+  console.log('[FileUpload:YuanBao] URL: ' + window.location.href);
+
+  ${getBase64ToFileCode(file)}
+
+  var fileObj = base64ToFile();
+
+  /**
+   * 在指定元素上触发拖拽事件
+   * @param {Element} target - 目标元素
+   * @param {File} file - 要上传的文件
+   */
+  function dispatchDragDrop(target, file) {
+    var dt = new DataTransfer();
+    dt.items.add(file);
+
+    // 触发 dragenter 和 dragover 事件
+    ['dragenter', 'dragover'].forEach(function(evtName) {
+      var evt = new DragEvent(evtName, {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dt
+      });
+      target.dispatchEvent(evt);
+    });
+
+    // 触发 drop 事件
+    var dropEvt = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: dt
+    });
+    target.dispatchEvent(dropEvt);
+    console.log('[FileUpload:YuanBao] drag/drop events dispatched on', target.className?.substring(0, 50) || target.tagName);
+  }
+
+  // 策略: 在 ql-editor 上模拟拖拽上传
+  // 经测试，元宝支持通过拖拽事件直接上传文件，无需打开系统文件选择器
+  var editor = document.querySelector('.ql-editor');
+  console.log('[FileUpload:YuanBao] ql-editor found=' + !!editor);
+
+  if (editor) {
+    try {
+      dispatchDragDrop(editor, fileObj.file);
+      console.log('[FileUpload:YuanBao] drag/drop upload completed');
+      return { success: true, message: 'Drag/drop upload dispatched on ql-editor' };
+    } catch(e) {
+      console.warn('[FileUpload:YuanBao] drag/drop failed:', e.message);
+    }
+  }
+
+  // 兜底: 在 body 上触发 drop 事件
+  console.log('[FileUpload:YuanBao] trying drop on body');
+  try {
+    dispatchDragDrop(document.body, fileObj.file);
+    console.log('[FileUpload:YuanBao] drop event dispatched on body');
+    return { success: true, message: 'Drop event dispatched on body' };
+  } catch(e) {
+    console.warn('[FileUpload:YuanBao] body drop failed:', e.message);
+  }
+
+  console.warn('[FileUpload:YuanBao] ========== FAILED ==========');
+  return { success: false, message: 'Drag/drop upload failed' };
+})()`
 }
 
 /**
@@ -665,9 +844,138 @@ function getCopilotUploadScript(file: UploadFileData): string {
 
 /**
  * GLM 文件上传脚本
+ * GLM 基于 React，使用 textarea 作为聊天输入，文件上传按钮在输入区附近
+ * 策略：扫描 textarea 附近 DOM → 查找 file input → 查找上传按钮点击 → 注入
  */
 function getGLMUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
+  return `(function() {
+  console.log('[FileUpload:GLM] ========== START ==========');
+  console.log('[FileUpload:GLM] File: name=${file.name} type=${file.mimeType}');
+  console.log('[FileUpload:GLM] URL: ' + window.location.href);
+
+  ${getBase64ToFileCode(file)}
+  ${getInjectToInputCode()}
+
+  var fileObj = base64ToFile();
+
+  // Step 1: 扫描 textarea 附近的 DOM
+  var textarea = document.querySelector('textarea');
+  console.log('[FileUpload:GLM] Step1: textarea found=' + !!textarea);
+
+  var inputArea = textarea ? textarea.closest('form')
+    || textarea.closest('[class*="chat"]')
+    || textarea.closest('[class*="input"]')
+    || textarea.parentElement.parentElement
+    : document.body;
+  console.log('[FileUpload:GLM] inputArea tag=' + inputArea.tagName + ' class=' + inputArea.className);
+
+  // Step 2: 在输入区域内查找 file input
+  var fileInputs = inputArea.querySelectorAll('input[type="file"]');
+  console.log('[FileUpload:GLM] Step2: file inputs in inputArea=' + fileInputs.length);
+
+  // 扩大到全局
+  var allFileInputs = document.querySelectorAll('input[type="file"]');
+  console.log('[FileUpload:GLM] Step2: all file inputs on page=' + allFileInputs.length);
+
+  for (var i = 0; i < allFileInputs.length; i++) {
+    var inp = allFileInputs[i];
+    var style = getComputedStyle(inp);
+    console.log('[FileUpload:GLM]   Input[' + i + ']: display=' + style.display
+      + ' visibility=' + style.visibility
+      + ' accept=' + inp.getAttribute('accept')
+      + ' parent=' + (inp.parentElement ? inp.parentElement.tagName + '.' + inp.parentElement.className : 'none'));
+  }
+
+  // Step 3: 查找上传按钮
+  var btnSelectors = [
+    'button[class*="upload"]',
+    'button[class*="attach"]',
+    'button[class*="file"]',
+    'label[for*="upload"]',
+    'label[for*="file"]',
+    'label[for*="attach"]',
+    '[class*="upload-btn"]',
+    '[class*="attach-btn"]',
+    '[class*="Upload"]',
+    '[class*="glm-"]'  // GLM 可能用 glm- 前缀
+  ];
+
+  for (var s = 0; s < btnSelectors.length; s++) {
+    var els = document.querySelectorAll(btnSelectors[s]);
+    if (els.length > 0) {
+      for (var e = 0; e < els.length; e++) {
+        console.log('[FileUpload:GLM] Found: ' + btnSelectors[s]
+          + ' text="' + (els[e].textContent || '').substring(0, 50) + '"'
+          + ' tag=' + els[e].tagName);
+      }
+    }
+  }
+
+  // Step 4: 尝试注入到 file input
+  if (allFileInputs.length > 0) {
+    var targetInp = null;
+    for (var j = 0; j < allFileInputs.length; j++) {
+      var s2 = getComputedStyle(allFileInputs[j]);
+      if (s2.display !== 'none' && s2.visibility !== 'hidden' && s2.position !== 'fixed') {
+        var rect = allFileInputs[j].getBoundingClientRect();
+        if (rect.width > 0 || rect.height > 0) {
+          targetInp = allFileInputs[j];
+          console.log('[FileUpload:GLM] Step4: Using visible input[' + j + ']');
+          break;
+        }
+      }
+    }
+    if (!targetInp) {
+      targetInp = allFileInputs[0];
+      console.log('[FileUpload:GLM] Step4: No visible input, using input[0]');
+    }
+
+    injectToInput(fileObj, targetInp);
+    console.log('[FileUpload:GLM] Step4: Injected into input');
+
+    // 验证注入结果
+    setTimeout(function() {
+      console.log('[FileUpload:GLM] Post-inject check: files.length=' + targetInp.files.length);
+      if (targetInp.files.length > 0) {
+        console.log('[FileUpload:GLM] SUCCESS: file in input=' + targetInp.files[0].name);
+      } else {
+        console.warn('[FileUpload:GLM] FAILED: files.length=0 after injection');
+      }
+    }, 500);
+
+    return { success: true, message: 'Injected into ' + (targetInp.getAttribute('accept') || 'file-input') };
+  }
+
+  // Step 5: 尝试点击上传按钮后注入
+  var uploadBtn = document.querySelector(
+    'button[class*="upload"], button[class*="attach"], label[for*="upload"], label[for*="file"]'
+  );
+  if (uploadBtn) {
+    console.log('[FileUpload:GLM] Step5: Clicking upload button: ' + uploadBtn.tagName
+      + ' text="' + (uploadBtn.textContent || '').substring(0, 30) + '"');
+    uploadBtn.click();
+
+    // 等待新 file input 出现
+    setTimeout(function() {
+      var newInputs = document.querySelectorAll('input[type="file"]');
+      console.log('[FileUpload:GLM] Step5: After click, file inputs=' + newInputs.length);
+      for (var k = 0; k < newInputs.length; k++) {
+        console.log('[FileUpload:GLM] Step5: NewInput[' + k + '] files.length=' + newInputs[k].files.length);
+        if (newInputs[k].files.length === 0) {
+          injectToInput(fileObj, newInputs[k]);
+          console.log('[FileUpload:GLM] Step5: Injected into newInput[' + k + ']');
+          break;
+        }
+      }
+    }, 800);
+
+    return { success: true, message: 'Clicked upload button and injected' };
+  }
+
+  console.warn('[FileUpload:GLM] ========== FAILED ==========');
+  console.warn('[FileUpload:GLM] No file input or upload button found');
+  return { success: false, message: 'No upload mechanism found on GLM' };
+})()`
 }
 
 /**
@@ -679,9 +987,155 @@ function getMiromindUploadScript(file: UploadFileData): string {
 
 /**
  * Mimo 文件上传脚本
+ * Mimo 基于 textarea（与 DeepSeek 类似），文件上传按钮在输入区附近
+ * 策略：扫描 textarea 附近 file input → 查找上传按钮点击 → 注入
  */
 function getMimoUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
+  return `(function() {
+  console.log('[FileUpload:Mimo] ========== START ==========');
+  console.log('[FileUpload:Mimo] File: name=${file.name} type=${file.mimeType}');
+  console.log('[FileUpload:Mimo] URL: ' + window.location.href);
+
+  ${getBase64ToFileCode(file)}
+  ${getInjectToInputCode()}
+
+  var fileObj = base64ToFile();
+  var injectDone = false;
+
+  function isInjected() {
+    return injectDone;
+  }
+
+  function tryInject(inputEl) {
+    if (injectDone) return true;
+    if (!inputEl || inputEl.tagName !== 'INPUT' || inputEl.type !== 'file') return false;
+
+    var style = getComputedStyle(inputEl);
+    console.log('[FileUpload:Mimo] tryInject: class=' + (inputEl.className || '').substring(0, 50)
+      + ' display=' + style.display + ' visibility=' + style.visibility);
+
+    injectToInput(fileObj, inputEl);
+
+    setTimeout(function() {
+      console.log('[FileUpload:Mimo] Post-inject: files.length=' + inputEl.files.length);
+      if (inputEl.files.length > 0) {
+        injectDone = true;
+        console.log('[FileUpload:Mimo] SUCCESS: file injected=' + inputEl.files[0].name);
+      } else {
+        console.warn('[FileUpload:Mimo] FAILED: files.length=0');
+      }
+    }, 300);
+
+    return true;
+  }
+
+  // Step 1: 扫描 textarea 附近的 DOM 找 file input
+  var textarea = document.querySelector('textarea');
+  console.log('[FileUpload:Mimo] Step1: textarea found=' + !!textarea);
+
+  if (textarea) {
+    var inputArea = textarea.closest('form')
+      || textarea.closest('[class*="chat"]')
+      || textarea.closest('[class*="input"]')
+      || textarea.closest('[class*="footer"]')
+      || textarea.parentElement;
+    console.log('[FileUpload:Mimo] inputArea: tag=' + (inputArea ? inputArea.tagName : 'null')
+      + ' class=' + (inputArea ? (inputArea.className || '').substring(0, 60) : 'null'));
+
+    var nearbyInputs = inputArea.querySelectorAll('input[type="file"]');
+    console.log('[FileUpload:Mimo] nearby file inputs=' + nearbyInputs.length);
+    if (nearbyInputs.length > 0) {
+      if (tryInject(nearbyInputs[0])) {
+        console.log('[FileUpload:Mimo] Step1: injected via nearby input');
+        return { success: true, message: 'Injected via nearby file input' };
+      }
+    }
+  }
+
+  // Step 2: 查找页面上所有 file input
+  var allFileInputs = document.querySelectorAll('input[type="file"]');
+  console.log('[FileUpload:Mimo] Step2: all file inputs=' + allFileInputs.length);
+  for (var i = 0; i < allFileInputs.length; i++) {
+    var inp = allFileInputs[i];
+    var s = getComputedStyle(inp);
+    console.log('[FileUpload:Mimo]   Input[' + i + ']: display=' + s.display
+      + ' visibility=' + s.visibility + ' accept=' + inp.getAttribute('accept')
+      + ' parent=' + (inp.parentElement ? inp.parentElement.tagName : 'none'));
+  }
+
+  if (allFileInputs.length > 0 && tryInject(allFileInputs[0])) {
+    console.log('[FileUpload:Mimo] Step2: injected via global input');
+    return { success: true, message: 'Injected via global file input' };
+  }
+
+  // Step 3: 查找上传/附件按钮并点击，等待 file input 出现
+  var btnSelectors = [
+    'button[class*="upload"]',
+    'button[class*="attach"]',
+    'button[class*="file"]',
+    'button[aria-label*="upload" i]',
+    'button[aria-label*="attach" i]',
+    'button[title*="upload" i]',
+    'label[for*="upload"]',
+    'label[for*="file"]',
+    '[class*="upload-btn"]',
+    '[class*="attach-btn"]',
+    '[class*="Upload"]'
+  ];
+
+  for (var s = 0; s < btnSelectors.length; s++) {
+    var els = document.querySelectorAll(btnSelectors[s]);
+    if (els.length > 0) {
+      for (var e = 0; e < els.length; e++) {
+        console.log('[FileUpload:Mimo] Found btn: ' + btnSelectors[s]
+          + ' tag=' + els[e].tagName + ' text="' + (els[e].textContent || '').substring(0, 40) + '"');
+      }
+    }
+  }
+
+  var uploadBtn = document.querySelector(
+    'button[class*="upload"], button[class*="attach"], label[for*="upload"], label[for*="file"]'
+  );
+  if (uploadBtn && !isInjected()) {
+    console.log('[FileUpload:Mimo] Step3: Clicking upload button: ' + uploadBtn.tagName);
+    uploadBtn.click();
+
+    setTimeout(function() {
+      var newInputs = document.querySelectorAll('input[type="file"]');
+      console.log('[FileUpload:Mimo] Step3: after click, file inputs=' + newInputs.length);
+      for (var k = 0; k < newInputs.length; k++) {
+        if (newInputs[k].files.length === 0) {
+          injectToInput(fileObj, newInputs[k]);
+          injectDone = true;
+          console.log('[FileUpload:Mimo] Step3: injected after button click');
+          break;
+        }
+      }
+    }, 1000);
+
+    return { success: true, message: 'Clicked upload button, waiting for input' };
+  }
+
+  // Step 4: 兜底 - 尝试在 textarea 上触发 drop 事件
+  if (!isInjected()) {
+    console.log('[FileUpload:Mimo] Step4: trying drop on textarea');
+    var dropTarget = textarea || document.querySelector('[contenteditable="true"]') || document.body;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(fileObj.file);
+      var dropEvt = new DragEvent('drop', { bubbles: true, cancelable: true });
+      Object.defineProperty(dropEvt, 'dataTransfer', { value: dt });
+      dropTarget.dispatchEvent(dropEvt);
+      console.log('[FileUpload:Mimo] Step4: drop event dispatched on', dropTarget.tagName);
+      return { success: true, message: 'Drop event dispatched' };
+    } catch(e) {
+      console.warn('[FileUpload:Mimo] Step4: drop failed', e.message);
+    }
+  }
+
+  console.warn('[FileUpload:Mimo] ========== FAILED ==========');
+  return { success: false, message: 'No upload mechanism found on Mimo' };
+})()`
 }
 
 /**
@@ -693,6 +1147,7 @@ function getMinimaxUploadScript(file: UploadFileData): string {
 
 /**
  * 通用文件上传脚本（用于未知或不支持的网站）
+ * 优先使用拖拽上传策略，因为大多数网站都支持拖拽上传
  * 包含详细的诊断日志，帮助排查问题
  */
 function getGenericUploadScript(file: UploadFileData): string {
@@ -707,15 +1162,77 @@ function getGenericUploadScript(file: UploadFileData): string {
 
   var fileObj = base64ToFile();
 
-  // Step 1: 扫描页面上所有 file input
-  var allInputs = document.querySelectorAll('input[type="file"]');
-  console.log('[FileUpload:Generic] Step1: Found ' + allInputs.length + ' input[type=file] elements');
+  /**
+   * 在指定元素上触发拖拽事件
+   * @param {Element} target - 目标元素
+   * @param {File} file - 要上传的文件
+   */
+  function dispatchDragDrop(target, file) {
+    var dt = new DataTransfer();
+    dt.items.add(file);
 
-  for (var i = 0; i < allInputs.length; i++) {
-    var inp = allInputs[i];
+    ['dragenter', 'dragover'].forEach(function(evtName) {
+      target.dispatchEvent(new DragEvent(evtName, {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dt
+      }));
+    });
+
+    target.dispatchEvent(new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: dt
+    }));
+  }
+
+  // Step 1: 优先尝试拖拽上传到输入区域
+  // 大多数网站（包括元宝、DeepSeek等）都支持拖拽上传
+  console.log('[FileUpload:Generic] Step1: Trying drag-and-drop upload');
+
+  var dropTargets = [
+    // 富文本编辑器
+    '.ql-editor',
+    '[contenteditable="true"]',
+    '[role="textbox"]',
+    // 文本输入区
+    'textarea',
+    // 聊天输入容器
+    '[class*="chat-input"]',
+    '[class*="input-area"]',
+    '[class*="message-input"]',
+    // 表单
+    'form',
+    // 主内容区
+    'main',
+    // body 兜底
+    'body'
+  ];
+
+  for (var i = 0; i < dropTargets.length; i++) {
+    var target = document.querySelector(dropTargets[i]);
+    if (target) {
+      console.log('[FileUpload:Generic] Step1: Dropping on ' + dropTargets[i]);
+      try {
+        dispatchDragDrop(target, fileObj.file);
+        console.log('[FileUpload:Generic] Step1: Drag-drop dispatched on ' + dropTargets[i]);
+        return { success: true, message: 'Drag-drop dispatched on ' + dropTargets[i] };
+      } catch(e) {
+        console.warn('[FileUpload:Generic] Step1: Drag-drop failed on ' + dropTargets[i] + ':', e.message);
+      }
+    }
+  }
+
+  // Step 2: 扫描页面上所有 file input
+  console.log('[FileUpload:Generic] Step2: Trying file input injection');
+  var allInputs = document.querySelectorAll('input[type="file"]');
+  console.log('[FileUpload:Generic] Step2: Found ' + allInputs.length + ' input[type=file] elements');
+
+  for (var j = 0; j < allInputs.length; j++) {
+    var inp = allInputs[j];
     var style = getComputedStyle(inp);
     var rect = inp.getBoundingClientRect();
-    console.log('[FileUpload:Generic]   Input[' + i + ']:' +
+    console.log('[FileUpload:Generic]   Input[' + j + ']:' +
       ' display=' + style.display +
       ' visibility=' + style.visibility +
       ' position=' + style.position +
@@ -725,23 +1242,51 @@ function getGenericUploadScript(file: UploadFileData): string {
       ' multiple=' + inp.multiple);
   }
 
-  // Step 2: 扫描上传按钮
+  // Step 3: 尝试注入到 file input
+  if (allInputs.length > 0) {
+    var targetInput = null;
+    for (var k = 0; k < allInputs.length; k++) {
+      var s2 = getComputedStyle(allInputs[k]);
+      if (s2.display !== 'none' && s2.visibility !== 'hidden') {
+        targetInput = allInputs[k];
+        console.log('[FileUpload:Generic] Step3: Using visible input[' + k + ']');
+        break;
+      }
+    }
+    if (!targetInput) {
+      targetInput = allInputs[0];
+      console.log('[FileUpload:Generic] Step3: No visible input found, using input[0]');
+    }
+    injectToInput(fileObj, targetInput);
+    console.log('[FileUpload:Generic] Step3: Injected file successfully');
+
+    // 检查注入后状态
+    setTimeout(function() {
+      console.log('[FileUpload:Generic] Step3: Post-injection check');
+      console.log('[FileUpload:Generic]   input.files.length=' + targetInput.files.length);
+      console.log('[FileUpload:Generic]   input.files[0]=' + (targetInput.files[0] ? targetInput.files[0].name : 'null'));
+      if (targetInput.files.length > 0) {
+        return { success: true, message: 'File injected: ' + targetInput.files[0].name };
+      }
+      return { success: false, message: 'Injection seemed to fail: files.length=0' };
+    }, 500);
+
+    return 'pending';
+  }
+
+  // Step 4: 扫描上传按钮
+  console.log('[FileUpload:Generic] Step4: Scanning upload buttons');
   var uploadSelectors = [
     'button[aria-label*="upload" i]',
     'button[aria-label*="attach" i]',
     'button[aria-label*="Add files" i]',
     'button[title*="upload" i]',
     'button[title*="attach" i]',
-    'input[type="file"]',
     '[data-testid="file-upload-button"]',
     '[class*="upload-btn"]',
     '[class*="attach-btn"]',
     '[class*="Upload"]',
-    '[class*="upload"]',
-    'input[id*="upload"]',
-    'input[id*="file"]',
-    'label[for*="upload"]',
-    'label[for*="file"]'
+    '[class*="upload"]'
   ];
 
   var buttonsFound = [];
@@ -751,68 +1296,8 @@ function getGenericUploadScript(file: UploadFileData): string {
       buttonsFound.push({ selector: uploadSelectors[s], count: els.length });
     }
   }
-  console.log('[FileUpload:Generic] Step2: upload-related elements found:', JSON.stringify(buttonsFound));
+  console.log('[FileUpload:Generic] Step4: upload-related elements found:', JSON.stringify(buttonsFound));
 
-  // Step 3: 尝试注入到 file input
-  if (allInputs.length > 0) {
-    var target = null;
-    for (var j = 0; j < allInputs.length; j++) {
-      var s2 = getComputedStyle(allInputs[j]);
-      if (s2.display !== 'none' && s2.visibility !== 'hidden') {
-        target = allInputs[j];
-        console.log('[FileUpload:Generic] Step3: Using visible input[' + j + ']');
-        break;
-      }
-    }
-    if (!target) {
-      target = allInputs[0];
-      console.log('[FileUpload:Generic] Step3: No visible input found, using input[0]');
-    }
-    injectToInput(fileObj, target);
-    console.log('[FileUpload:Generic] Step3: Injected file successfully');
-
-    // Step 4: 检查注入后状态
-    setTimeout(function() {
-      console.log('[FileUpload:Generic] Step4: Post-injection check');
-      console.log('[FileUpload:Generic]   input.files.length=' + target.files.length);
-      console.log('[FileUpload:Generic]   input.files[0]=' + (target.files[0] ? target.files[0].name : 'null'));
-      if (target.files.length > 0) {
-        return { success: true, message: 'File injected: ' + target.files[0].name };
-      }
-      return { success: false, message: 'Injection seemed to fail: files.length=0' };
-    }, 500);
-
-    return 'pending';
-  }
-
-  // Step 5: 没有 file input，尝试 drop zone
-  console.log('[FileUpload:Generic] Step5: No file inputs, trying drop zone approach');
-  var dropZoneSelectors = [
-    '[data-testid="file-upload-area"]',
-    '[class*="upload-area"]',
-    '[class*="dropzone"]',
-    '[class*="drop-zone"]',
-    '[class*="drag-drop"]',
-    '[class*="file-drop"]'
-  ];
-
-  for (var d = 0; d < dropZoneSelectors.length; d++) {
-    var zone = document.querySelector(dropZoneSelectors[d]);
-    if (zone) {
-      console.log('[FileUpload:Generic] Found drop zone:', dropZoneSelectors[d]);
-      var dt = new DataTransfer();
-      dt.items.add(fileObj.file);
-      ['dragenter', 'dragover'].forEach(function(evt) {
-        zone.dispatchEvent(new DragEvent(evt, { bubbles: true, dataTransfer: dt }));
-      });
-      var dropEvent = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt });
-      zone.dispatchEvent(dropEvent);
-      console.log('[FileUpload:Generic] Dispatched drag-drop events on zone');
-      return { success: true, message: 'File dropped on zone' };
-    }
-  }
-
-  console.warn('[FileUpload:Generic] Step6: FAILED - No upload mechanism found');
   console.warn('[FileUpload:Generic] ========== FAILED ==========');
   return { success: false, message: 'No upload mechanism found' };
 })()`

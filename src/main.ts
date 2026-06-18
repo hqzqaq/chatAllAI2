@@ -10,9 +10,9 @@ const app = createApp(App)
 const pinia = createPinia()
 
 // 注册所有Element Plus图标
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+Object.entries(ElementPlusIconsVue).forEach(([key, component]) => {
   app.component(key, component)
-}
+})
 
 app.use(pinia)
 app.use(router)

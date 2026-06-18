@@ -384,7 +384,7 @@
 
 <script setup lang="ts">
 import {
-  ref, computed, onMounted, watch, nextTick
+  ref, computed, onMounted, onUnmounted, watch, nextTick
 } from 'vue'
 import {
   Search, Plus, Edit, Delete, Position, Share, Star, Rank
@@ -392,6 +392,7 @@ import {
 import {
   ElMessage, ElMessageBox, type FormInstance, type FormRules
 } from 'element-plus'
+import { useLayoutStore } from '../../stores'
 
 interface Prompt {
   id: string
@@ -555,10 +556,11 @@ const selectedPrompt = computed(() => {
 const extractVariables = (content: string): string[] => {
   const regex = /\{\{([^}]+)\}\}/g
   const variables: string[] = []
-  let match
+  let match = regex.exec(content)
 
-  while ((match = regex.exec(content)) !== null) {
+  while (match !== null) {
     variables.push(`{{${match[1]}}}`)
+    match = regex.exec(content)
   }
 
   return [...new Set(variables)]
@@ -688,7 +690,7 @@ const handleSave = async(): Promise<void> => {
   })
 }
 
-const handleDelete = async(prompt: Prompt): void => {
+const handleDelete = async(prompt: Prompt): Promise<void> => {
   try {
     await ElMessageBox.confirm(
       `确定要删除 prompt "${prompt.name}" 吗？`,
@@ -733,14 +735,23 @@ const handleApplyPrompt = (prompt: Prompt): void => {
   const now = new Date()
   const date = now.toISOString().split('T')[0]
   const datetime = now.toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
   }).replace(/\//g, '-')
   content = content.replace(/\{\{date\}\}/g, date)
   content = content.replace(/\{\{datetime\}\}/g, datetime)
 
-  prompt.useCount += 1
-  prompt.lastUsedAt = new Date().toISOString()
-  savePrompts()
+  const index = prompts.value.findIndex((p) => p.id === prompt.id)
+  if (index !== -1) {
+    prompts.value[index].useCount += 1
+    prompts.value[index].lastUsedAt = new Date().toISOString()
+    savePrompts()
+  }
 
   useHistory.value.unshift({
     timestamp: new Date().toISOString(),
@@ -864,8 +875,11 @@ const handleDeleteCategory = async(): Promise<void> => {
 }
 
 const toggleFavorite = (prompt: Prompt): void => {
-  prompt.isFavorite = !prompt.isFavorite
-  savePrompts()
+  const index = prompts.value.findIndex((p) => p.id === prompt.id)
+  if (index !== -1) {
+    prompts.value[index].isFavorite = !prompts.value[index].isFavorite
+    savePrompts()
+  }
 }
 
 const insertVariable = (variableName: string): void => {
@@ -883,7 +897,9 @@ const insertVariable = (variableName: string): void => {
 
   nextTick(() => {
     textarea.focus()
-    textarea.selectionStart = textarea.selectionEnd = start + variableName.length
+    const newPosition = start + variableName.length
+    textarea.selectionStart = newPosition
+    textarea.selectionEnd = newPosition
   })
 }
 
@@ -1045,15 +1061,17 @@ let draggedPrompt: Prompt | null = null
 
 const handleDragStart = (event: DragEvent, prompt: Prompt): void => {
   draggedPrompt = prompt
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
+  const { dataTransfer } = event
+  if (dataTransfer) {
+    dataTransfer.effectAllowed = 'move'
   }
 }
 
 const handleDragOver = (event: DragEvent): void => {
   event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+  const { dataTransfer } = event
+  if (dataTransfer) {
+    dataTransfer.dropEffect = 'move'
   }
 }
 
@@ -1068,9 +1086,10 @@ const handleDrop = (event: DragEvent, targetPrompt: Prompt): void => {
       const [removed] = prompts.value.splice(draggedIndex, 1)
       prompts.value.splice(targetIndex, 0, removed)
 
-      prompts.value.forEach((p, index) => {
-        p.order = index
-      })
+      prompts.value = prompts.value.map((p, index) => ({
+        ...p,
+        order: index
+      }))
 
       savePrompts()
     }
@@ -1086,6 +1105,34 @@ onMounted(() => {
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     loadPrompts()
+  }
+})
+
+// 任意模态层打开时通知 useViewLayering 隐藏所有原生 AI 卡片视图，
+// 避免 Electron WebContentsView 覆盖到 DOM 模态层之上
+const layoutStore = useLayoutStore()
+watch(
+  () => [
+    dialogVisible.value,
+    editDialogVisible.value,
+    categoryDialogVisible.value
+  ],
+  ([main, edit, category], [prevMain, prevEdit, prevCategory]) => {
+    const wasOpen = prevMain || prevEdit || prevCategory
+    const isOpen = main || edit || category
+    if (!wasOpen && isOpen) {
+      layoutStore.pushDialogLayer()
+    } else if (wasOpen && !isOpen) {
+      layoutStore.popDialogLayer()
+    }
+  }
+)
+
+// 组件卸载时如果还有任意模态层未关闭，释放占用的引用计数，
+// 避免组件实例被销毁后导致 dialogLayerCount 永远无法归零
+onUnmounted(() => {
+  if (dialogVisible.value || editDialogVisible.value || categoryDialogVisible.value) {
+    layoutStore.popDialogLayer()
   }
 })
 </script>
