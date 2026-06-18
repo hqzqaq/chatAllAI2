@@ -542,17 +542,42 @@ function getGeminiNewChatScript(): string {
   return `
     (function() {
       try {
-        // 精准选择Gemini的新建对话按钮
-        const newChatButton = document.querySelector('[data-test-id="side-nav-action-button-icon"]');
-        
-        if (newChatButton) {
-          newChatButton.click();
-          console.log('已点击Gemini新建对话按钮');
-          return true;
-        }
-        
-        console.log('未找到可见的新建对话按钮');
-        return false;
+        // 统一使用Ctrl+Shift+O快捷键
+        const key = 'o';
+
+        // 创建键盘事件
+        const keydownEvent = new KeyboardEvent('keydown', {
+          key: key,
+          code: 'KeyO',
+          keyCode: 79,
+          which: 79,
+          ctrlKey: true,
+          metaKey: false,
+          altKey: false,
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true
+        });
+
+        const keyupEvent = new KeyboardEvent('keyup', {
+          key: key,
+          code: 'KeyO',
+          keyCode: 79,
+          which: 79,
+          ctrlKey: true,
+          metaKey: false,
+          altKey: false,
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true
+        });
+
+        // 发送键盘事件
+        document.dispatchEvent(keydownEvent);
+        document.dispatchEvent(keyupEvent);
+
+        console.log('已发送快捷键: Ctrl+Shift+O');
+        return true;
       } catch (error) {
         console.error('Gemini新建对话失败:', error);
         return false;

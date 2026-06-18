@@ -27,7 +27,8 @@ export function getStatusMonitorScript(providerId: string): string {
     miromind: getMiromindStatusMonitorScript,
     chatgpt: getChatGPTStatusMonitorScript,
     mimo: getMimoStatusMonitorScript,
-    minimax: getMinimaxStatusMonitorScript
+    minimax: getMinimaxStatusMonitorScript,
+    gemini: getGeminiStatusMonitorScript,
   }
 
   const scriptGenerator = scripts[providerId]
@@ -490,6 +491,13 @@ function getMimoStatusMonitorScript(providerId: string): string {
  */
 function getMinimaxStatusMonitorScript(providerId: string): string {
   return getGenericStatusMonitorScript(providerId, '#message-container')
+}
+
+/**
+ * gemini状态监控脚本
+ */
+function getGeminiStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, 'model-response')
 }
 
 /**

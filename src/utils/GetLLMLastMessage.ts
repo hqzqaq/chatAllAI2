@@ -92,7 +92,11 @@ function getMiromindLastMessageScript(): string {
 }
 
 function getGeminiLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('model-response');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getChatGPTLastMessageScript(): string {
