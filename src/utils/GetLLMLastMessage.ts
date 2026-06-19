@@ -60,7 +60,11 @@ function getDouBaoLastMessageScript(): string {
 }
 
 function getQwenLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('.markdown-pc-special-class');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getCopilotLastMessageScript(): string {
