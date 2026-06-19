@@ -44,7 +44,7 @@ export function getLoginCheckScript(providerId: string): string {
         .some(btn => btn.textContent.trim() === '立即登录')
     `,
     copilot: `
-      !!document.querySelector('[data-testid="sign-in-exp-landing-header-button"]')
+      !document.querySelector('[data-testid="sign-in-exp-landing-header-button"]')
     `,
     glm: '!document.querySelector(".login-btn")',
     yuanbao: `

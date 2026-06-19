@@ -68,7 +68,11 @@ function getQwenLastMessageScript(): string {
 }
 
 function getCopilotLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('[data-testid="ai-message-body"]');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getGLMLastMessageScript(): string {
