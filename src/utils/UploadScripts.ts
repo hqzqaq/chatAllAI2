@@ -193,10 +193,175 @@ function getChatGPTUploadScript(file: UploadFileData): string {
 
 /**
  * Gemini 文件上传脚本
- *
+ * Gemini 使用 Angular Material 菜单：点击输入区 "Upload & tools" 按钮 ->
+ * 选择 "Upload files" 菜单项 -> 动态创建隐藏的 input[type="file"] 并触发点击。
+ * 策略：拦截 HTMLInputElement.click 防止弹出系统文件框，同时用 MutationObserver
+ * 捕获动态出现的 file input，注入文件；兜底使用拖拽上传。
  */
 function getGeminiUploadScript(file: UploadFileData): string {
-  return getChatGPTUploadScript(file)
+  return `(function() {
+  console.log('[FileUpload:Gemini] ========== START ==========');
+  console.log('[FileUpload:Gemini] File: name=${file.name} type=${file.mimeType}');
+  console.log('[FileUpload:Gemini] URL: ' + window.location.href);
+
+  ${getBase64ToFileCode(file)}
+  ${getInjectToInputCode()}
+
+  var fileObj = base64ToFile();
+  var injectDone = false;
+  var capturedInput = null;
+
+  // 拦截原生 file input 的 click，避免弹出系统文件选择框
+  var originalInputClick = HTMLInputElement.prototype.click;
+  HTMLInputElement.prototype.click = function() {
+    if (this.type === 'file') {
+      console.log('[FileUpload:Gemini] Intercepted file input click');
+      capturedInput = this;
+      return;
+    }
+    return originalInputClick.apply(this, arguments);
+  };
+
+  // MutationObserver 捕获动态创建的 file input
+  var observer = new MutationObserver(function(mutations) {
+    if (injectDone) return;
+    for (var m = 0; m < mutations.length; m++) {
+      var added = mutations[m].addedNodes;
+      for (var n = 0; n < added.length; n++) {
+        var node = added[n];
+        if (node.nodeType !== 1) continue;
+        var inputs = [];
+        if (node.tagName === 'INPUT' && node.type === 'file') inputs.push(node);
+        if (node.querySelectorAll) inputs.push.apply(inputs, node.querySelectorAll('input[type="file"]'));
+        for (var k = 0; k < inputs.length; k++) {
+          var inp = inputs[k];
+          if (!inp.files || inp.files.length === 0) {
+            console.log('[FileUpload:Gemini] Observer caught file input');
+            injectToInput(fileObj, inp);
+            injectDone = true;
+            observer.disconnect();
+            return;
+          }
+        }
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  /**
+   * 查找 "Upload & tools" 触发按钮（多语言兼容）
+   */
+  function findUploadToolsButton() {
+    var btns = document.querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) {
+      var label = btns[i].getAttribute('aria-label') || '';
+      if (label.indexOf('Upload & tools') >= 0 || label.indexOf('上传和工具') >= 0) {
+        return btns[i];
+      }
+    }
+    // fallback：按文本匹配
+    for (var j = 0; j < btns.length; j++) {
+      var text = (btns[j].textContent || '').trim();
+      if (text === 'Upload & tools' || text === '上传和工具' ||
+          text === 'New' || text === '新建') {
+        return btns[j];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 查找 "Upload files" 菜单项（data-test-id 优先，支持多语言）
+   */
+  function findUploadFilesMenuItem() {
+    var item = document.querySelector('[data-test-id="local-images-files-uploader-button"]');
+    if (item) return item;
+    var items = document.querySelectorAll('[role="menuitem"]');
+    for (var i = 0; i < items.length; i++) {
+      var label = items[i].getAttribute('aria-label') || '';
+      var text = (items[i].textContent || '').trim();
+      if (label.indexOf('Upload files') >= 0 || label.indexOf('上传文件') >= 0 ||
+          text.indexOf('Upload files') >= 0 || text.indexOf('上传文件') >= 0 ||
+          text.indexOf('Files') >= 0 || text.indexOf('文件') >= 0) {
+        return items[i];
+      }
+    }
+    return null;
+  }
+
+  var uploadToolsBtn = findUploadToolsButton();
+  if (!uploadToolsBtn) {
+    console.warn('[FileUpload:Gemini] Upload tools button not found');
+    HTMLInputElement.prototype.click = originalInputClick;
+    observer.disconnect();
+    return { success: false, message: 'Upload tools button not found' };
+  }
+  console.log('[FileUpload:Gemini] Clicking upload tools button');
+  uploadToolsBtn.click();
+
+  // 等待菜单弹出后点击 "Upload files"
+  setTimeout(function() {
+    if (injectDone) return;
+    var uploadItem = findUploadFilesMenuItem();
+    if (!uploadItem) {
+      console.warn('[FileUpload:Gemini] Upload files menuitem not found');
+      return;
+    }
+    console.log('[FileUpload:Gemini] Clicking upload files menuitem');
+    uploadItem.click();
+  }, 300);
+
+  // 最终兜底：直接注入或拖拽
+  setTimeout(function() {
+    if (injectDone) {
+      HTMLInputElement.prototype.click = originalInputClick;
+      observer.disconnect();
+      return;
+    }
+
+    if (capturedInput) {
+      console.log('[FileUpload:Gemini] Injecting into captured file input');
+      injectToInput(fileObj, capturedInput);
+      injectDone = true;
+      HTMLInputElement.prototype.click = originalInputClick;
+      observer.disconnect();
+      return;
+    }
+
+    var inputs = document.querySelectorAll('input[type="file"]');
+    console.log('[FileUpload:Gemini] File inputs on page: ' + inputs.length);
+    if (inputs.length > 0) {
+      injectToInput(fileObj, inputs[0]);
+      injectDone = true;
+      HTMLInputElement.prototype.click = originalInputClick;
+      observer.disconnect();
+      return;
+    }
+
+    // 兜底：拖拽上传到输入区
+    console.log('[FileUpload:Gemini] Trying drag-and-drop fallback');
+    var dropTarget = document.querySelector('textarea')
+      || document.querySelector('[role="textbox"]')
+      || document.body;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(fileObj.file);
+      ['dragenter', 'dragover', 'drop'].forEach(function(type) {
+        var evt = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt });
+        dropTarget.dispatchEvent(evt);
+      });
+      console.log('[FileUpload:Gemini] Drag/drop dispatched on ' + dropTarget.tagName);
+      injectDone = true;
+    } catch (e) {
+      console.warn('[FileUpload:Gemini] Drag/drop failed:', e.message);
+    }
+
+    HTMLInputElement.prototype.click = originalInputClick;
+    observer.disconnect();
+  }, 1200);
+
+  return 'pending';
+})()`
 }
 
 /**
