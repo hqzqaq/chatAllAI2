@@ -224,7 +224,7 @@ function getKimiStatusMonitorScript(providerId: string): string {
  * Grok状态监控脚本
  */
 function getGrokStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[style="flex-direction: column;"]')
+  return getGenericStatusMonitorScript(providerId, '[data-testid="assistant-message"]')
 }
 
 /**

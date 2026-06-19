@@ -37,7 +37,7 @@ function getKimiLastMessageScript(): string {
 
 function getGrokLastMessageScript(): string {
   return `(() => {
-    const messages = document.querySelectorAll('.response-content-markdown');
+    const messages = document.querySelectorAll('[data-testid="assistant-message"]');
     const lastMessage = messages[messages.length - 1];
     return lastMessage ? lastMessage.textContent || '' : '';
   })()`
