@@ -100,7 +100,11 @@ function getGeminiLastMessageScript(): string {
 }
 
 function getChatGPTLastMessageScript(): string {
-  return ''
+  return `(() => {
+    const messages = document.querySelectorAll('[data-message-author-role="assistant"]');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
 }
 
 function getMimoLastMessageScript(): string {

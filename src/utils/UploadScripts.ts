@@ -193,9 +193,10 @@ function getChatGPTUploadScript(file: UploadFileData): string {
 
 /**
  * Gemini 文件上传脚本
+ *
  */
 function getGeminiUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
+  return getChatGPTUploadScript(file)
 }
 
 /**

@@ -747,9 +747,6 @@ export class IPCHandler extends EventEmitter {
     try {
       this.log(`Starting AI status monitoring for webview ${data.webviewId}, provider ${data.providerId}`)
 
-      if (data.providerId === 'chatgpt') {
-        return { success: false }
-      }
       const statusMonitorScript = getStatusMonitorScript(data.providerId)
 
       const result = await this.webViewManager.executeScript(data.providerId, statusMonitorScript)

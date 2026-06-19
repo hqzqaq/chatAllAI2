@@ -28,7 +28,7 @@ export function getStatusMonitorScript(providerId: string): string {
     chatgpt: getChatGPTStatusMonitorScript,
     mimo: getMimoStatusMonitorScript,
     minimax: getMinimaxStatusMonitorScript,
-    gemini: getGeminiStatusMonitorScript,
+    gemini: getGeminiStatusMonitorScript
   }
 
   const scriptGenerator = scripts[providerId]
@@ -476,7 +476,7 @@ function getProviderStatusMonitorScript(providerId: string): string {
  * ChatGPT状态监控脚本
  */
 function getChatGPTStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '#thread')
+  return getGenericStatusMonitorScript(providerId, '[data-message-author-role="assistant"]')
 }
 
 /**

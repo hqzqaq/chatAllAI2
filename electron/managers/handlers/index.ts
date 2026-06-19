@@ -33,6 +33,3 @@ export { MessageHandler, IMessageSender } from './MessageHandler'
 
 // 文件操作处理器
 export { FileOperationHandler } from './FileOperationHandler'
-
-// 监控功能处理器
-export { MonitoringHandler } from './MonitoringHandler'
