@@ -1,6 +1,6 @@
 {
   "name": "chat-all-ai",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A desktop application to chat with multiple AI models simultaneously",
   "main": "dist-electron/main.js",
   "scripts": {

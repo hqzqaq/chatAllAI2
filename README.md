@@ -644,6 +644,33 @@ MIT License
 
 ## 版本更新记录
 
+### v1.2.1
+- **功能新增**：实现 Cookie 登录功能
+  - 新增 Cookie 登录对话框，支持通过导入 Cookie 快速登录 AI 网站
+  - 新增通用 Cookie 导入后端，支持所有提供商的 Cookie 导入
+  - 优化 Microsoft/Copilot 的 host-only Cookie 导入处理
+  - 确保 Copilot 及所有支持的提供商显示 Cookie 登录按钮
+- **功能新增**：新增 Gemini 状态监控与新建对话支持
+  - 添加 Gemini AI 状态监控脚本
+  - 添加 Gemini 新建对话脚本
+- **架构重构**：重构 WebView 管理与状态监控
+  - 重构 WebView 管理为独立 WebViewManager 模块
+  - 通用化状态监控与会话代理逻辑
+  - 移除旧监控功能相关代码，优化 AI 状态处理逻辑
+  - 统一使用 ScriptResolver，消除 resolveScript 重复实现
+  - 升级 Electron 到 30.5.1
+- **架构重构**：简化各平台登录检测脚本
+- **bug修复**：修复 AI 卡片最大化时被滚动容器裁剪的问题
+- **bug修复**：修复 SummarySidebar collapsed 警告及频繁保存 session 的问题
+- **bug修复**：修复 AI 状态监控启动误判失败的问题
+- **bug修复**：修复 Copilot 登录检测逻辑，新增获取最后消息脚本
+- **bug修复**：更新 Gemini 登录检测选择器
+- **bug修复**：更新通义千问输入框选择器
+- **bug修复**：更新 Grok 状态监控和消息获取的选择器
+- **bug修复**：新增 Qwen 获取最后消息脚本
+- **bug修复**：重写 Gemini 上传脚本适配新 UI
+- **bug修复**：从 Cookie 导入提供商列表中移除 Copilot
+
 ### v1.2.0
 - **功能新增**：实现自定义 AI 提供商管理功能
   - 新增 `AddProviderDialog` 组件，支持在应用内添加/编辑自定义 AI 模型
@@ -825,4 +852,4 @@ MIT License
 
 ---
 
-*本文基于ChatAllAI v1.2.0版本进行分析，技术细节可能随版本更新而变化。*
+*本文基于ChatAllAI v1.2.1版本进行分析，技术细节可能随版本更新而变化。*
