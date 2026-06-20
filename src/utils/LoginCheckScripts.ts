@@ -18,8 +18,10 @@ export function getLoginCheckScript(providerId: string): string {
   const scripts: Record<string, string> = {
     kimi: `
       // 检查是否存在用户头像或登录相关元素
-      !!(document.querySelector("[class='user-name']") && 
-      document.querySelector("[class='user-name']").innerText != '登录')
+      !!(
+        document.querySelector(".user-info") && 
+        !["登录", "Log In"].includes(document.querySelector(".user-info").innerText.trim())
+      )
     `,
     grok: `
       // 检查grok的登录状态
