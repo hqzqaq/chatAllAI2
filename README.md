@@ -678,9 +678,12 @@ MIT License
 ### v1.2.1
 - **功能新增**：实现 Cookie 登录功能
   - 新增 Cookie 登录对话框，支持通过导入 Cookie 快速登录 AI 网站
-  - 新增通用 Cookie 导入后端，支持所有提供商的 Cookie 导入
-  - 优化 Microsoft/Copilot 的 host-only Cookie 导入处理
-  - 确保 Copilot 及所有支持的提供商显示 Cookie 登录按钮
+  - 新增通用 Cookie 导入后端，支持gemini、grok、chatgpt的 Cookie 导入，绕过登录检测
+  - 推荐使用Cookie-editor插件导出登录的Cookie
+  ![导出cookie](./images/Cookie-Editor导出json格式的cookie.png)
+  - 导入Cookie后，应用会自动登录AI网站，无需手动操作
+  ![导入cookie](./images/导入cookie完成登录.png)
+
 - **功能新增**：新增 Gemini 状态监控与新建对话支持
   - 添加 Gemini AI 状态监控脚本
   - 添加 Gemini 新建对话脚本
