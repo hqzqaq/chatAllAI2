@@ -1,11 +1,11 @@
 /**
- * 获取发送消息的脚本
+ * 获取AI最后回复消息的脚本
  * @param providerId AI提供商ID
  * @returns 对应的JavaScript脚本字符串
  */
 import { resolveScript } from './ScriptResolver'
 
-export function getSendMessageScript(providerId: string): string {
+export function getLLMLastMessageScript(providerId: string): string {
   const scripts: Record<string, () => string> = {
     kimi: () => getKimiLastMessageScript(),
     grok: () => getGrokLastMessageScript(),

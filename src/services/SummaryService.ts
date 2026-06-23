@@ -8,7 +8,7 @@
 
 import type { AIProvider } from '../types'
 import type { SummaryResult, AIResponse, SummaryOptions } from '../types/summary'
-import { getSendMessageScript } from '../utils/GetLLMLastMessage'
+import { getLLMLastMessageScript } from '../utils/GetLLMLastMessage'
 import { generateSummaryPrompt } from '../utils/SummaryPrompts'
 import { parseProviderIdFromElementId } from '../utils/webviewHelper'
 import { useSummaryStore } from '../stores/summary'
