@@ -83,20 +83,56 @@ export class WebViewManager extends EventEmitter {
     }
   }
 
-  setVisibility(providerId: string, visible: boolean): void {
+  /**
+   * 原子化更新视图的位置与显隐状态
+   * 在单次调用内同时完成 bounds 写入与显隐切换，避免显隐与位置更新之间出现 1 帧间隙
+   * 导致原生视图短暂出现在旧位置（可能覆盖到 UnifiedInput 区域）
+   *
+   * @param providerId 提供商唯一标识
+   * @param state 待更新的状态对象
+   *   - visible 为 false 时：直接把视图移出可视区域，不依赖任何缓存的 bounds
+   *   - visible 为 true 且 bounds 存在时：先更新缓存再应用新 bounds，不读取旧缓存
+   *   - visible 为 true 但 bounds 缺省时：回退到缓存 bounds（兼容旧调用方），无缓存则不操作
+   */
+  updateState(
+    providerId: string,
+    state: { bounds?: { x: number; y: number; width: number; height: number }; visible: boolean }
+  ): void {
     const view = this.views.get(providerId)
     if (!view) return
 
-    if (!visible) {
+    if (!state.visible) {
+      // 隐藏：直接移出可视区域，不读取缓存的 bounds，避免使用过期位置
       view.setBounds({
         x: -9999, y: -9999, width: 1, height: 1
       })
+      return
+    }
+
+    // 显示：优先使用本次传入的 bounds，避免依赖可能过期的缓存
+    if (state.bounds) {
+      // 先更新缓存再应用，确保缓存与视图位置一致
+      this.bounds.set(providerId, state.bounds)
+      view.setBounds(state.bounds)
     } else {
+      // 未传入 bounds 时回退到缓存（兼容仅切换显隐的场景）
       const storedBounds = this.bounds.get(providerId)
       if (storedBounds) {
         view.setBounds(storedBounds)
       }
     }
+  }
+
+  /**
+   * 设置视图显隐
+   * @deprecated 请使用 updateState 替代，避免显隐竞态
+   * 内部委托给 updateState，visible 为 true 时走 bounds 缺省的回退路径，使用旧缓存恢复位置
+   *
+   * @param providerId 提供商唯一标识
+   * @param visible 是否可见
+   */
+  setVisibility(providerId: string, visible: boolean): void {
+    this.updateState(providerId, { visible })
   }
 
   navigateTo(providerId: string, url: string): void {

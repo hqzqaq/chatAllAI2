@@ -344,7 +344,7 @@ function getQwenScript(escapedMessage: string): string {
   return `
     (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = '[role="textbox"]';
+      const CHAT_INPUT_SELECTOR = 'textarea';
       const INPUT_SEND_DELAY_MS = 1000;
 
       // --- Input Handling ---

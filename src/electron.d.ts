@@ -33,6 +33,11 @@ interface ElectronAPI {
     bounds: { x: number; y: number; width: number; height: number }
   }): Promise<void>
   setWebViewVisibility(data: { providerId: string; visible: boolean }): Promise<void>
+  updateWebViewState(data: {
+    providerId: string
+    bounds?: { x: number; y: number; width: number; height: number }
+    visible: boolean
+  }): Promise<void>
   executeWebViewScript(data: { providerId: string; script: string }): Promise<any>
   reloadWebView(providerId: string): Promise<void>
   navigateWebView(data: { providerId: string; url: string }): Promise<void>

@@ -14,6 +14,7 @@
 
       <!-- AI卡片网格 -->
       <div
+        ref="cardsGridRef"
         class="cards-grid"
         data-webview-clip
         :style="gridStyle"
@@ -50,6 +51,7 @@ import {
 import { useChatStore, useLayoutStore } from '../stores'
 import { useSummary } from '../composables/useSummary'
 import { useViewLayering } from '../composables/useViewLayering'
+import { useWebViewBoundsScheduler } from '../composables/useWebViewBoundsScheduler'
 import UnifiedInput from '../components/chat/UnifiedInput.vue'
 import AICard from '../components/chat/AICard.vue'
 import SummarySidebar from '../components/summary/SummarySidebar.vue'
@@ -57,8 +59,27 @@ import SummarySidebar from '../components/summary/SummarySidebar.vue'
 const chatStore = useChatStore()
 const layoutStore = useLayoutStore()
 
+// 获取 WebContentsView 统一 Bounds 调度器（模块级单例）
+// 用于在 scroll/resize 事件中触发 scheduleImmediate，驱动原生视图同步
+const scheduler = useWebViewBoundsScheduler()
+
 const sidebarCollapsed = ref(true)
 const inputCollapsed = ref(false)
+
+// cards-grid 滚动容器引用，用于注册 scroll 监听与 ResizeObserver
+const cardsGridRef = ref<HTMLElement | null>(null)
+
+// 滚动事件 handler，命名为函数以便 removeEventListener 移除
+// 触发调度器下一帧立即同步，避免 rAF 兜底的 1 帧滞后
+const handleGridScroll = () => {
+  scheduler.scheduleImmediate()
+}
+
+// 观察 cards-grid 尺寸变化（窗口 resize 时其尺寸会变），触发 bounds 同步
+// 声明在外部以便 onUnmounted 中 disconnect
+const gridResizeObserver = new ResizeObserver(() => {
+  scheduler.scheduleImmediate()
+})
 
 // 初始化原生视图层级管理
 useViewLayering()
@@ -141,6 +162,8 @@ const getCardConfig = (providerId: string) => layoutStore.getCardConfig(provider
 // 响应式布局处理
 const handleResize = () => {
   layoutStore.updateWindowSize(window.innerWidth, window.innerHeight)
+  // 窗口 resize 时立即触发原生视图 bounds 同步，避免等待下一帧
+  scheduler.scheduleImmediate()
 }
 
 // 键盘事件处理
@@ -213,6 +236,17 @@ onMounted(() => {
 
   // 添加键盘事件监听
   window.addEventListener('keydown', handleKeyDown)
+
+  // 滚动事件驱动 webview bounds 同步，避免 rAF 兜底的 1 帧滞后
+  // passive: true 不阻塞滚动，保证滚动性能
+  if (cardsGridRef.value) {
+    cardsGridRef.value.addEventListener('scroll', handleGridScroll, { passive: true })
+  }
+
+  // 观察 cards-grid 尺寸变化（窗口 resize 时其尺寸会变），触发 webview bounds 同步
+  if (cardsGridRef.value) {
+    gridResizeObserver.observe(cardsGridRef.value)
+  }
 })
 
 onUnmounted(() => {
@@ -221,6 +255,14 @@ onUnmounted(() => {
 
   // 移除键盘事件监听
   window.removeEventListener('keydown', handleKeyDown)
+
+  // 移除 cards-grid 滚动监听
+  if (cardsGridRef.value) {
+    cardsGridRef.value.removeEventListener('scroll', handleGridScroll)
+  }
+
+  // 断开 cards-grid 的 ResizeObserver，避免组件卸载后回调泄漏
+  gridResizeObserver.disconnect()
 })
 </script>
 
