@@ -108,32 +108,52 @@ function getKimiScript(escapedMessage: string): string {
 function getYuanBaoScript(escapedMessage: string): string {
   return `
     (function() {
+      /**
+       * 对HTML特殊字符进行转义，防止插入内容破坏编辑器DOM结构
+       * @param {string} str 原始文本
+       * @returns {string} 转义后的文本
+       */
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
       function setYuanbaoInputValue(text = '${escapedMessage}') {
         const input = document.querySelector('.ql-editor');
-    
-        if (input) {
-          input.focus();
-          document.execCommand('selectAll', false, null);
-          document.execCommand('delete', false, null);
-          const success = document.execCommand('insertText', false, text);
-          if (success) {
-            ['input', 'change', 'keydown', 'keyup', 'keypress', 'focus', 'blur'].forEach(eventType => {
-              const event = new Event(eventType, { bubbles: true });
-              input.dispatchEvent(event);
-            });
-            return '使用execCommand成功设置文本: ' + text;
-          }
-        } else {
+
+        if (!input) {
           return '未找到输入框';
         }
+
+        input.focus();
+        document.execCommand('selectAll', false, null);
+        document.execCommand('delete', false, null);
+
+        // 将文本按换行符分割，每行用<p>包裹后通过 insertHTML 插入。
+        // insertText 会把换行符当成普通字符，服务器收到的是字面量的反斜杠加 n，
+        // 只有第一行被识别；insertHTML 能让编辑器按段落正确识别多行内容。
+        const lines = text.split('\\n');
+        const html = lines.map(line => '<p>' + escapeHtml(line) + '</p>').join('');
+        const success = document.execCommand('insertHTML', false, html);
+
+        if (success) {
+          ['input', 'change', 'keydown', 'keyup', 'keypress', 'focus', 'blur'].forEach(eventType => {
+            const event = new Event(eventType, { bubbles: true });
+            input.dispatchEvent(event);
+          });
+          return '使用execCommand成功设置文本';
+        }
+        return '设置文本失败';
       }
-    
+
       function sendYuanbaoMessage(text = '${escapedMessage}') {
         const result = setYuanbaoInputValue(text);
         console.log(result);
         setTimeout(() => {
           const sendButton = document.querySelector('#yuanbao-send-btn')
-    
+
           if (sendButton && !sendButton.disabled) {
             sendButton.click();
             console.log('已点击发送按钮');
@@ -344,59 +364,102 @@ function getQwenScript(escapedMessage: string): string {
   return `
     (function() {
       // --- Configuration ---
-      const CHAT_INPUT_SELECTOR = 'textarea';
+      const CHAT_INPUT_SELECTOR = '[data-testid="chat-input-content-measure"]';
       const INPUT_SEND_DELAY_MS = 1000;
 
       // --- Input Handling ---
-      function findChatInput() {
-        const element = document.querySelector(CHAT_INPUT_SELECTOR);
-        if (element) {
-          return element;
-        }
-        return null;
+      function findChatInputContainer() {
+        return document.querySelector(CHAT_INPUT_SELECTOR);
       }
 
-      const inputElement = findChatInput();
+      function resolveEditableElement(container) {
+        if (!container) {
+          return null;
+        }
+        if (container.isContentEditable) {
+          return container;
+        }
+        const editableChild = container.querySelector('[contenteditable="true"]');
+        if (editableChild) {
+          return editableChild;
+        }
+        const textboxChild = container.querySelector('[role="textbox"]');
+        if (textboxChild) {
+          return textboxChild;
+        }
+        return container;
+      }
 
-      if (!inputElement) {
-        console.error("[Input] Chat input TEXTAREA element not found using selector:", CHAT_INPUT_SELECTOR);
+      function isInputElement(element) {
+        return element && (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT');
+      }
+
+      function setNativeValue(element, value) {
+        if (element.isContentEditable) {
+          element.textContent = value;
+          return;
+        }
+
+        if (!isInputElement(element)) {
+          element.textContent = value;
+          return;
+        }
+
+        const targetPrototype = element.tagName === 'TEXTAREA'
+          ? window.HTMLTextAreaElement.prototype
+          : window.HTMLInputElement.prototype;
+
+        try {
+          const descriptor = Object.getOwnPropertyDescriptor(targetPrototype, 'value');
+          if (descriptor && descriptor.set) {
+            descriptor.set.call(element, value);
+            return;
+          }
+        } catch (e) {
+          console.warn('[Input] Native value setter failed, falling back to direct assignment:', e);
+        }
+
+        element.value = value;
+      }
+
+      function dispatchInputEvents(element, value) {
+        if (element.isContentEditable) {
+          // Slate 等富文本编辑器依赖 beforeinput 事件更新内部状态
+          element.dispatchEvent(new InputEvent('beforeinput', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertText',
+            data: value,
+            isComposing: false,
+          }));
+        }
+
+        element.dispatchEvent(new InputEvent('input', {
+          bubbles: true,
+          cancelable: false,
+          inputType: 'insertText',
+          data: value,
+          isComposing: false,
+        }));
+      }
+
+      const inputContainer = findChatInputContainer();
+
+      if (!inputContainer) {
+        console.error("[Input] Chat input element not found using selector:", CHAT_INPUT_SELECTOR);
         return false;
       }
 
+      const inputElement = resolveEditableElement(inputContainer);
+
       try {
         inputElement.focus();
-        console.log("[Input] Focused the textarea element.");
+        console.log("[Input] Focused the input element.", inputElement.tagName, inputElement.isContentEditable);
 
         const newValue = '${escapedMessage}';
-
-        // 使用更可靠的方式设置input值
-        try {
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLTextAreaElement.prototype, 'value'
-          ).set;
-          if (nativeInputValueSetter) {
-            nativeInputValueSetter.call(inputElement, newValue);
-            console.log("Successfully set input value using native setter:", newValue);
-          } else {
-            inputElement.value = newValue;
-            console.warn("Native value setter not available. Set input value using direct assignment as a fallback.");
-          }
-        } catch (e) {
-          console.error("Error setting input value using native setter or direct assignment:", e);
-          if (inputElement.value !== newValue) {
-            inputElement.value = newValue;
-            console.warn("Forced input value setting after error.");
-          }
-        }
-
-        // 触发input事件
-        const inputEvent = new Event('input', {
-          bubbles: true,
-          cancelable: false,
-        });
-
-        inputElement.dispatchEvent(inputEvent);
-        console.log("Simulated 'input' event dispatched.");
+        setNativeValue(inputElement, newValue);
+        dispatchInputEvents(inputElement, newValue);
+        console.log("[Input] Set input value to:", newValue);
 
         // 延迟后发送Enter键事件
         setTimeout(() => {
