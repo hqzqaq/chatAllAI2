@@ -248,15 +248,19 @@ function computeBounds(): WebViewBoundsState | null {
     const right = Math.min(rect.right, clipRect.right)
     if (top < bottom && left < right) {
       currentBounds = {
-        x: Math.round(left), y: Math.round(top),
-        width: Math.round(right - left), height: Math.round(bottom - top)
+        x: Math.round(left),
+        y: Math.round(top),
+        width: Math.round(right - left),
+        height: Math.round(bottom - top)
       }
     }
     // 没有交集时 currentBounds 保持 null，视图将被标记不可见
   } else {
     currentBounds = {
-      x: Math.round(rect.x), y: Math.round(rect.y),
-      width: Math.round(rect.width), height: Math.round(rect.height)
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
     }
   }
 

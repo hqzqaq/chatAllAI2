@@ -675,6 +675,16 @@ MIT License
 
 ## 版本更新记录
 
+### v1.2.2
+- **架构重构**：重构 WebView 视图调度与显隐逻辑，统一优化性能与体验
+  - 新增 `WebViewBoundsScheduler` 统一调度器，合并多 WebView 的 `requestAnimationFrame` 循环，通过 diff 机制减少 IPC 调用
+  - 替换原有的独立 Bounds 轮询为调度器驱动，移除 AICard 内直接的 `setWebViewVisibility` 调用
+  - 新增 `updateWebViewState` 原子化 IPC 接口，合并视图显隐与位置更新，解决显隐竞态问题
+  - 优化聊天区域滚动与尺寸变化的同步逻辑，添加 passive 滚动监听与 `ResizeObserver`
+  - 重构 `useViewLayering`，通过调度器覆盖显隐状态，统一管理视图层级
+  - 为 `SummarySidebar` 添加 `data-webview-clip` 标记，统一裁剪区域处理
+- **bug修复**：修复聊天输入选择器，从通用 textbox 改为 textarea 以适配更多场景
+
 ### v1.2.1
 - **功能新增**：实现 Cookie 登录功能
   - 新增 Cookie 登录对话框，支持通过导入 Cookie 快速登录 AI 网站
@@ -886,4 +896,4 @@ MIT License
 
 ---
 
-*本文基于ChatAllAI v1.2.1版本进行分析，技术细节可能随版本更新而变化。*
+*本文基于ChatAllAI v1.2.2版本进行分析，技术细节可能随版本更新而变化。*
