@@ -49,18 +49,15 @@ import { getLoginCheckScript } from '@/utils/LoginCheckScripts'
 import { useLoginCheck } from '@/composables/useLoginCheck'
 import { useSessionPersistence } from '@/composables/useSessionPersistence'
 import { useWebViewEvents } from '@/composables/useWebViewEvents'
+import { useWebViewBoundsScheduler, type WebViewBoundsState } from '@/composables/useWebViewBoundsScheduler'
 import { useLayoutStore } from '@/stores'
 
 interface Props {
   provider: AIProvider
-  width?: number
-  height?: number
   autoLoad?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  width: 800,
-  height: 600,
   autoLoad: true
 })
 
@@ -75,6 +72,8 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 const layoutStore = useLayoutStore()
+// WebContentsView 统一 Bounds 调度器（模块级单例），替代组件内独立的 rAF 循环
+const scheduler = useWebViewBoundsScheduler()
 
 const containerRef = ref<HTMLElement | null>(null)
 const wrapperRef = ref<HTMLElement | null>(null)
@@ -144,13 +143,10 @@ const errorMessage = ref('')
 const retryCount = ref(0)
 const maxRetries = 3
 const isViewCreated = ref(false)
-let rafId: number | null = null
 let lastBounds: { x: number; y: number; width: number; height: number } | null = null
 let unsubEvent: (() => void) | null = null
 /** 裁剪父容器缓存，避免每帧遍历 DOM */
 let cachedClipParent: HTMLElement | null | undefined
-/** 视图是否因滚动出裁剪区域而被隐藏 */
-let isHiddenByClip = false
 
 async function checkStatusAndNotify(): Promise<void> {
   try {
@@ -219,44 +215,38 @@ function findClipParent(element: HTMLElement): HTMLElement | null {
   return null
 }
 
-function updateBounds(): void {
-  if (!containerRef.value || !isViewCreated.value) return
+/**
+ * 计算 webview 当前的目标状态（位置 + 显隐）
+ * 由调度器每帧调用，返回 null 表示该 webview 暂时不参与调度
+ *
+ * 改造说明：原 updateBounds 直接下发 IPC，现改为纯函数仅返回目标状态，
+ * 由 useWebViewBoundsScheduler 统一 diff 后下发，避免每帧重复 IPC
+ */
+function computeBounds(): WebViewBoundsState | null {
+  if (!containerRef.value || !isViewCreated.value) return null
 
-  // 任意 Element Plus 模态层打开时，强制隐藏原生 WebContentsView，
-  // 避免其覆盖到 DOM 模态层之上
+  // 任意模态层打开时，标记不可见但保留 lastBounds 缓存
+  // 调度器的 pause() 会阻止 IPC 下发，dialog 关闭后 resume() 立即用最新位置
   if (layoutStore.dialogLayerCount > 0) {
-    if (!isHiddenByClip) {
-      isHiddenByClip = true
-      window.electronAPI.setWebViewVisibility({
-        providerId: props.provider.id,
-        visible: false
-      }).catch(() => {})
-    }
-    return
+    return lastBounds ? { bounds: lastBounds, visible: false } : null
   }
 
   const rect = containerRef.value.getBoundingClientRect()
 
-  // 最大化卡片使用 fixed 定位并覆盖整个视口，不应被 cards-grid 等滚动容器裁剪，
-  // 否则 native WebContentsView 会被限制在网格可见区域内，导致顶部空白或内容截断。
+  // 最大化卡片使用 fixed 定位覆盖整个视口，不应被 cards-grid 裁剪
   const isMaximized = !!containerRef.value.closest('.ai-card.maximized')
-
-  // 查找裁剪父容器，限制 WebContentsView 不超出其可见区域
   const clipParent = isMaximized ? null : findClipParent(containerRef.value)
 
   let currentBounds: { x: number; y: number; width: number; height: number } | null = null
 
   if (clipParent) {
     const clipRect = clipParent.getBoundingClientRect()
-
     // 计算容器与裁剪区域的交集
     const top = Math.max(rect.top, clipRect.top)
     const bottom = Math.min(rect.bottom, clipRect.bottom)
     const left = Math.max(rect.left, clipRect.left)
     const right = Math.min(rect.right, clipRect.right)
-
     if (top < bottom && left < right) {
-      // 有交集，使用裁剪后的 bounds
       currentBounds = {
         x: Math.round(left),
         y: Math.round(top),
@@ -264,9 +254,8 @@ function updateBounds(): void {
         height: Math.round(bottom - top)
       }
     }
-    // 没有交集时 currentBounds 为 null，视图将被隐藏
+    // 没有交集时 currentBounds 保持 null，视图将被标记不可见
   } else {
-    // 没有裁剪父容器，使用原始 bounds
     currentBounds = {
       x: Math.round(rect.x),
       y: Math.round(rect.y),
@@ -275,63 +264,14 @@ function updateBounds(): void {
     }
   }
 
-  // 更新视图状态
+  // 有交集：可见，返回新 bounds
   if (currentBounds) {
-    // 视图在可见区域内，更新 bounds
-    if (
-      !lastBounds
-      || lastBounds.x !== currentBounds.x
-      || lastBounds.y !== currentBounds.y
-      || lastBounds.width !== currentBounds.width
-      || lastBounds.height !== currentBounds.height
-    ) {
-      lastBounds = currentBounds
-      window.electronAPI.updateWebViewBounds({
-        providerId: props.provider.id,
-        bounds: currentBounds
-      })
-    }
-    // 如果视图之前因滚动被隐藏，恢复显示
-    if (isHiddenByClip) {
-      isHiddenByClip = false
-      window.electronAPI.setWebViewVisibility({
-        providerId: props.provider.id,
-        visible: true
-      }).catch(() => {})
-    }
-  } else if (!isHiddenByClip) {
-    // 视图完全在裁剪区域外，隐藏视图
-    isHiddenByClip = true
-    window.electronAPI.setWebViewVisibility({
-      providerId: props.provider.id,
-      visible: false
-    }).catch(() => {})
-  }
-}
-
-function startBoundsPolling(): void {
-  if (!containerRef.value) return
-
-  function poll(): void {
-    if (!isViewCreated.value) {
-      rafId = requestAnimationFrame(poll)
-      return
-    }
-    updateBounds()
-    rafId = requestAnimationFrame(poll)
+    lastBounds = currentBounds
+    return { bounds: currentBounds, visible: true }
   }
 
-  rafId = requestAnimationFrame(poll)
-}
-
-function stopBoundsPolling(): void {
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
-  lastBounds = null
-  cachedClipParent = undefined
-  isHiddenByClip = false
+  // 无交集（滚出裁剪区）：不可见，保留 lastBounds 用于恢复时 fallback
+  return lastBounds ? { bounds: lastBounds, visible: false } : null
 }
 
 async function createView(): Promise<void> {
@@ -355,8 +295,9 @@ async function createView(): Promise<void> {
   })
 
   await nextTick()
-  startBoundsPolling()
-  updateBounds()
+  // 注册到统一调度器，由调度器每帧调用 computeBounds 并 diff 后下发 IPC
+  // register 内部会触发 scheduleImmediate，确保首帧位置尽快同步
+  scheduler.register(props.provider.id, computeBounds)
 
   isLoading.value = false
   hasError.value = false
@@ -416,7 +357,11 @@ const destroy = (): void => {
     unsubEvent = null
   }
 
-  stopBoundsPolling()
+  // 注销调度器条目（内部会下发 visible=false 避免原生视图残留），
+  // 并清理本地缓存的 bounds 与裁剪父容器，与原独立轮询的清理行为对齐
+  scheduler.unregister(props.provider.id)
+  lastBounds = null
+  cachedClipParent = undefined
 
   if (isViewCreated.value) {
     window.electronAPI.destroyWebView(props.provider.id)
@@ -464,6 +409,8 @@ onMounted(async() => {
 
 onActivated(async() => {
   console.log(`WebView activated for ${props.provider.name}`)
+  // keep-alive 复用组件时 DOM 父链可能变化，重置裁剪父容器缓存
+  cachedClipParent = undefined
   if (!isViewCreated.value && props.autoLoad) {
     await loadSession()
     await createView()
@@ -485,6 +432,14 @@ watch(
     if (isViewCreated.value && newUrl) {
       navigateTo(newUrl)
     }
+  }
+)
+
+watch(
+  () => props.provider.id,
+  () => {
+    // provider 切换时 DOM 父链可能变化，重置裁剪父容器缓存
+    cachedClipParent = undefined
   }
 )
 </script>

@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   destroyWebView: (providerId: string) => ipcRenderer.invoke('destroy-webview', { providerId }),
   updateWebViewBounds: (data: { providerId: string, bounds: { x: number, y: number, width: number, height: number } }) => ipcRenderer.invoke('update-webview-bounds', data),
   setWebViewVisibility: (data: { providerId: string, visible: boolean }) => ipcRenderer.invoke('set-webview-visibility', data),
+  updateWebViewState: (data: { providerId: string, bounds?: { x: number, y: number, width: number, height: number }, visible: boolean }) => ipcRenderer.invoke('update-webview-state', data),
   executeWebViewScript: (data: { providerId: string, script: string }) => ipcRenderer.invoke('execute-webview-script', data),
   reloadWebView: (providerId: string) => ipcRenderer.invoke('reload-webview', { providerId }),
   navigateWebView: (data: { providerId: string, url: string }) => ipcRenderer.invoke('navigate-webview', data),
@@ -121,6 +122,11 @@ declare global {
         bounds: { x: number, y: number, width: number, height: number }
       }) => Promise<any>
       setWebViewVisibility: (data: { providerId: string, visible: boolean }) => Promise<any>
+      updateWebViewState: (data: {
+        providerId: string
+        bounds?: { x: number, y: number, width: number, height: number }
+        visible: boolean
+      }) => Promise<any>
       executeWebViewScript: (data: { providerId: string, script: string }) => Promise<any>
       reloadWebView: (providerId: string) => Promise<any>
       navigateWebView: (data: { providerId: string, url: string }) => Promise<any>

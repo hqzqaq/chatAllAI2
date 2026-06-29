@@ -142,6 +142,10 @@ export class IPCHandler extends EventEmitter {
     ipcMain.handle('set-webview-visibility', async(event, data: { providerId: string; visible: boolean }) => {
       this.webViewManager.setVisibility(data.providerId, data.visible)
     })
+    // 原子化更新视图状态：在一次 IPC 调用内同时完成 bounds 写入与显隐切换，消除显隐竞态
+    ipcMain.handle('update-webview-state', async(event, data: { providerId: string; bounds?: { x: number; y: number; width: number; height: number }; visible: boolean }) => {
+      this.webViewManager.updateState(data.providerId, { bounds: data.bounds, visible: data.visible })
+    })
     ipcMain.handle('navigate-webview', async(event, data: { providerId: string; url: string }) => {
       this.webViewManager.navigateTo(data.providerId, data.url)
     })
@@ -1018,6 +1022,7 @@ export class IPCHandler extends EventEmitter {
     ipcMain.removeHandler('destroy-webview')
     ipcMain.removeHandler('update-webview-bounds')
     ipcMain.removeHandler('set-webview-visibility')
+    ipcMain.removeHandler('update-webview-state')
     ipcMain.removeHandler('navigate-webview')
     ipcMain.removeHandler('reload-webview')
     ipcMain.removeHandler('execute-webview-script')

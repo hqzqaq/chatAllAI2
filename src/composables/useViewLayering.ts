@@ -1,11 +1,15 @@
 import { watch, onUnmounted, nextTick } from 'vue'
 import { useLayoutStore } from '../stores'
+import { useWebViewBoundsScheduler } from './useWebViewBoundsScheduler'
 
 /**
  * 原生 WebContentsView 层级管理组合式函数
  *
  * 由于 Electron WebContentsView 是原生视图，不受 CSS z-index / visibility 控制，
  * 需要显式调用 IPC 将不需要显示的视图移到屏幕外。
+ *
+ * Task 5 改造：显隐控制统一经由调度器的 setOverride 单一信号源驱动，
+ * 不再直接调用 setWebViewVisibility IPC，避免与 WebView.vue 的 computeBounds 路径竞态。
  *
  * 模式定义：
  * - normal: 所有 AI 卡片视图可见
@@ -15,15 +19,8 @@ import { useLayoutStore } from '../stores'
  */
 export function useViewLayering() {
   const layoutStore = useLayoutStore()
-
-  async function setViewVisible(providerId: string, visible: boolean): Promise<void> {
-    if (!window.electronAPI?.setWebViewVisibility) return
-    try {
-      await window.electronAPI.setWebViewVisibility({ providerId, visible })
-    } catch {
-      // 视图可能尚未创建，忽略错误
-    }
-  }
+  // 通过调度器单一信号源驱动显隐，避免直接 IPC 调用与 computeBounds 路径竞态
+  const scheduler = useWebViewBoundsScheduler()
 
   async function syncAllViews(): Promise<void> {
     const allIds = Object.keys(layoutStore.cardConfigs)
@@ -32,23 +29,31 @@ export function useViewLayering() {
     // 等待 DOM 更新完成，确保隐藏的卡片样式已经生效
     await nextTick()
 
-    // 任意模态层打开时，强制隐藏所有 AI 卡片原生视图
+    // 任意模态层打开时，暂停 IPC 下发（computeBounds 仍会更新调度器内部缓存）
     if (layoutStore.dialogLayerCount > 0) {
-      const promises = allIds.map((id) => setViewVisible(id, false))
-      await Promise.allSettled(promises)
+      scheduler.pause()
       return
     }
 
+    // dialog 关闭时恢复 IPC 下发，触发一次 tick 将缓存 diff 后一次性下发变更
+    scheduler.resume()
+
     if (state === 'normal') {
-      const promises = allIds.map((id) => setViewVisible(id, true))
-      await Promise.allSettled(promises)
+      // 正常状态：清除所有覆盖，由 computeBounds 自行计算显隐
+      allIds.forEach((id) => scheduler.setOverride(id, null))
     } else if (state === 'sidebar-expanded') {
-      const promises = allIds.map((id) => setViewVisible(id, false))
-      await Promise.allSettled(promises)
+      // 侧边栏展开：强制隐藏所有 AI 卡片
+      allIds.forEach((id) => scheduler.setOverride(id, false))
     } else if (state === 'card-maximized') {
+      // 最大化：仅最大化卡片由 computeBounds 计算其位置，其他强制隐藏
       const maximizedId = layoutStore.maximizedCardId
-      const promises = allIds.map((id) => setViewVisible(id, id === maximizedId))
-      await Promise.allSettled(promises)
+      allIds.forEach((id) => {
+        if (id === maximizedId) {
+          scheduler.setOverride(id, null)
+        } else {
+          scheduler.setOverride(id, false)
+        }
+      })
     }
   }
 
@@ -65,7 +70,6 @@ export function useViewLayering() {
   })
 
   return {
-    syncAllViews,
-    setViewVisible
+    syncAllViews
   }
 }

@@ -951,19 +951,8 @@ onMounted(() => {
   }
 })
 
-// 监听 isHidden 变化，直接控制原生 WebContentsView 显隐
-// 使用 nextTick 确保在 DOM 更新之后执行 IPC，避免视图闪烁
-watch(
-  () => props.config?.isHidden,
-  async(isHidden) => {
-    if (!window.electronAPI?.setWebViewVisibility) return
-    await nextTick()
-    window.electronAPI.setWebViewVisibility({
-      providerId: props.provider.id,
-      visible: !isHidden
-    }).catch(() => {})
-  }
-)
+// Task 5：显隐控制已统一由 useViewLayering 通过 scheduler.setOverride 驱动，
+// isHidden 字段仍由 layoutStore 维护用于布局计算，不再直接调用 setWebViewVisibility IPC。
 
 // 代理配置对话框打开时通知 useViewLayering 隐藏所有原生 AI 卡片视图，
 // 避免 Electron WebContentsView 覆盖到 DOM 模态层之上
@@ -976,13 +965,8 @@ watch(proxyDialogVisible, (visible, prevVisible) => {
 })
 
 onUnmounted(() => {
-  // 组件卸载时确保原生视图恢复可见
-  if (window.electronAPI?.setWebViewVisibility) {
-    window.electronAPI.setWebViewVisibility({
-      providerId: props.provider.id,
-      visible: true
-    }).catch(() => {})
-  }
+  // Task 5：原生视图显隐已由调度器统一管理，WebView.vue destroy() 时会调用
+  // scheduler.unregister 自动下发 visible=false，此处无需再直接调用 IPC。
   // 组件卸载时如果代理对话框还开着，释放占用的模态层计数
   if (proxyDialogVisible.value) {
     layoutStore.popDialogLayer()

@@ -82,7 +82,10 @@
       </div>
 
       <!-- AI卡片区域 -->
-      <div class="ai-card-container">
+      <div
+        class="ai-card-container"
+        data-webview-clip
+      >
         <SummaryCard
           v-if="provider"
           :key="summaryProviderId"
