@@ -979,56 +979,54 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 苹果设计系统 — AI 卡片样式 */
+
 .ai-card {
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  box-shadow: var(--el-box-shadow-light);
-  transition: all 0.3s ease;
+  background: var(--apple-bg-elevated);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--apple-radius-lg);
+  box-shadow: var(--apple-shadow-card);
+  transition: all var(--apple-transition);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.ai-card.logged-in {
-  border-color: var(--el-color-success);
-}
+/* 登录状态通过头部状态指示器体现，不再使用绿色边框 */
 
 .ai-card.minimized {
   height: auto !important;
-  min-height: 60px !important;
-  max-height: 60px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
   overflow: hidden;
 }
 
 .ai-card.maximized {
   position: fixed !important;
-  top: 16px !important;
-  left: 16px !important;
-  width: calc(100vw - 32px) !important;
-  height: calc(100vh - 120px) !important;
+  top: 12px !important;
+  left: 12px !important;
+  width: calc(100vw - 24px) !important;
+  height: calc(100vh - 100px) !important;
   z-index: 200 !important;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
-  border-color: var(--el-color-primary);
+  box-shadow: var(--apple-shadow-maximized) !important;
+  border-radius: var(--apple-radius-xl);
+  border-color: var(--apple-brand);
 }
 
-/* 卡片焦点样式 - 用于快捷键选中时的视觉反馈 */
+/* 卡片焦点 */
 .ai-card:focus-within,
 .ai-card:focus {
-  outline: 2px solid var(--el-color-primary);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+  outline: none;
+  box-shadow: var(--apple-shadow-hover), 0 0 0 2px rgba(0, 122, 255, 0.3);
 }
 
-/* 为卡片添加键盘可访问性 */
 .ai-card {
   cursor: pointer;
 }
 
-/* 卡片悬停效果增强 */
+/* 卡片悬停 — 克制、不夸张 */
 .ai-card:hover {
-  box-shadow: var(--el-box-shadow);
-  transform: translateY(-2px);
+  box-shadow: var(--apple-shadow-hover);
 }
 
 .ai-card.minimized .webview-container {
@@ -1043,13 +1041,14 @@ onUnmounted(() => {
   display: none !important;
 }
 
+/* 卡片头部 — 苹果风格紧凑头部 */
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--el-bg-color-page);
-  border-bottom: 1px solid var(--el-border-color);
+  padding: 8px 12px;
+  background: var(--apple-bg-primary);
+  border-bottom: 1px solid var(--apple-separator);
 }
 
 .header-left {
@@ -1061,30 +1060,34 @@ onUnmounted(() => {
 .provider-icon {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .provider-name {
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  font-size: 13px;
+  color: var(--apple-text-primary);
+  letter-spacing: -0.1px;
 }
 
 .status-tag {
-  margin-left: 4px;
+  margin-left: 2px;
+  font-size: 10px;
 }
 
 .header-right {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 
+/* WebView 容器 */
 .webview-container {
   position: relative;
-  overflow: auto; /* 改为auto以支持滚动 */
+  overflow: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 300px; /* 设置最小高度 */
+  min-height: 300px;
 }
 
 .webview-placeholder {
@@ -1093,40 +1096,40 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--el-bg-color-page);
+  background: var(--apple-bg-secondary);
 }
 
 .login-prompt,
 .loading-state,
 .error-state {
   text-align: center;
-  color: var(--el-text-color-secondary);
+  color: var(--apple-text-secondary);
 }
 
 .prompt-icon,
 .loading-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
-  color: var(--el-color-info);
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: var(--apple-text-tertiary);
 }
 
 .hint-text {
   font-size: 12px;
-  color: var(--el-text-color-placeholder);
+  color: var(--apple-text-placeholder);
   margin-top: 4px;
 }
 
 .error-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
-  color: var(--el-color-danger);
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: var(--apple-error);
 }
 
 .loading-icon {
-  animation: rotate 1s linear infinite;
+  animation: apple-rotate 1s linear infinite;
 }
 
-@keyframes rotate {
+@keyframes apple-rotate {
   from {
     transform: rotate(0deg);
   }
@@ -1135,6 +1138,7 @@ onUnmounted(() => {
   }
 }
 
+/* 状态指示器 */
 .status-indicator {
   position: absolute;
   bottom: 8px;
@@ -1142,46 +1146,51 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 4px 10px;
+  background: var(--apple-bg-elevated);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--apple-radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
 }
 
 .status-indicator .loading {
-  animation: rotate 1s linear infinite;
-  color: var(--el-color-primary);
+  animation: apple-rotate 1s linear infinite;
+  color: var(--apple-brand);
 }
 
 .status-indicator .success {
-  color: var(--el-color-success);
+  color: var(--apple-success);
 }
 
 .status-indicator .error {
-  color: var(--el-color-danger);
+  color: var(--apple-error);
 }
 
+/* 调整大小手柄 */
 .resize-handle {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   cursor: nw-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--el-text-color-placeholder);
-  background: var(--el-bg-color-page);
-  border-top-left-radius: 4px;
+  color: var(--apple-text-placeholder);
+  background: var(--apple-bg-primary);
+  border-top-left-radius: var(--apple-radius-sm);
+  opacity: 0.6;
 }
 
 .resize-handle:hover {
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
+  color: var(--apple-brand);
+  opacity: 1;
 }
 
+/* 对话框内容 */
 .cookie-login-content {
   display: flex;
   flex-direction: column;
@@ -1189,9 +1198,10 @@ onUnmounted(() => {
 }
 
 .cookie-login-desc {
-  color: var(--el-text-color-regular);
+  color: var(--apple-text-secondary);
   line-height: 1.6;
   margin: 0;
+  font-size: 13px;
 }
 
 .cookie-login-actions {
@@ -1206,7 +1216,7 @@ onUnmounted(() => {
 }
 
 .cookie-login-tip {
-  color: var(--el-text-color-secondary);
+  color: var(--apple-text-tertiary);
   font-size: 13px;
   line-height: 1.5;
   margin: 0;

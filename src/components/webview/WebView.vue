@@ -225,12 +225,6 @@ function findClipParent(element: HTMLElement): HTMLElement | null {
 function computeBounds(): WebViewBoundsState | null {
   if (!containerRef.value || !isViewCreated.value) return null
 
-  // 任意模态层打开时，标记不可见但保留 lastBounds 缓存
-  // 调度器的 pause() 会阻止 IPC 下发，dialog 关闭后 resume() 立即用最新位置
-  if (layoutStore.dialogLayerCount > 0) {
-    return lastBounds ? { bounds: lastBounds, visible: false } : null
-  }
-
   const rect = containerRef.value.getBoundingClientRect()
 
   // 最大化卡片使用 fixed 定位覆盖整个视口，不应被 cards-grid 裁剪

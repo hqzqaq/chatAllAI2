@@ -109,12 +109,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 32px;
-  padding: 0 20px;
-  background-color: var(--el-bg-color-page);
-  border-top: 1px solid var(--el-border-color);
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  height: 28px;
+  padding: 0 16px;
+  background-color: var(--apple-bg-primary);
+  border-top: 1px solid var(--apple-separator);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--apple-text-tertiary);
 }
 
 .footer-left,
@@ -131,25 +132,26 @@ onMounted(() => {
 }
 
 .app-version {
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--apple-text-secondary);
 }
 
 .status-text {
-  color: var(--el-text-color-regular);
+  color: var(--apple-text-secondary);
 }
 
 .sending-status {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: var(--el-color-primary);
+  color: var(--apple-brand);
 }
 
 .loading-icon {
-  animation: rotate 1s linear infinite;
+  animation: apple-rotate 1s linear infinite;
 }
 
-@keyframes rotate {
+@keyframes apple-rotate {
   from {
     transform: rotate(0deg);
   }
@@ -166,10 +168,10 @@ onMounted(() => {
 }
 
 .network-status.online {
-  color: var(--el-color-success);
+  color: var(--apple-success);
 }
 
 .network-status:not(.online) {
-  color: var(--el-color-danger);
+  color: var(--apple-error);
 }
 </style>

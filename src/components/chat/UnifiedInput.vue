@@ -4,34 +4,9 @@
     :class="{ collapsed: isCollapsed }"
   >
     <el-card class="input-card">
-      <div class="input-header">
-        <div class="header-left">
-          <el-icon class="input-icon">
-            <EditPen />
-          </el-icon>
-          <span class="input-title">统一输入</span>
-        </div>
-        <div class="header-right">
-          <el-tag
-            v-if="hasRespondingAI"
-            type="warning"
-            size="small"
-            class="ai-status-tag"
-          >
-            {{ respondingAICount }} 个AI回答中
-          </el-tag>
-        </div>
-      </div>
-
       <div class="input-body">
         <!-- 模型选择器 -->
         <div class="model-selector">
-          <div class="selector-header">
-            <el-icon class="selector-icon">
-              <Select />
-            </el-icon>
-            <span class="selector-title">选择AI模型</span>
-          </div>
           <el-checkbox-group
             v-model="selectedProviders"
             class="provider-checkboxes"
@@ -281,7 +256,7 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  EditPen, Position, Refresh, Delete, Select, Loading, Plus, Minus, Document, Rank,
+  Position, Refresh, Delete, Loading, Plus, Minus, Document, Rank,
   Lightning, DocumentChecked, Upload, Close
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -1550,9 +1525,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 苹果设计系统 — 统一输入区样式 */
+
 .unified-input {
   width: 100%;
-  transition: all 0.3s ease;
+  transition: all var(--apple-transition);
 }
 
 .unified-input.collapsed .input-card {
@@ -1560,112 +1537,74 @@ onUnmounted(() => {
 }
 
 .input-card {
-  box-shadow: var(--el-box-shadow-light);
+  box-shadow: var(--apple-shadow-card);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--apple-radius-lg);
 }
 
 .input-body {
-  transition: all 0.3s ease;
+  transition: all var(--apple-transition);
 }
 
+/* 折叠切换 */
 .collapse-toggle {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 32px;
+  height: 28px;
   cursor: pointer;
-  background: var(--el-bg-color);
-  border-top: 1px solid var(--el-border-color);
-  transition: all 0.3s ease;
+  background: var(--apple-bg-primary);
+  border-top: 1px solid var(--apple-separator);
+  transition: all var(--apple-transition-fast);
 }
 
 .collapse-toggle:hover {
-  background: var(--el-fill-color-light);
+  background: var(--apple-bg-secondary);
 }
 
 .collapse-arrow {
   width: 0;
   height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 10px solid var(--el-text-color-placeholder);
-  transition: transform 0.3s ease;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 8px solid var(--apple-text-placeholder);
+  transition: transform var(--apple-transition-fast);
 }
 
 .collapse-toggle.collapsed .collapse-arrow {
   border-bottom: none;
-  border-top: 10px solid var(--el-text-color-placeholder);
+  border-top: 8px solid var(--apple-text-placeholder);
 }
 
 .collapse-toggle:hover .collapse-arrow {
-  border-bottom-color: var(--el-color-primary);
+  border-bottom-color: var(--apple-brand);
 }
 
 .collapse-toggle.collapsed:hover .collapse-arrow {
-  border-top-color: var(--el-color-primary);
+  border-top-color: var(--apple-brand);
   border-bottom-color: transparent;
 }
 
-.input-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.input-icon {
-  color: var(--el-color-primary);
-  font-size: 18px;
-}
-
-.input-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-/* 模型选择器样式 */
+/* 模型选择器 — 苹果风格分组容器 */
 .model-selector {
-  margin-bottom: 16px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 1px solid #e9ecef;
-}
-
-.selector-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin-bottom: 12px;
-}
-
-.selector-icon {
-  color: #007aff;
-  font-size: 16px;
-}
-
-.selector-title {
-  font-weight: 600;
-  color: #1c1c1e;
-  font-size: 14px;
+  padding: 14px;
+  background: var(--apple-bg-secondary);
+  border-radius: var(--apple-radius-md);
+  border: 1px solid var(--apple-separator);
 }
 
 .provider-checkboxes {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 20px;
+  column-gap: 16px;
   row-gap: 8px;
   align-items: start;
 }
 
 .provider-checkbox {
   margin: 0;
-  min-height: 60px;
+  min-height: 52px;
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -1673,30 +1612,30 @@ onUnmounted(() => {
 .provider-option {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #ffffff;
-  border: 2px solid #e5e5ea;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--apple-bg-primary);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--apple-radius-sm);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all var(--apple-transition);
   position: relative;
   overflow: hidden;
-  min-width: 140px;
-  max-width: 240px;
+  min-width: 130px;
+  max-width: 220px;
   box-sizing: border-box;
 }
 
 .drag-handle {
   cursor: grab;
-  color: #999;
-  font-size: 16px;
-  transition: color 0.2s;
+  color: var(--apple-text-placeholder);
+  font-size: 14px;
+  transition: color var(--apple-transition-fast);
   flex-shrink: 0;
 }
 
 .drag-handle:hover {
-  color: #666;
+  color: var(--apple-text-secondary);
 }
 
 .drag-handle:active {
@@ -1716,11 +1655,11 @@ onUnmounted(() => {
 }
 
 .provider-checkbox.drag-over {
-  border: 2px dashed #4a90e2;
-  background: rgba(74, 144, 226, 0.1);
+  border: 2px dashed var(--apple-brand);
+  background: var(--apple-brand-light);
 }
 
-/* iOS风格复选框样式 */
+/* 苹果风格隐藏原生复选框 */
 :deep(.provider-checkbox .el-checkbox__input) {
   display: none;
 }
@@ -1730,94 +1669,73 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.provider-option {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #ffffff;
-  border: 2px solid #e5e5ea;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-/* iOS风格选中状态 */
+/* 苹果风格选中状态 — 柔和蓝色调 + 左侧品牌色指示条 */
 :deep(.provider-checkbox.is-checked .provider-option) {
-  background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
-  border-color: #4a90e2;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+  background: rgba(10, 132, 255, 0.08);
+  border-color: rgba(10, 132, 255, 0.35);
+  color: var(--apple-text-primary);
+  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.06), inset 3px 0 0 0 #0a84ff;
 }
 
-/* iOS风格悬停效果 */
 .provider-option:hover {
-  border-color: #007aff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
-}
-
-/* iOS风格选中状态下的图标和文字 */
-:deep(.provider-checkbox.is-checked .provider-option .provider-icon-small) {
-  /* 移除图标变白效果，保持原色 */
+  border-color: var(--apple-brand);
+  box-shadow: var(--apple-shadow-raised);
 }
 
 :deep(.provider-checkbox.is-checked .provider-option .provider-name) {
-  color: white;
+  color: var(--apple-text-primary);
+  font-weight: 600;
 }
 
 :deep(.provider-checkbox.is-checked .provider-option .status-tag) {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: white;
+  background: rgba(10, 132, 255, 0.1);
+  border-color: rgba(10, 132, 255, 0.2);
+  color: #0a84ff;
 }
 
 .provider-icon-small {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 6px;
   object-fit: contain;
 }
 
 .provider-name {
   font-weight: 500;
-  color: #1c1c1e;
-  font-size: 14px;
+  color: var(--apple-text-primary);
+  font-size: 13px;
   flex: 1;
 }
 
 .status-tag {
-  font-size: 11px;
-  padding: 2px 6px;
+  font-size: 10px;
+  padding: 1px 6px;
   border-radius: 10px;
 }
 
 .ai-status-tag {
-  font-size: 11px;
-  padding: 2px 6px;
+  font-size: 10px;
+  padding: 1px 6px;
   border-radius: 10px;
-  background: #f59e0b;
-  border-color: #f59e0b;
+  background: var(--apple-warning);
+  border-color: var(--apple-warning);
   color: white;
 }
 
 .header-right .ai-status-tag {
-  margin-left: 8px;
+  margin-left: 6px;
 }
 
 .loading-icon {
-  color: #8e8e93;
-  animation: rotate 1s linear infinite;
+  color: var(--apple-text-tertiary);
+  animation: apple-rotate 1s linear infinite;
 }
 
 :deep(.provider-checkbox.is-checked .provider-option .loading-icon) {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--apple-brand);
 }
 
-/* 禁用状态样式 */
+/* 禁用状态 */
 :deep(.provider-checkbox.is-disabled .provider-option) {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1825,7 +1743,7 @@ onUnmounted(() => {
 
 :deep(.provider-checkbox.is-disabled .provider-option:hover) {
   transform: none;
-  border-color: #e5e5ea;
+  border-color: var(--apple-border);
   box-shadow: none;
 }
 
@@ -1833,42 +1751,41 @@ onUnmounted(() => {
   font-size: 10px;
   padding: 0 4px;
   border-radius: 4px;
-  background: #e8f4fd;
-  border-color: #b3d8fd;
-  color: #409eff;
+  background: var(--apple-brand-light);
+  border-color: var(--apple-brand-100);
+  color: var(--apple-brand);
 }
 
 .add-provider-btn {
   display: inline-flex;
   align-items: center;
   cursor: pointer;
-  min-height: 60px;
+  min-height: 52px;
 }
 
 .add-option {
-  border: 2px dashed #c0c4cc;
-  background: #fafafa;
-  color: #909399;
+  border: 1px dashed var(--apple-text-placeholder);
+  background: var(--apple-bg-primary);
+  color: var(--apple-text-tertiary);
   justify-content: center;
 }
 
 .add-option:hover {
-  border-color: #409eff;
-  color: #409eff;
-  background: #ecf5ff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+  border-color: var(--apple-brand);
+  color: var(--apple-brand);
+  background: var(--apple-brand-light);
+  box-shadow: var(--apple-shadow-raised);
 }
 
 .add-icon {
-  font-size: 20px;
+  font-size: 18px;
 }
 
-/* 响应式布局优化 */
+/* 响应式布局 */
 @media (max-width: 1200px) {
   .provider-option {
-    min-width: 130px;
-    max-width: 200px;
+    min-width: 120px;
+    max-width: 190px;
   }
 }
 
@@ -1878,15 +1795,15 @@ onUnmounted(() => {
   }
 
   .provider-option {
-    min-width: 120px;
-    max-width: 180px;
-    padding: 10px 12px;
-    gap: 8px;
+    min-width: 110px;
+    max-width: 170px;
+    padding: 8px 10px;
+    gap: 6px;
   }
 
   .provider-icon-small {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   .provider-name {
@@ -1894,7 +1811,7 @@ onUnmounted(() => {
   }
 
   .status-tag {
-    font-size: 10px;
+    font-size: 9px;
     padding: 1px 4px;
   }
 }
@@ -1905,9 +1822,9 @@ onUnmounted(() => {
   }
 
   .provider-option {
-    min-width: 110px;
-    max-width: 160px;
-    padding: 8px 10px;
+    min-width: 100px;
+    max-width: 150px;
+    padding: 6px 8px;
     gap: 6px;
   }
 
@@ -1919,44 +1836,46 @@ onUnmounted(() => {
 .input-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
+/* 附件 */
 .attached-files {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 8px 12px;
-  background: var(--el-fill-color-light);
-  border-radius: 8px;
-  border: 1px solid var(--el-border-color-light);
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--apple-bg-secondary);
+  border-radius: var(--apple-radius-sm);
+  border: 1px solid var(--apple-separator);
 }
 
 .file-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 4px 8px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  font-size: 13px;
-  transition: all 0.2s ease;
+  background: var(--apple-bg-primary);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--apple-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  transition: all var(--apple-transition-fast);
 }
 
 .file-chip:hover {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 1px 4px rgba(48, 165, 255, 0.2);
+  border-color: var(--apple-brand);
+  box-shadow: var(--apple-shadow-raised);
 }
 
 .file-chip-icon {
-  color: var(--el-color-primary);
-  font-size: 16px;
+  color: var(--apple-brand);
+  font-size: 14px;
 }
 
 .file-chip-name {
-  color: var(--el-text-color-regular);
+  color: var(--apple-text-primary);
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1964,155 +1883,157 @@ onUnmounted(() => {
 }
 
 .file-chip-close {
-  color: var(--el-text-color-placeholder);
-  font-size: 14px;
+  color: var(--apple-text-placeholder);
+  font-size: 12px;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color var(--apple-transition-fast);
 }
 
 .file-chip-close:hover {
-  color: var(--el-color-danger);
+  color: var(--apple-error);
 }
 
-/* 输入框容器样式 */
+/* 输入框容器 */
 .textarea-container {
   position: relative;
   width: 100%;
-  transition: all 0.3s ease;
+  transition: all var(--apple-transition);
 }
 
 .message-input {
   width: 100%;
-  transition: all 0.3s ease;
+  transition: all var(--apple-transition);
 }
 
-/* 调整大小手柄样式 */
+/* 调整大小手柄 */
 .textarea-resize-handle {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 16px;
-  height: 16px;
+  right: 6px;
+  bottom: 6px;
+  width: 14px;
+  height: 14px;
   cursor: ns-resize;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23909399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
-  opacity: 0.5;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 0.4;
+  transition: opacity var(--apple-transition-fast), transform var(--apple-transition-fast);
   z-index: 10;
   user-select: none;
 }
 
 .textarea-resize-handle:hover {
-  opacity: 1;
+  opacity: 0.8;
   transform: scale(1.1);
 }
 
-/* 展开按钮样式 */
+/* 展开按钮 */
 .textarea-expand-button {
   position: absolute;
-  right: 8px;
-  top: 8px;
-  width: 28px;
-  height: 28px;
+  right: 6px;
+  top: 6px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.8);
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--apple-border);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0.6;
-  transition: all 0.3s ease;
+  opacity: 0.5;
+  transition: all var(--apple-transition-fast);
   z-index: 10;
   user-select: none;
-  font-size: 14px;
-  color: #606266;
+  font-size: 12px;
+  color: var(--apple-text-secondary);
 }
 
 .textarea-expand-button:hover {
   opacity: 1;
-  background-color: #ffffff;
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background-color: var(--apple-bg-primary);
+  border-color: var(--apple-brand);
+  color: var(--apple-brand);
+  box-shadow: var(--apple-shadow-raised);
 }
 
 .textarea-expand-button:active {
   transform: scale(0.95);
 }
 
-/* 输入框操作区域样式 */
+/* 操作区域 */
 .input-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: all 0.3s ease;
+  transition: all var(--apple-transition);
 }
 
 .actions-left,
 .actions-right {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
-/* 输入框样式优化 */
+/* 输入框苹果风格 */
 :deep(.el-textarea) {
   position: relative;
-  transition: all 0.3s ease;
+  transition: all var(--apple-transition);
 }
 
 :deep(.el-textarea__inner) {
   resize: none;
-  min-height: 80px;
+  min-height: 76px;
   height: auto !important;
-  min-height: 80px !important;
-  line-height: 1.6;
+  min-height: 76px !important;
+  line-height: 1.5;
   font-size: 14px;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
+  letter-spacing: -0.1px;
+  transition: all var(--apple-transition);
   overflow-wrap: break-word;
   word-wrap: break-word;
   hyphens: auto;
   box-sizing: border-box;
+  border-radius: var(--apple-radius-sm);
+  border-color: var(--apple-border);
 }
 
 :deep(.el-textarea__inner:focus) {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 0 0 2px rgba(48, 165, 255, 0.2);
+  border-color: var(--apple-brand);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
 }
 
-/* 展开状态样式 */
+/* 展开状态 */
 .textarea-container.expanded :deep(.el-textarea__inner) {
   min-height: 400px;
   max-height: 60vh;
 }
 
-/* 调整大小状态样式 */
+/* 调整大小状态 */
 .textarea-container.resizing :deep(.el-textarea__inner) {
   cursor: ns-resize;
 }
 
-/* 响应式设计 */
+/* 响应式 */
 @media (max-width: 768px) {
   .textarea-container {
     width: 100%;
   }
 
   .textarea-expand-button {
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
   }
 
   .textarea-resize-handle {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
   }
 
   :deep(.el-textarea__inner) {
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.45;
   }
 }
 
@@ -2123,7 +2044,7 @@ onUnmounted(() => {
 
   .input-actions {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     align-items: stretch;
   }
 
@@ -2133,56 +2054,54 @@ onUnmounted(() => {
   }
 }
 
-/* 动画过渡效果 */
+/* 动画过渡 */
 :deep(.el-textarea) {
-  transition: height 0.3s ease, min-height 0.3s ease, max-height 0.3s ease;
+  transition: height var(--apple-transition), min-height var(--apple-transition), max-height var(--apple-transition);
 }
 
 :deep(.el-textarea__inner) {
   transition:
-    height 0.3s ease,
-    min-height 0.3s ease,
-    max-height 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
+    height var(--apple-transition),
+    min-height var(--apple-transition),
+    max-height var(--apple-transition),
+    border-color var(--apple-transition),
+    box-shadow var(--apple-transition);
 }
 
-/* 滚动条样式优化 */
+/* 苹果风格滚动条 */
 :deep(.el-textarea__inner::-webkit-scrollbar) {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 :deep(.el-textarea__inner::-webkit-scrollbar-track) {
-  background: #f1f1f1;
-  border-radius: 3px;
+  background: transparent;
 }
 
 :deep(.el-textarea__inner::-webkit-scrollbar-thumb) {
-  background: #c1c1c1;
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
-  transition: background 0.3s ease;
 }
 
 :deep(.el-textarea__inner::-webkit-scrollbar-thumb:hover) {
-  background: #a8a8a8;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* 触摸设备优化 */
 @media (hover: none) and (pointer: coarse) {
   .textarea-resize-handle {
-    width: 24px;
-    height: 24px;
-    opacity: 0.8;
+    width: 20px;
+    height: 20px;
+    opacity: 0.7;
   }
 
   .textarea-expand-button {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
   }
 }
 
-@keyframes rotate {
+@keyframes apple-rotate {
   from {
     transform: rotate(0deg);
   }
@@ -2191,18 +2110,18 @@ onUnmounted(() => {
   }
 }
 
-/* 响应式设计 */
+/* 响应式 */
 @media (max-width: 768px) {
   .provider-checkboxes {
     justify-content: center;
   }
 
   .model-selector {
-    padding: 12px;
+    padding: 10px;
   }
 
   .provider-option {
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
 }
 </style>

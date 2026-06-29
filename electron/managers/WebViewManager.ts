@@ -19,6 +19,9 @@ export class WebViewManager extends EventEmitter {
 
   private bounds: Map<string, { x: number; y: number; width: number; height: number }> = new Map()
 
+  /** 已挂载到父窗口的视图 ID 集合 */
+  private attachedViews: Set<string> = new Set()
+
   constructor(windowManager: WindowManager, sessionManager: SessionManager) {
     super()
     this.windowManager = windowManager
@@ -53,6 +56,7 @@ export class WebViewManager extends EventEmitter {
     view.webContents.loadURL(url)
     mainWindow.contentView.addChildView(view)
     this.views.set(providerId, view)
+    this.attachedViews.add(providerId)
 
     this.setupEventForwarding(providerId, view, mainWindow)
 
@@ -71,6 +75,7 @@ export class WebViewManager extends EventEmitter {
     view.webContents.close()
     this.views.delete(providerId)
     this.bounds.delete(providerId)
+    this.attachedViews.delete(providerId)
 
     console.log(`[WebViewManager] Destroyed WebContentsView for ${providerId}`)
   }
@@ -101,21 +106,30 @@ export class WebViewManager extends EventEmitter {
     const view = this.views.get(providerId)
     if (!view) return
 
+    const mainWindow = this.windowManager.getMainWindow()
+    if (!mainWindow || mainWindow.isDestroyed()) return
+
+    const isAttached = this.attachedViews.has(providerId)
+
     if (!state.visible) {
-      // 隐藏：直接移出可视区域，不读取缓存的 bounds，避免使用过期位置
-      view.setBounds({
-        x: -9999, y: -9999, width: 1, height: 1
-      })
+      // 隐藏：从父窗口移除，避免缩小到 1x1 导致页面布局崩溃
+      if (isAttached) {
+        mainWindow.contentView.removeChildView(view)
+        this.attachedViews.delete(providerId)
+      }
       return
     }
 
-    // 显示：优先使用本次传入的 bounds，避免依赖可能过期的缓存
+    // 显示：重新挂载到父窗口
+    if (!isAttached) {
+      mainWindow.contentView.addChildView(view)
+      this.attachedViews.add(providerId)
+    }
+
     if (state.bounds) {
-      // 先更新缓存再应用，确保缓存与视图位置一致
       this.bounds.set(providerId, state.bounds)
       view.setBounds(state.bounds)
     } else {
-      // 未传入 bounds 时回退到缓存（兼容仅切换显隐的场景）
       const storedBounds = this.bounds.get(providerId)
       if (storedBounds) {
         view.setBounds(storedBounds)

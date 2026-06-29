@@ -395,40 +395,45 @@ onMounted(() => {
 <style scoped>
 .settings-view {
   height: 100%;
-  padding: 20px;
+  padding: 16px;
   overflow-y: auto;
 }
 
 .settings-container {
-  max-width: 800px;
+  max-width: 780px;
   margin: 0 auto;
 }
 
 .settings-card {
-  box-shadow: var(--el-box-shadow-light);
+  box-shadow: var(--apple-shadow-card);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--apple-radius-lg);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  color: var(--apple-text-primary);
+  letter-spacing: -0.2px;
 }
 
 .settings-tabs {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .settings-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .settings-section h3 {
-  margin: 0 0 16px 0;
-  color: var(--el-text-color-primary);
-  font-size: 14px;
+  margin: 0 0 12px 0;
+  color: var(--apple-text-primary);
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.1px;
 }
 
 .about-info {
@@ -436,31 +441,37 @@ onMounted(() => {
 }
 
 .app-info {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .app-icon {
-  font-size: 48px;
-  color: var(--el-color-primary);
-  margin-bottom: 16px;
+  font-size: 40px;
+  color: var(--apple-brand);
+  margin-bottom: 12px;
 }
 
 .app-info h2 {
-  margin: 8px 0;
-  color: var(--el-text-color-primary);
+  margin: 6px 0;
+  color: var(--apple-text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
 }
 
 .app-info p {
-  margin: 4px 0;
-  color: var(--el-text-color-secondary);
+  margin: 3px 0;
+  color: var(--apple-text-secondary);
+  font-size: 13px;
 }
 
 .tech-stack {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .tech-tag {
-  margin: 4px;
+  margin: 3px;
+  font-size: 12px;
+  border-radius: var(--apple-radius-sm);
 }
 
 .system-info {
@@ -468,17 +479,18 @@ onMounted(() => {
 }
 
 .system-info p {
-  margin: 8px 0;
-  color: var(--el-text-color-regular);
+  margin: 6px 0;
+  color: var(--apple-text-secondary);
+  font-size: 13px;
 }
 
 .script-config-header {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .section-desc {
-  color: var(--el-text-color-secondary);
+  color: var(--apple-text-tertiary);
   font-size: 13px;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
 }
 </style>

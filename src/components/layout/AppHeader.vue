@@ -164,10 +164,18 @@ const toggleFullScreen = (): void => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
-  padding: 0 20px;
-  background-color: var(--el-bg-color);
-  border-bottom: 1px solid var(--el-border-color);
+  height: 52px;
+  padding: 0 16px;
+  background-color: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--apple-separator);
+  transition: background-color var(--apple-transition);
+}
+
+.dark-mode .app-header,
+.dark-mode & .app-header {
+  background-color: rgba(30, 30, 32, 0.78);
 }
 
 .header-center {
@@ -181,21 +189,21 @@ const toggleFullScreen = (): void => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
-  -webkit-app-region: no-drag; /* 右侧区域禁止拖动，允许点击 */
+  gap: 10px;
+  -webkit-app-region: no-drag;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  -webkit-app-region: no-drag; /* 左侧区域禁止拖动，允许点击 */
+  -webkit-app-region: no-drag;
 }
 
-/* 拖动区域样式 */
+/* 拖动区域 */
 .drag-area {
   flex: 1;
   height: 100%;
-  -webkit-app-region: drag; /* 允许拖动窗口 */
+  -webkit-app-region: drag;
 }
 
 .left-drag-area {
@@ -206,75 +214,87 @@ const toggleFullScreen = (): void => {
   margin-left: auto;
 }
 
-/* 菜单容器样式 */
+/* 菜单容器 */
 .menu-container {
-  -webkit-app-region: no-drag; /* 菜单区域禁止拖动 */
+  -webkit-app-region: no-drag;
 }
 
+/* 标题 — SF Pro Display 风格 */
 .app-title {
   display: flex;
   align-items: center;
   margin: 0;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
-  color: var(--el-color-primary);
+  color: var(--apple-text-primary);
+  letter-spacing: -0.2px;
 }
 
 .title-icon {
-  margin-right: 8px;
-  font-size: 24px;
-}
-
-.header-center {
-  flex: 1;
-  justify-content: center;
-}
-
-.header-right {
-  gap: 12px;
+  margin-right: 6px;
+  font-size: 20px;
+  color: var(--apple-brand);
 }
 
 .login-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .status-icon {
-  font-size: 18px;
-  color: var(--el-color-info);
-  transition: color 0.3s ease;
+  font-size: 16px;
+  color: var(--apple-text-tertiary);
+  transition: color var(--apple-transition-fast);
 }
 
 .status-icon.online {
-  color: var(--el-color-success);
+  color: var(--apple-success);
 }
 
 .status-text {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  font-weight: 500;
+  color: var(--apple-text-secondary);
 }
 
 .theme-toggle {
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .window-controls {
   display: flex;
   gap: 4px;
-  margin-left: 12px;
+  margin-left: 8px;
 }
 
-/* 菜单样式覆盖 */
+/* 苹果风格菜单 — 去掉下划线，使用胶囊式活跃指示 */
 :deep(.el-menu--horizontal) {
   border-bottom: none;
+  background: transparent;
+  height: 32px;
 }
 
 :deep(.el-menu-item) {
-  border-bottom: 2px solid transparent !important;
+  border-bottom: none !important;
+  height: 32px;
+  line-height: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--apple-text-secondary);
+  border-radius: var(--apple-radius-sm);
+  padding: 0 12px;
+  transition: all var(--apple-transition-fast);
+}
+
+:deep(.el-menu-item:hover) {
+  background-color: var(--apple-bg-secondary);
+  color: var(--apple-text-primary);
 }
 
 :deep(.el-menu-item.is-active) {
-  border-bottom-color: var(--el-color-primary) !important;
+  background-color: rgba(10, 132, 255, 0.1);
+  color: #0a84ff !important;
+  font-weight: 600;
 }
 </style>

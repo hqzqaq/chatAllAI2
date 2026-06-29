@@ -29,14 +29,12 @@ export function useViewLayering() {
     // 等待 DOM 更新完成，确保隐藏的卡片样式已经生效
     await nextTick()
 
-    // 任意模态层打开时，暂停 IPC 下发（computeBounds 仍会更新调度器内部缓存）
+    // 任意模态层打开时：强制隐藏所有原生视图，不暂停调度器，
+    // 确保 visible=false 的 IPC 能真正下发给主进程
     if (layoutStore.dialogLayerCount > 0) {
-      scheduler.pause()
+      allIds.forEach((id) => scheduler.setOverride(id, false))
       return
     }
-
-    // dialog 关闭时恢复 IPC 下发，触发一次 tick 将缓存 diff 后一次性下发变更
-    scheduler.resume()
 
     if (state === 'normal') {
       // 正常状态：清除所有覆盖，由 computeBounds 自行计算显隐

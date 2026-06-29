@@ -268,8 +268,6 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-view {
-  /* 修复：之前用 100vh 会让 chat-view 撑到整个窗口高度，
-     溢出 main-content 并盖住 footer。改为 100% 让其填满父容器 */
   height: 100%;
   min-height: 0;
   display: flex;
@@ -281,9 +279,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   padding: 6px;
-  gap: 16px;
-  min-height: 0; /* 允许flex子项收缩 */
-  overflow: hidden; /* 防止整体滚动，让滚动仅在卡片网格区域内部进行 */
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .input-section {
@@ -294,17 +292,29 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  min-height: 0; /* 允许flex子项收缩 */
+  min-height: 0;
 }
 
 .card-item {
   width: 100%;
   max-width: 100%;
-  min-width: 300px; /* 最小宽度 */
-  height: 100%; /* 根据内容自适应高度 */
-  /* 确保卡片在网格中正确显示 */
+  min-width: 280px;
+  height: 100%;
   grid-column: auto;
   grid-row: auto;
+  /* 苹果风格入场动画 */
+  animation: apple-fade-in 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes apple-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* 响应式布局 */
@@ -317,22 +327,6 @@ onUnmounted(() => {
 @media (max-width: 800px) {
   .cards-grid {
     grid-template-columns: 1fr !important;
-  }
-}
-
-/* 卡片动画 */
-.card-item {
-  animation: fadeInUp 0.3s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 </style>

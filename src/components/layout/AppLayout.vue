@@ -37,11 +37,11 @@ const isDarkMode = computed(() => appStore.isDarkMode)
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: var(--el-bg-color);
-  color: var(--el-text-color-primary);
+  background-color: var(--apple-bg-secondary);
+  color: var(--apple-text-primary);
   transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+    background-color var(--apple-transition),
+    color var(--apple-transition);
 }
 
 .main-content {
@@ -51,8 +51,7 @@ const isDarkMode = computed(() => appStore.isDarkMode)
 }
 
 .dark-mode {
-  --el-bg-color: #1a1a1a;
-  --el-text-color-primary: #e5e5e5;
-  --el-border-color: #333;
+  --apple-bg-secondary: #1a1a1d;
+  --apple-text-primary: #e8e8ed;
 }
 </style>
