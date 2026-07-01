@@ -29,7 +29,6 @@
 
       <div class="header-right">
         <el-button
-          v-if="supportsCookieLogin"
           :icon="User"
           :type="props.provider.isLoggedIn ? 'info' : 'warning'"
           size="small"
@@ -319,7 +318,6 @@ import { ElMessage } from 'element-plus'
 import WebView from '../webview/WebView.vue'
 import type { AIProvider, CardConfig } from '../../types'
 import type { ProviderCookieInput } from '../../types/ipc'
-import { providerCookieLoginUrls } from '../../config/providers'
 import { useChatStore, useLayoutStore } from '../../stores'
 import { storage } from '../../utils/storage'
 
@@ -353,9 +351,6 @@ const proxyDialogVisible = ref(false)
 const cookieLoginDialogVisible = ref(false)
 const cookieLoginInput = ref('')
 const isImportingCookies = ref(false)
-
-// 当前 provider 是否支持系统浏览器登录 + Cookie 导入
-const supportsCookieLogin = computed(() => !!providerCookieLoginUrls[props.provider.id])
 
 // 使用props提供的minimized/maximized状态，或者回退到config中的状态
 const resolvedIsMinimized = computed(() => props.minimized ?? props.config?.isMinimized ?? false)

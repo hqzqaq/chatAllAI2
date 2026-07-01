@@ -675,6 +675,17 @@ MIT License
 
 ## 版本更新记录
 
+### v1.2.3
+- **功能增强**：Cookie 登录成为所有 AI 卡片的默认功能
+  - 移除 AICard 中 Cookie 登录按钮的 `supportsCookieLogin` 条件判断
+  - 所有 AI 模型卡片均默认展示 Cookie 导入/重新导入按钮，统一登录入口
+  - 清理 AICard 中不再使用的 `supportsCookieLogin` 计算属性及相关导入
+- **UI 重构**：引入 Apple Design System，全面重构应用主题与交互体验
+  - 在 `App.vue` 中新增苹果设计系统 CSS 变量体系，统一亮色/深色模式配色、圆角、阴影与过渡
+  - 覆盖 Element Plus 主题变量以适配新设计系统
+  - 重构 `UnifiedInput`、`AppHeader`、`AppFooter`、`AppLayout`、`Chat`、`Settings` 等组件的样式与布局
+  - 优化 WebView 管理逻辑，提升原生视图与 DOM 层的协同表现
+
 ### v1.2.2
 - **架构重构**：重构 WebView 视图调度与显隐逻辑，统一优化性能与体验
   - 新增 `WebViewBoundsScheduler` 统一调度器，合并多 WebView 的 `requestAnimationFrame` 循环，通过 diff 机制减少 IPC 调用
@@ -684,6 +695,7 @@ MIT License
   - 重构 `useViewLayering`，通过调度器覆盖显隐状态，统一管理视图层级
   - 为 `SummarySidebar` 添加 `data-webview-clip` 标记，统一裁剪区域处理
 - **bug修复**：修复聊天输入选择器，从通用 textbox 改为 textarea 以适配更多场景
+- **bug修复**：修复元宝和千问发送消息失败的问题
 
 ### v1.2.1
 - **功能新增**：实现 Cookie 登录功能
@@ -896,4 +908,4 @@ MIT License
 
 ---
 
-*本文基于ChatAllAI v1.2.2版本进行分析，技术细节可能随版本更新而变化。*
+*本文基于ChatAllAI v1.2.3版本进行分析，技术细节可能随版本更新而变化。*
