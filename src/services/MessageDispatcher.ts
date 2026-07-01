@@ -344,27 +344,29 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
-   * 发送脚本到单个提供商
+   * 通用发送操作方法
+   * 封装状态管理、超时处理、错误处理和重试逻辑
    */
-  private async sendScriptToProvider(provider: AIProvider, script: string): Promise<MessageSendResult> {
+  private async executeSendOperation(
+    provider: AIProvider,
+    messageId: string,
+    sendOperation: () => Promise<void>,
+    operationType: string
+  ): Promise<MessageSendResult> {
     const providerId = provider.id
-    const messageId = this.generateMessageId()
 
     try {
-      // 设置发送状态
       this.setSendingStatus(providerId, 'sending')
       this.emit('status-changed', { providerId, status: 'sending', messageId })
 
-      this.log(`Sending script to provider ${providerId}`, { messageId, webviewId: provider.webviewId })
+      this.log(`Sending ${operationType} to provider ${providerId}`, { messageId, webviewId: provider.webviewId })
 
-      // 通过IPC发送脚本到WebView
       if (window.electronAPI) {
         await Promise.race([
-          window.electronAPI.executeWebViewScript({ providerId: provider.id, script }),
+          sendOperation(),
           this.createTimeoutPromise(this.config.timeout)
         ])
 
-        // 设置成功状态
         this.setSendingStatus(providerId, 'sent')
         this.emit('status-changed', { providerId, status: 'sent', messageId })
 
@@ -375,14 +377,13 @@ export class MessageDispatcher extends BrowserEventEmitter {
           timestamp: new Date()
         }
 
-        this.log(`Script sent successfully to provider ${providerId}`, result)
+        this.log(`${operationType} sent successfully to provider ${providerId}`, result)
         return result
       }
       throw new Error('Electron API not available')
     } catch (error) {
-      this.log(`Failed to send script to provider ${providerId}`, { messageId, error })
+      this.log(`Failed to send ${operationType} to provider ${providerId}`, { messageId, error })
 
-      // 设置错误状态
       this.setSendingStatus(providerId, 'error')
       this.emit('status-changed', {
         providerId,
@@ -391,16 +392,14 @@ export class MessageDispatcher extends BrowserEventEmitter {
         error
       })
 
-      // 检查是否需要重试
       const currentRetryCount = this.retryCount.get(`${messageId}-${providerId}`) || 0
       if (currentRetryCount < this.config.retryAttempts) {
         this.retryCount.set(`${messageId}-${providerId}`, currentRetryCount + 1)
 
-        this.log(`Retrying script send to provider ${providerId} (attempt ${currentRetryCount + 1})`)
+        this.log(`Retrying ${operationType} send to provider ${providerId} (attempt ${currentRetryCount + 1})`)
 
-        // 延迟后重试
         await this.delay(this.config.retryDelay * (currentRetryCount + 1))
-        return this.sendScriptToProvider(provider, script)
+        return this.executeSendOperation(provider, messageId, sendOperation, operationType)
       }
 
       const result: MessageSendResult = {
@@ -416,75 +415,25 @@ export class MessageDispatcher extends BrowserEventEmitter {
   }
 
   /**
+   * 发送脚本到单个提供商
+   */
+  private async sendScriptToProvider(provider: AIProvider, script: string): Promise<MessageSendResult> {
+    const messageId = this.generateMessageId()
+
+    return this.executeSendOperation(provider, messageId, () =>
+      window.electronAPI!.executeWebViewScript({ providerId: provider.id, script }),
+      'script'
+    )
+  }
+
+  /**
    * 发送消息到单个提供商
    */
   private async sendToProvider(provider: AIProvider, message: Message): Promise<MessageSendResult> {
-    const providerId = provider.id
-    const messageId = message.id
-
-    try {
-      // 设置发送状态
-      this.setSendingStatus(providerId, 'sending')
-      this.emit('status-changed', { providerId, status: 'sending', messageId })
-
-      this.log(`Sending message to provider ${providerId}`, { messageId, webviewId: provider.webviewId })
-
-      // 通过IPC发送消息到WebView
-      if (window.electronAPI) {
-        await Promise.race([
-          window.electronAPI.sendMessageToWebView(provider.webviewId, message.content),
-          this.createTimeoutPromise(this.config.timeout)
-        ])
-
-        // 设置成功状态
-        this.setSendingStatus(providerId, 'sent')
-        this.emit('status-changed', { providerId, status: 'sent', messageId })
-
-        const result: MessageSendResult = {
-          providerId,
-          success: true,
-          messageId,
-          timestamp: new Date()
-        }
-
-        this.log(`Message sent successfully to provider ${providerId}`, result)
-        return result
-      }
-      throw new Error('Electron API not available')
-    } catch (error) {
-      this.log(`Failed to send message to provider ${providerId}`, { messageId, error })
-
-      // 设置错误状态
-      this.setSendingStatus(providerId, 'error')
-      this.emit('status-changed', {
-        providerId,
-        status: 'error',
-        messageId,
-        error
-      })
-
-      // 检查是否需要重试
-      const currentRetryCount = this.retryCount.get(`${messageId}-${providerId}`) || 0
-      if (currentRetryCount < this.config.retryAttempts) {
-        this.retryCount.set(`${messageId}-${providerId}`, currentRetryCount + 1)
-
-        this.log(`Retrying message send to provider ${providerId} (attempt ${currentRetryCount + 1})`)
-
-        // 延迟后重试
-        await this.delay(this.config.retryDelay * (currentRetryCount + 1))
-        return this.sendToProvider(provider, message)
-      }
-
-      const result: MessageSendResult = {
-        providerId,
-        success: false,
-        messageId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date()
-      }
-
-      return result
-    }
+    return this.executeSendOperation(provider, message.id, () =>
+      window.electronAPI!.sendMessageToWebView(provider.webviewId, message.content),
+      'message'
+    )
   }
 
   /**

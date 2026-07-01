@@ -95,6 +95,24 @@ export const providerConfigs: ProviderConfig[] = [
     name: 'Minimax',
     url: 'https://agent.minimax.io/',
     icon: './icons/minimax.png'
+  },
+  {
+    id: 'stepfun',
+    name: 'StepFun',
+    url: 'https://studio.stepfun.com/',
+    icon: './icons/StepFunV2.webp'
+  },
+  {
+    id: 'qwen-studio',
+    name: 'qwen studio',
+    url: 'https://chat.qwen.ai/',
+    icon: './icons/qwen-studio.svg'
+  },
+  {
+    id: 'gemini-studio',
+    name: 'gemini studio',
+    url: 'https://aistudio.google.com/prompts/new_chat',
+    icon: './icons/gemini-studio.png'
   }
 ]
 

@@ -28,7 +28,10 @@ export function getNewChatScript(providerId: string): string {
     gemini: getGeminiNewChatScript(),
     chatgpt: getChatGPTNewChatScript(),
     mimo: getMimoNewChatScript(),
-    minimax: getMinimaxNewChatScript()
+    minimax: getMinimaxNewChatScript(),
+    stepfun: getStepFunNewChatScript(),
+    'qwen-studio': getQwenStudioNewChatScript(),
+    'gemini-studio': getGeminiStudioNewChatScript()
   }
 
   return resolveScript(providerId, 'newChat', scripts[providerId] || getGenericNewChatScript())
@@ -661,6 +664,66 @@ function getMimoNewChatScript(): string {
       }
     })()
   `
+}
+
+/**
+ * StepFun新建对话脚本
+ */
+function getStepFunNewChatScript(): string {
+  return `(function() {
+      try {
+        // 查找新建对话按钮
+        const newChatBtn = document.querySelector('[data-state="delayed-open"]')
+        if (newChatBtn) {
+          newChatBtn.click();
+          console.log('已点击Gemini Studio新建对话按钮');
+          return true;
+        }
+      } catch (error) {
+        console.error('StepFun新建对话失败:', error);
+        return false;
+      }
+    })()`
+}
+
+/**
+ * Qwen Studio新建对话脚本
+ */
+function getQwenStudioNewChatScript(): string {
+  return `(function() {
+      try {
+        // 查找新建对话按钮
+        const newChatBtn = document.querySelector('[.sidebar-entry-fixed-list-content]')
+        if (newChatBtn) {
+          newChatBtn.click();
+          console.log('已点击Qwen Studio新建对话按钮');
+          return true;
+        }
+      } catch (error) {
+        console.error('Qwen Studio新建对话失败:', error);
+        return false;
+      }
+    })()`
+}
+
+/**
+ * Gemini Studio新建对话脚本
+ */
+function getGeminiStudioNewChatScript(): string {
+  return `(function() {
+      try {
+        // 查找新建对话按钮
+        const newChatBtn = document.querySelector('[aria-label="New chat"]')
+        if (newChatBtn) {
+          newChatBtn.click();
+          console.log('已点击Gemini Studio新建对话按钮');
+          return true;
+        }
+      } catch (error) {
+        console.error('Gemini Studio新建对话失败:', error);
+        return false;
+      }
+    })()`
 }
 
 /**

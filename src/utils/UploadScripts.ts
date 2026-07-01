@@ -35,7 +35,10 @@ export function getFileUploadScript(providerId: string, file: UploadFileData): s
     glm: getGLMUploadScript(file),
     miromind: getMiromindUploadScript(file),
     mimo: getMimoUploadScript(file),
-    minimax: getMinimaxUploadScript(file)
+    minimax: getMinimaxUploadScript(file),
+    stepfun: getStepFunUploadScript(file),
+    'qwen-studio': getQwenStudioUploadScript(file),
+    'gemini-studio': getGeminiStudioUploadScript(file)
   }
 
   const defaultScript = scripts[providerId] || getGenericUploadScript(file)
@@ -1312,6 +1315,30 @@ function getMinimaxUploadScript(file: UploadFileData): string {
 }
 
 /**
+ * StepFun 文件上传脚本
+ * 使用通用上传脚本
+ */
+function getStepFunUploadScript(file: UploadFileData): string {
+  return getGenericUploadScript(file)
+}
+
+/**
+ * Qwen Studio 文件上传脚本
+ * 使用通用上传脚本
+ */
+function getQwenStudioUploadScript(file: UploadFileData): string {
+  return getGenericUploadScript(file)
+}
+
+/**
+ * Gemini Studio 文件上传脚本
+ * Gemini Studio 使用 Angular Material 风格，支持拖拽上传
+ */
+function getGeminiStudioUploadScript(file: UploadFileData): string {
+  return getGenericUploadScript(file)
+}
+
+/**
  * 通用文件上传脚本（用于未知或不支持的网站）
  * 优先使用拖拽上传策略，因为大多数网站都支持拖拽上传
  * 包含详细的诊断日志，帮助排查问题
@@ -1476,6 +1503,7 @@ export function getFileUploadSupportedProviders(): string[] {
   return [
     'chatgpt', 'gemini', 'deepseek', 'kimi', 'doubao',
     'qwen', 'grok', 'yuanbao', 'copilot', 'glm',
-    'miromind', 'mimo', 'minimax'
+    'miromind', 'mimo', 'minimax',
+    'stepfun', 'qwen-studio', 'gemini-studio'
   ]
 }

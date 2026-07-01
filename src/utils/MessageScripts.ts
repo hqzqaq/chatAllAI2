@@ -48,7 +48,10 @@ export function getSendMessageScript(providerId: string, message: string): strin
     gemini: getGeminiScript(escapedMessage),
     chatgpt: getChatGPTScript(escapedMessage),
     mimo: getMimoScript(escapedMessage),
-    minimax: getMinimaxScript(escapedMessage)
+    minimax: getMinimaxScript(escapedMessage),
+    stepfun: getStepFunScript(escapedMessage),
+    'qwen-studio': getQwenStudioScript(escapedMessage),
+    'gemini-studio': getGeminiStudioScript(escapedMessage)
   }
 
   const defaultScript = scripts[providerId] || getGenericScript(escapedMessage)
@@ -765,12 +768,182 @@ function getMinimaxScript(escapedMessage: string): string {
 }
 
 /**
+ * StepFun发送脚本
+ */
+function getStepFunScript(escapedMessage: string): string {
+  return getDeepSeekScript(escapedMessage)
+}
+
+/**
+ * Qwen Studio发送脚本
+ */
+function getQwenStudioScript(escapedMessage: string): string {
+  return `
+    (function() {
+      // --- Configuration ---
+      const CHAT_INPUT_SELECTOR = 'textarea';
+      const INPUT_SEND_DELAY_MS = 500;
+
+      // --- Input Handling ---
+      function findChatInput() {
+        const element = document.querySelector(CHAT_INPUT_SELECTOR);
+        if (element) {
+          return element;
+        }
+        return null;
+      }
+
+      const inputElement = findChatInput();
+
+      if (!inputElement) {
+        console.error("[Input] Chat input element not found using selector:", CHAT_INPUT_SELECTOR);
+        return false;
+      }
+
+      try {
+        inputElement.focus();
+        console.log("[Input] Focused the input element.");
+
+        const newValue = '${escapedMessage}';
+        inputElement.textContent = newValue;
+
+        // 触发input事件
+        const inputEvent = new Event('input', {
+          bubbles: true,
+          cancelable: false,
+        });
+        inputElement.dispatchEvent(inputEvent);
+        console.log("Simulated 'input' event dispatched.");
+
+        // 延迟后发送Enter键事件
+        setTimeout(() => {
+          const enterEvent = new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+          });
+
+          const dispatched = inputElement.dispatchEvent(enterEvent);
+          const status = !dispatched;
+          console.log("[Input] Dispatched 'keydown' (Enter) after delay. Event cancellation status: " + status + '.');
+        }, INPUT_SEND_DELAY_MS);
+
+        return true;
+      } catch (e) {
+        console.error("[Input] Error during input simulation:", e);
+        return false;
+      }
+    })()
+  `
+}
+
+/**
+ * Gemini Studio发送脚本
+ */
+function getGeminiStudioScript(escapedMessage: string): string {
+  return `(function() {
+  // --- Configuration ---
+  const CHAT_INPUT_SELECTOR = 'textarea';
+  const INPUT_SEND_DELAY_MS = 500;
+
+  // --- Utility: 检测是否为 Mac ---
+  const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+
+  // --- Input Handling ---
+  function findChatInput() {
+    const element = document.querySelector(CHAT_INPUT_SELECTOR);
+    if (element && element.tagName === 'TEXTAREA') {
+      return element;
+    }
+    return null;
+  }
+
+  const inputElement = findChatInput();
+
+  if (!inputElement) {
+    console.error("[Input] Chat input TEXTAREA element not found using selector:", CHAT_INPUT_SELECTOR);
+    return false;
+  }
+
+  try {
+    inputElement.focus();
+    console.log("[Input] Focused the textarea element. OS detected as:", isMac ? "Mac" : "Windows/Other");
+
+    const newValue = '${escapedMessage}';
+
+    // 使用原生 Setter 设置值，以确保触发 React/Vue 等框架的响应
+    try {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, 'value'
+      ).set;
+      if (nativeInputValueSetter) {
+        nativeInputValueSetter.call(inputElement, newValue);
+        console.log("Successfully set input value using native setter.");
+      } else {
+        inputElement.value = newValue;
+        console.warn("Native value setter not available. Using direct assignment.");
+      }
+    } catch (e) {
+      console.error("Error setting input value:", e);
+      inputElement.value = newValue;
+    }
+
+    // 触发 input 事件，让 UI 框架感知到内容变化（比如让“发送”按钮变亮）
+    const inputEvent = new Event('input', {
+      bubbles: true,
+      cancelable: false,
+    });
+    inputElement.dispatchEvent(inputEvent);
+
+    // 延迟后发送组合键事件
+    setTimeout(() => {
+      // 构造键盘事件
+      // Mac: metaKey = true (Command)
+      // Win/Linux: ctrlKey = true (Control)
+      const enterEvent = new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        key: 'Enter',
+        code: 'Enter',
+        keyCode: 13,
+        which: 13,
+        ctrlKey: !isMac,  // 非 Mac 系统设为 true
+        metaKey: isMac    // Mac 系统设为 true
+      });
+
+      const dispatched = inputElement.dispatchEvent(enterEvent);
+      
+      // 注意：某些复杂的 Web 应用可能还需要 dispatch 'keyup' 才能触发发送
+      const upEvent = new KeyboardEvent('keyup', {
+        bubbles: true,
+        cancelable: true,
+        key: 'Enter',
+        code: 'Enter',
+        ctrlKey: !isMac,
+        metaKey: isMac
+      });
+      inputElement.dispatchEvent(upEvent);
+    }, INPUT_SEND_DELAY_MS);
+
+    return true;
+  } catch (e) {
+    console.error("[Input] Error during input simulation:", e);
+    return false;
+  }
+})();`
+}
+
+/**
  * 获取所有支持的提供商列表
  */
 export function getSupportedProviders(): string[] {
   return [
     'kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot',
-    'glm', 'yuanbao', 'miromind', 'gemini', 'chatgpt', 'mimo'
+    'glm', 'yuanbao', 'miromind', 'gemini', 'chatgpt', 'mimo',
+    'stepfun', 'qwen-studio', 'gemini-studio'
   ]
 }
 

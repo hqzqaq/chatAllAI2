@@ -28,7 +28,10 @@ export function getStatusMonitorScript(providerId: string): string {
     chatgpt: getChatGPTStatusMonitorScript,
     mimo: getMimoStatusMonitorScript,
     minimax: getMinimaxStatusMonitorScript,
-    gemini: getGeminiStatusMonitorScript
+    gemini: getGeminiStatusMonitorScript,
+    stepfun: getStepFunStatusMonitorScript,
+    'qwen-studio': getQwenStudioStatusMonitorScript,
+    'gemini-studio': getGeminiStudioStatusMonitorScript
   }
 
   const scriptGenerator = scripts[providerId]
@@ -501,6 +504,27 @@ function getGeminiStatusMonitorScript(providerId: string): string {
 }
 
 /**
+ * stepfun状态监控脚本
+ */
+function getStepFunStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '.max-w-none.text-sm.leading-relaxed.text-foreground')
+}
+
+/**
+ * qwen-studio状态监控脚本
+ */
+function getQwenStudioStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '.custom-qwen-markdown')
+}
+
+/**
+ * gemini-studio状态监控脚本
+ */
+function getGeminiStudioStatusMonitorScript(providerId: string): string {
+  return getGenericStatusMonitorScript(providerId, '.text-chunk-host')
+}
+
+/**
  * 获取所有支持的AI提供商列表
  */
 export function getSupportedProviders(): string[] {
@@ -517,7 +541,10 @@ export function getSupportedProviders(): string[] {
     'gemini',
     'chatgpt',
     'mimo',
-    'minimax'
+    'minimax',
+    'stepfun',
+    'qwen-studio',
+    'gemini-studio'
   ]
 }
 

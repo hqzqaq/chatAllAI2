@@ -11,7 +11,7 @@ export function useLoginCheck(provider: AIProvider) {
     try {
       let isLoggedIn = false
 
-      if (provider.id === 'chatgpt') {
+      if (provider.id === 'chatgpt' || provider.id === 'gemini-studio') {
         isLoggedIn = true
       } else {
         const providerId = provider.id.startsWith('summary-')

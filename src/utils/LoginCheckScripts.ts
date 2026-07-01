@@ -71,6 +71,13 @@ export function getLoginCheckScript(providerId: string): string {
     minimax: `
       !Array.from(document.querySelectorAll('button'))
         .some(btn => btn.textContent.trim() === '登 录')
+    `,
+    stepfun: `
+      !document.querySelector('[aria-label="登录"]')
+    `,
+    'qwen-studio': `
+      !Array.from(document.querySelectorAll('.qwen-chat-button-content'))
+        .some(btn => btn.textContent.trim() === '登录' || btn.textContent.trim() === 'Sign in')
     `
   }
 

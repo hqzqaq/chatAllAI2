@@ -49,3 +49,7 @@ dist-prod
 .playwright-cli/
 .claude
 /doc/
+.gitnexus/
+.playwright/
+.idea/
+.qoder/

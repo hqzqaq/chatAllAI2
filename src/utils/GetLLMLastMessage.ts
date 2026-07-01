@@ -19,7 +19,10 @@ export function getLLMLastMessageScript(providerId: string): string {
     gemini: () => getGeminiLastMessageScript(),
     chatgpt: () => getChatGPTLastMessageScript(),
     mimo: () => getMimoLastMessageScript(),
-    minimax: () => getMinimaxLastMessageScript()
+    minimax: () => getMinimaxLastMessageScript(),
+    stepfun: () => getStepFunLastMessageScript(),
+    'qwen-studio': () => getQwenStudioLastMessageScript(),
+    'gemini-studio': () => getGeminiStudioLastMessageScript()
   }
 
   const scriptGenerator = scripts[providerId]
@@ -126,6 +129,30 @@ function getMimoLastMessageScript(): string {
 function getMinimaxLastMessageScript(): string {
   return `(() => {
     const messages = document.querySelectorAll('.message-content');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
+}
+
+function getStepFunLastMessageScript(): string {
+  return `(() => {
+    const messages = document.querySelectorAll('.max-w-none.text-sm.leading-relaxed.text-foreground');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
+}
+
+function getQwenStudioLastMessageScript(): string {
+  return `(() => {
+    const messages = document.querySelectorAll('.custom-qwen-markdown');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
+}
+
+function getGeminiStudioLastMessageScript(): string {
+  return `(() => {
+    const messages = document.querySelectorAll('.text-chunk-host');
     const lastMessage = messages[messages.length - 1];
     return lastMessage ? lastMessage.textContent || '' : '';
   })()`
