@@ -171,7 +171,7 @@ function getLoginCheckScriptForProvider(): string {
   const providerId = props.provider.id.startsWith('summary-')
     ? props.provider.id.replace('summary-', '')
     : props.provider.id
-  if (providerId === 'chatgpt') {
+  if (providerId === 'chatgpt' || providerId === 'gemini-studio') {
     return 'true'
   }
   return getLoginCheckScript(providerId)
