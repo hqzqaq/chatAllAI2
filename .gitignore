@@ -53,3 +53,5 @@ dist-prod
 .playwright/
 .idea/
 .qoder/
+.agnes/
+

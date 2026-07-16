@@ -5,6 +5,7 @@ import type {
 } from '../types'
 import { storage } from '../utils/storage'
 import { providerConfigs, createDefaultProvider } from '../config/providers'
+import { usePersistentRef } from '../composables/usePersistentRef'
 
 /**
  * localStorage key for custom providers
@@ -33,8 +34,15 @@ export const useChatStore = defineStore('chat', () => {
   // 当前输入的消息
   const currentMessage = ref<string>('')
 
-  // 选中的提供商列表（用于排序）
-  const selectedProviders = ref<string[]>([])
+  const {
+    data: selectedProviders,
+    save: saveSelectedProviders,
+    load: loadSelectedProviders
+  } = usePersistentRef<string[]>(
+    'selected-providers',
+    [],
+    { immediate: false }
+  )
 
   // 对话历史记录
   const conversations = ref<Record<string, Message[]>>({})
@@ -45,7 +53,14 @@ export const useChatStore = defineStore('chat', () => {
   // 消息发送状态
   const sendingStatus = ref<Record<string, 'idle' | 'sending' | 'sent' | 'error'>>({})
 
-  // 计算属性
+  const providerMap = computed<Map<string, AIProvider>>(() => {
+    const map = new Map<string, AIProvider>()
+    providers.value.forEach((provider) => {
+      map.set(provider.id, provider)
+    })
+    return map
+  })
+
   const loggedInProviders = computed(() => providers.value.filter((provider) => provider.isLoggedIn))
 
   const totalProviders = computed(() => providers.value.length)
@@ -68,37 +83,8 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  /**
-   * 加载选中的提供商列表
-   */
-  const loadSelectedProviders = (): void => {
-    try {
-      const stored = storage.get<string[]>('selected-providers')
-      if (stored) {
-        selectedProviders.value = stored
-      }
-    } catch (error) {
-      console.error('加载选中的提供商失败:', error)
-    }
-  }
-
-  /**
-   * 保存选中的提供商列表
-   */
-  const saveSelectedProviders = (): void => {
-    try {
-      storage.set('selected-providers', selectedProviders.value)
-    } catch (error) {
-      console.error('保存选中的提供商失败:', error)
-    }
-  }
-
-  /**
-   * 更新选中的提供商列表
-   */
   const updateSelectedProviders = (providerIds: string[]): void => {
     selectedProviders.value = providerIds
-    saveSelectedProviders()
   }
 
   /**
@@ -281,7 +267,7 @@ export const useChatStore = defineStore('chat', () => {
    * 更新提供商登录状态
    */
   const updateProviderLoginStatus = (providerId: string, isLoggedIn: boolean): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providerMap.value.get(providerId)
     if (provider) {
       provider.isLoggedIn = isLoggedIn
     }
@@ -323,7 +309,7 @@ export const useChatStore = defineStore('chat', () => {
   /**
    * 获取提供商信息
    */
-  const getProvider = (providerId: string): AIProvider | undefined => providers.value.find((p) => p.id === providerId)
+  const getProvider = (providerId: string): AIProvider | undefined => providerMap.value.get(providerId)
 
   /**
    * 获取对话历史
@@ -334,7 +320,7 @@ export const useChatStore = defineStore('chat', () => {
    * 更新提供商加载状态
    */
   const updateProviderLoadingState = (providerId: string, state: 'idle' | 'loading' | 'loaded' | 'error'): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providerMap.value.get(providerId)
     if (provider) {
       provider.loadingState = state
       if (state === 'loaded') {
@@ -348,7 +334,7 @@ export const useChatStore = defineStore('chat', () => {
    * 更新提供商错误信息
    */
   const updateProviderError = (providerId: string, error: string): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providerMap.value.get(providerId)
     if (provider) {
       provider.loadingState = 'error'
       provider.lastError = error
@@ -360,7 +346,7 @@ export const useChatStore = defineStore('chat', () => {
    * 启用/禁用提供商
    */
   const toggleProvider = (providerId: string, enabled: boolean): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providerMap.value.get(providerId)
     if (provider) {
       provider.isEnabled = enabled
       if (enabled) {
@@ -375,7 +361,7 @@ export const useChatStore = defineStore('chat', () => {
    * 重置提供商状态
    */
   const resetProviderState = (providerId: string): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providerMap.value.get(providerId)
     if (provider) {
       provider.loadingState = 'idle'
       provider.lastError = undefined
@@ -387,7 +373,7 @@ export const useChatStore = defineStore('chat', () => {
    * 更新提供商最后活跃时间
    */
   const updateProviderActiveTime = (providerId: string): void => {
-    const provider = providers.value.find((p) => p.id === providerId)
+    const provider = providerMap.value.get(providerId)
     if (provider) {
       provider.lastActiveTime = new Date()
       provider.sessionData.lastActiveTime = new Date()
@@ -396,6 +382,7 @@ export const useChatStore = defineStore('chat', () => {
 
   return {
     providers,
+    providerMap,
     builtInProviders,
     customProviders,
     currentMessage,

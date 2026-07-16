@@ -1,35 +1,17 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
 import type { ScriptType, ProviderScriptConfig, ScriptConfigExport } from '../types'
 import { STORAGE_KEY_CUSTOM_SCRIPTS } from '../types'
+import { usePersistentRef } from '../composables/usePersistentRef'
 
 export const useScriptConfigStore = defineStore('scriptConfig', () => {
-  const customScripts = ref<Record<string, ProviderScriptConfig>>({})
-
-  const loadFromStorage = (): void => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_CUSTOM_SCRIPTS)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed && typeof parsed === 'object') {
-          customScripts.value = parsed
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load custom scripts from storage:', error)
-    }
-  }
-
-  const saveToStorage = (): void => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY_CUSTOM_SCRIPTS,
-        JSON.stringify(customScripts.value)
-      )
-    } catch (error) {
-      console.error('Failed to save custom scripts to storage:', error)
-    }
-  }
+  const {
+    data: customScripts,
+    save: saveToStorage,
+    load: loadFromStorage
+  } = usePersistentRef<Record<string, ProviderScriptConfig>>(
+    STORAGE_KEY_CUSTOM_SCRIPTS,
+    {}
+  )
 
   const getCustomScript = (
     providerId: string,
@@ -97,8 +79,6 @@ export const useScriptConfigStore = defineStore('scriptConfig', () => {
       return false
     }
   }
-
-  loadFromStorage()
 
   return {
     customScripts,

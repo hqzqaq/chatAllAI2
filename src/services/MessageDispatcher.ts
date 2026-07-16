@@ -420,8 +420,10 @@ export class MessageDispatcher extends BrowserEventEmitter {
   private async sendScriptToProvider(provider: AIProvider, script: string): Promise<MessageSendResult> {
     const messageId = this.generateMessageId()
 
-    return this.executeSendOperation(provider, messageId, () =>
-      window.electronAPI!.executeWebViewScript({ providerId: provider.id, script }),
+    return this.executeSendOperation(
+      provider,
+      messageId,
+      () => window.electronAPI!.executeWebViewScript({ providerId: provider.id, script }),
       'script'
     )
   }
@@ -430,8 +432,10 @@ export class MessageDispatcher extends BrowserEventEmitter {
    * 发送消息到单个提供商
    */
   private async sendToProvider(provider: AIProvider, message: Message): Promise<MessageSendResult> {
-    return this.executeSendOperation(provider, message.id, () =>
-      window.electronAPI!.sendMessageToWebView(provider.webviewId, message.content),
+    return this.executeSendOperation(
+      provider,
+      message.id,
+      () => window.electronAPI!.sendMessageToWebView(provider.webviewId, message.content),
       'message'
     )
   }

@@ -123,7 +123,7 @@ export class SummaryService {
     }
 
     // 获取执行脚本
-    const script = getSendMessageScript(provider.id)
+    const script = getLLMLastMessageScript(provider.id)
 
     if (!script) {
       throw new Error(`暂不支持获取 ${provider.name} 的回答`)

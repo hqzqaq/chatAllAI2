@@ -198,7 +198,6 @@ export class WebViewHandler extends BaseIPCHandler {
       'Script execution'
     )
     return {
-      success: result !== false && result !== null,
       result
     }
   }

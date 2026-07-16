@@ -8,6 +8,7 @@
  * IPC通道枚举
  */
 export enum IPCChannel {
+  // ===== 新架构通道 (冒号分隔格式) =====
   // 应用控制
   APP_READY = 'app:ready',
   APP_QUIT = 'app:quit',
@@ -69,14 +70,49 @@ export enum IPCChannel {
   AI_STATUS_GET_CURRENT = 'ai-status:get-current',
   AI_STATUS_CHANGE = 'ai-status:change',
 
-  // 系统浏览器登录 + Cookie 导入（支持 Gemini / ChatGPT / Grok / Copilot 等）
+  // 系统浏览器登录 + Cookie 导入
   PROVIDER_OPEN_SYSTEM_LOGIN = 'provider:open-system-login',
   PROVIDER_IMPORT_COOKIES = 'provider:import-cookies',
 
   // 文件操作
   FILE_OPEN_DIALOG = 'file:open-dialog',
   FILE_READ = 'file:read',
-  FILE_UPLOAD_TO_WEBVIEW = 'file:upload-to-webview'
+  FILE_UPLOAD_TO_WEBVIEW = 'file:upload-to-webview',
+
+  // ===== 旧架构通道 (短横线分隔格式，当前实际使用) =====
+  // 应用与窗口
+  GET_APP_VERSION = 'get-app-version',
+  GET_SYSTEM_INFO = 'get-system-info',
+  MINIMIZE_WINDOW = 'minimize-window',
+  CLOSE_WINDOW = 'close-window',
+  MAXIMIZE_WINDOW = 'maximize-window',
+  UNMAXIMIZE_WINDOW = 'unmaximize-window',
+  IS_MAXIMIZED = 'is-maximized',
+  TOGGLE_FULLSCREEN = 'toggle-fullscreen',
+
+  // WebView 操作
+  CREATE_WEBVIEW = 'create-webview',
+  DESTROY_WEBVIEW = 'destroy-webview',
+  UPDATE_WEBVIEW_BOUNDS = 'update-webview-bounds',
+  SET_WEBVIEW_VISIBILITY = 'set-webview-visibility',
+  UPDATE_WEBVIEW_STATE = 'update-webview-state',
+  EXECUTE_WEBVIEW_SCRIPT = 'execute-webview-script',
+  RELOAD_WEBVIEW = 'reload-webview',
+  NAVIGATE_WEBVIEW = 'navigate-webview',
+  OPEN_WEBVIEW_DEVTOOLS = 'open-webview-devtools',
+  SEND_MESSAGE_TO_WEBVIEW = 'send-message-to-webview',
+  REFRESH_WEBVIEW = 'refresh-webview',
+  LOAD_WEBVIEW = 'load-webview',
+  OPEN_DEVTOOLS = 'open-devtools',
+
+  // 其他
+  GET_PRELOAD_PATH = 'get-preload-path',
+  CLEAR_PROVIDER_STORAGE = 'clear-provider-storage',
+
+  // 事件
+  WEBVIEW_AI_STATUS_CHANGE = 'webview-ai-status-change',
+  INTERNAL_AI_STATUS_CHANGE = 'internal-ai-status-change',
+  WEBVIEW_EVENT = 'webview:event'
 }
 
 /**

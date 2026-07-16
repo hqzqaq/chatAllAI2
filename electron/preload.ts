@@ -3,27 +3,44 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IPCChannel } from '../src/types/ipc'
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-  getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
+  getAppVersion: () => ipcRenderer.invoke(IPCChannel.GET_APP_VERSION),
+  getSystemInfo: () => ipcRenderer.invoke(IPCChannel.GET_SYSTEM_INFO),
 
-  minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
-  closeWindow: () => ipcRenderer.invoke('close-window'),
-  maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
-  unmaximizeWindow: () => ipcRenderer.invoke('unmaximize-window'),
-  isMaximized: () => ipcRenderer.invoke('is-maximized'),
-  toggleFullScreen: () => ipcRenderer.invoke('toggle-fullscreen'),
+  minimizeWindow: () => ipcRenderer.invoke(IPCChannel.MINIMIZE_WINDOW),
+  closeWindow: () => ipcRenderer.invoke(IPCChannel.CLOSE_WINDOW),
+  maximizeWindow: () => ipcRenderer.invoke(IPCChannel.MAXIMIZE_WINDOW),
+  unmaximizeWindow: () => ipcRenderer.invoke(IPCChannel.UNMAXIMIZE_WINDOW),
+  isMaximized: () => ipcRenderer.invoke(IPCChannel.IS_MAXIMIZED),
+  toggleFullScreen: () => ipcRenderer.invoke(IPCChannel.TOGGLE_FULLSCREEN),
 
-  createWebView: (data: { providerId: string, url: string }) => ipcRenderer.invoke('create-webview', data),
-  destroyWebView: (providerId: string) => ipcRenderer.invoke('destroy-webview', { providerId }),
-  updateWebViewBounds: (data: { providerId: string, bounds: { x: number, y: number, width: number, height: number } }) => ipcRenderer.invoke('update-webview-bounds', data),
-  setWebViewVisibility: (data: { providerId: string, visible: boolean }) => ipcRenderer.invoke('set-webview-visibility', data),
-  updateWebViewState: (data: { providerId: string, bounds?: { x: number, y: number, width: number, height: number }, visible: boolean }) => ipcRenderer.invoke('update-webview-state', data),
-  executeWebViewScript: (data: { providerId: string, script: string }) => ipcRenderer.invoke('execute-webview-script', data),
-  reloadWebView: (providerId: string) => ipcRenderer.invoke('reload-webview', { providerId }),
-  navigateWebView: (data: { providerId: string, url: string }) => ipcRenderer.invoke('navigate-webview', data),
-  openWebViewDevTools: (providerId: string) => ipcRenderer.invoke('open-webview-devtools', { providerId }),
+  createWebView: (data: { providerId: string, url: string }) => (
+    ipcRenderer.invoke(IPCChannel.CREATE_WEBVIEW, data)
+  ),
+  destroyWebView: (providerId: string) => ipcRenderer.invoke(IPCChannel.DESTROY_WEBVIEW, { providerId }),
+  updateWebViewBounds: (data: {
+    providerId: string
+    bounds: { x: number, y: number, width: number, height: number }
+  }) => ipcRenderer.invoke(IPCChannel.UPDATE_WEBVIEW_BOUNDS, data),
+  setWebViewVisibility: (data: { providerId: string, visible: boolean }) => (
+    ipcRenderer.invoke(IPCChannel.SET_WEBVIEW_VISIBILITY, data)
+  ),
+  updateWebViewState: (data: {
+    providerId: string
+    bounds?: { x: number, y: number, width: number, height: number }
+    visible: boolean
+  }) => ipcRenderer.invoke(IPCChannel.UPDATE_WEBVIEW_STATE, data),
+  executeWebViewScript: (data: { providerId: string, script: string }) => (
+    ipcRenderer.invoke(IPCChannel.EXECUTE_WEBVIEW_SCRIPT, data)
+  ),
+  reloadWebView: (providerId: string) => ipcRenderer.invoke(IPCChannel.RELOAD_WEBVIEW, { providerId }),
+  navigateWebView: (data: { providerId: string, url: string }) => (
+    ipcRenderer.invoke(IPCChannel.NAVIGATE_WEBVIEW, data)
+  ),
+  openWebViewDevTools: (providerId: string) => ipcRenderer.invoke(IPCChannel.OPEN_WEBVIEW_DEVTOOLS, { providerId }),
 
-  sendMessageToWebView: (webviewId: string, message: string) => ipcRenderer.invoke('send-message-to-webview', { webviewId, message }),
+  sendMessageToWebView: (webviewId: string, message: string) => (
+    ipcRenderer.invoke(IPCChannel.SEND_MESSAGE_TO_WEBVIEW, { webviewId, message })
+  ),
 
   appReady: () => ipcRenderer.invoke(IPCChannel.APP_READY),
   appQuit: () => ipcRenderer.invoke(IPCChannel.APP_QUIT),
@@ -59,9 +76,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_READ, data),
   uploadFileToWebView: (data: any) => ipcRenderer.invoke(IPCChannel.FILE_UPLOAD_TO_WEBVIEW, data),
 
-  getPreloadPath: (preloadName: string) => ipcRenderer.invoke('get-preload-path', preloadName),
+  getPreloadPath: (preloadName: string) => ipcRenderer.invoke(IPCChannel.GET_PRELOAD_PATH, preloadName),
 
-  clearProviderStorage: (providerId: string) => ipcRenderer.invoke('clear-provider-storage', providerId),
+  clearProviderStorage: (providerId: string) => ipcRenderer.invoke(IPCChannel.CLEAR_PROVIDER_STORAGE, providerId),
 
   providerOpenSystemLogin: (providerId: string) => ipcRenderer.invoke(
     IPCChannel.PROVIDER_OPEN_SYSTEM_LOGIN,
@@ -81,9 +98,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   onWebViewEvent: (callback: (data: { providerId: string, type: string, data: any }) => void) => {
     const handler = (event: any, data: any) => callback(data)
-    ipcRenderer.on('webview:event', handler)
+    ipcRenderer.on(IPCChannel.WEBVIEW_EVENT, handler)
     return () => {
-      ipcRenderer.removeListener('webview:event', handler)
+      ipcRenderer.removeListener(IPCChannel.WEBVIEW_EVENT, handler)
     }
   },
 

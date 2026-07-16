@@ -111,49 +111,76 @@ export class IPCHandler extends EventEmitter {
    */
   private registerInvokeHandlers(): void {
     // 应用信息和窗口控制
-    ipcMain.handle('get-app-version', this.handleGetAppVersion.bind(this))
-    ipcMain.handle('get-system-info', this.handleGetSystemInfo.bind(this))
-    ipcMain.handle('minimize-window', this.handleMinimizeWindow.bind(this))
-    ipcMain.handle('close-window', this.handleCloseWindow.bind(this))
-    ipcMain.handle('maximize-window', this.handleMaximizeWindow.bind(this))
-    ipcMain.handle('unmaximize-window', this.handleUnmaximizeWindow.bind(this))
-    ipcMain.handle('is-maximized', this.handleIsMaximized.bind(this))
-    ipcMain.handle('toggle-fullscreen', this.handleToggleFullScreen.bind(this))
+    ipcMain.handle(IPCChannel.GET_APP_VERSION, this.handleGetAppVersion.bind(this))
+    ipcMain.handle(IPCChannel.GET_SYSTEM_INFO, this.handleGetSystemInfo.bind(this))
+    ipcMain.handle(IPCChannel.MINIMIZE_WINDOW, this.handleMinimizeWindow.bind(this))
+    ipcMain.handle(IPCChannel.CLOSE_WINDOW, this.handleCloseWindow.bind(this))
+    ipcMain.handle(IPCChannel.MAXIMIZE_WINDOW, this.handleMaximizeWindow.bind(this))
+    ipcMain.handle(IPCChannel.UNMAXIMIZE_WINDOW, this.handleUnmaximizeWindow.bind(this))
+    ipcMain.handle(IPCChannel.IS_MAXIMIZED, this.handleIsMaximized.bind(this))
+    ipcMain.handle(IPCChannel.TOGGLE_FULLSCREEN, this.handleToggleFullScreen.bind(this))
 
     // WebView管理
-    ipcMain.handle('send-message-to-webview', (event, data) => this.handleSendMessageToWebView(data))
-    ipcMain.handle('refresh-webview', (event, webviewId) => this.handleRefreshWebView(webviewId))
-    ipcMain.handle('load-webview', (event, data) => this.handleLoadWebView(data))
-    ipcMain.handle('open-devtools', (event, webviewId) => this.handleOpenDevTools(webviewId))
+    ipcMain.handle(IPCChannel.SEND_MESSAGE_TO_WEBVIEW, (event, data) => this.handleSendMessageToWebView(data))
+    ipcMain.handle(IPCChannel.REFRESH_WEBVIEW, (event, webviewId) => this.handleRefreshWebView(webviewId))
+    ipcMain.handle(IPCChannel.LOAD_WEBVIEW, (event, data) => this.handleLoadWebView(data))
+    ipcMain.handle(IPCChannel.OPEN_DEVTOOLS, (event, webviewId) => this.handleOpenDevTools(webviewId))
 
     // WebViewManager 驱动的 WebView 操作
-    ipcMain.handle('create-webview', async(event, data: { providerId: string; url: string }) => {
+    ipcMain.handle(IPCChannel.CREATE_WEBVIEW, async(event, data: { providerId: string; url: string }) => {
       const preloadPath = path.resolve(__dirname, 'webview-preload.js')
       await this.webViewManager.createView(data.providerId, data.url, preloadPath)
       return { success: true }
     })
-    ipcMain.handle('destroy-webview', async(event, data: { providerId: string }) => {
+    ipcMain.handle(IPCChannel.DESTROY_WEBVIEW, async(event, data: { providerId: string }) => {
       this.webViewManager.destroyView(data.providerId)
       return { success: true }
     })
-    ipcMain.handle('update-webview-bounds', async(event, data: { providerId: string; bounds: { x: number; y: number; width: number; height: number } }) => {
-      this.webViewManager.setBounds(data.providerId, data.bounds)
-    })
-    ipcMain.handle('set-webview-visibility', async(event, data: { providerId: string; visible: boolean }) => {
+    ipcMain.handle(
+      IPCChannel.UPDATE_WEBVIEW_BOUNDS,
+      async(
+        event,
+        data: {
+          providerId: string;
+          bounds: { x: number; y: number; width: number; height: number }
+        }
+      ) => {
+        this.webViewManager.setBounds(data.providerId, data.bounds)
+      }
+    )
+    ipcMain.handle(IPCChannel.SET_WEBVIEW_VISIBILITY, async(event, data: { providerId: string; visible: boolean }) => {
       this.webViewManager.setVisibility(data.providerId, data.visible)
     })
     // 原子化更新视图状态：在一次 IPC 调用内同时完成 bounds 写入与显隐切换，消除显隐竞态
-    ipcMain.handle('update-webview-state', async(event, data: { providerId: string; bounds?: { x: number; y: number; width: number; height: number }; visible: boolean }) => {
-      this.webViewManager.updateState(data.providerId, { bounds: data.bounds, visible: data.visible })
-    })
-    ipcMain.handle('navigate-webview', async(event, data: { providerId: string; url: string }) => {
+    ipcMain.handle(
+      IPCChannel.UPDATE_WEBVIEW_STATE,
+      async(
+        event,
+        data: {
+          providerId: string;
+          bounds?: { x: number; y: number; width: number; height: number };
+          visible: boolean
+        }
+      ) => {
+        this.webViewManager.updateState(
+          data.providerId,
+          { bounds: data.bounds, visible: data.visible }
+        )
+      }
+    )
+    ipcMain.handle(IPCChannel.NAVIGATE_WEBVIEW, async(event, data: { providerId: string; url: string }) => {
       this.webViewManager.navigateTo(data.providerId, data.url)
     })
-    ipcMain.handle('reload-webview', async(event, data: { providerId: string }) => {
+    ipcMain.handle(IPCChannel.RELOAD_WEBVIEW, async(event, data: { providerId: string }) => {
       this.webViewManager.reload(data.providerId)
     })
-    ipcMain.handle('execute-webview-script', async(event, data: { providerId: string; script: string }) => this.webViewManager.executeScript(data.providerId, data.script))
-    ipcMain.handle('open-webview-devtools', async(event, data: { providerId: string }) => {
+    ipcMain.handle(
+      IPCChannel.EXECUTE_WEBVIEW_SCRIPT,
+      async(event, data: { providerId: string; script: string }) => (
+        this.webViewManager.executeScript(data.providerId, data.script)
+      )
+    )
+    ipcMain.handle(IPCChannel.OPEN_WEBVIEW_DEVTOOLS, async(event, data: { providerId: string }) => {
       this.webViewManager.openDevTools(data.providerId)
     })
 
@@ -191,7 +218,7 @@ export class IPCHandler extends EventEmitter {
     this.handleInvoke(IPCChannel.FILE_UPLOAD_TO_WEBVIEW, this.handleFileUploadToWebView.bind(this))
 
     // 新增：获取预加载脚本路径
-    ipcMain.handle('get-preload-path', (event, preloadName: string) => path.resolve(__dirname, preloadName))
+    ipcMain.handle(IPCChannel.GET_PRELOAD_PATH, (event, preloadName: string) => path.resolve(__dirname, preloadName))
 
     // 新增：系统浏览器登录与 Cookie 注入（Gemini / ChatGPT / Grok / Copilot 等）
     ipcMain.handle(IPCChannel.PROVIDER_OPEN_SYSTEM_LOGIN, async(event, data: { providerId: string }) => {
@@ -220,7 +247,7 @@ export class IPCHandler extends EventEmitter {
     })
 
     // 新增：清除指定provider的存储数据（用于解决Gemini登录问题）
-    ipcMain.handle('clear-provider-storage', async(event, providerId: string) => {
+    ipcMain.handle(IPCChannel.CLEAR_PROVIDER_STORAGE, async(event, providerId: string) => {
       try {
         console.log(`[IPCHandler] Clearing storage for provider: ${providerId}`)
 
@@ -271,7 +298,7 @@ export class IPCHandler extends EventEmitter {
     this.handleSend(IPCChannel.MESSAGE_ERROR, this.handleMessageError.bind(this))
 
     // 监听来自WebView preload脚本的AI状态变化事件
-    ipcMain.on('webview-ai-status-change', (event, data) => {
+    ipcMain.on(IPCChannel.WEBVIEW_AI_STATUS_CHANGE, (event, data) => {
       const { providerId, status, details } = data
 
       // 转换状态为统一格式
@@ -294,7 +321,7 @@ export class IPCHandler extends EventEmitter {
     })
 
     // 内部AI状态变化事件
-    ipcMain.on('internal-ai-status-change', (event, data) => {
+    ipcMain.on(IPCChannel.INTERNAL_AI_STATUS_CHANGE, (event, data) => {
       const { providerId, statusData } = data
       this.log(`Internal AI status changed for ${providerId}:`, statusData)
 

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { CardConfig } from '../types'
 import { storage } from '../utils/storage'
 
@@ -325,42 +325,35 @@ export const useLayoutStore = defineStore('layout', () => {
     initializeCardConfigs(providerIds)
   }
 
-  /**
-   * 保存布局配置
-   */
   const saveLayoutConfig = (): void => {
-    try {
-      const config = {
-        cardConfigs: cardConfigs.value,
-        gridSettings: gridSettings.value
+    const config = {
+      cardConfigs: cardConfigs.value,
+      gridSettings: gridSettings.value
+    }
+    storage.set('chatallai_layout_config', config)
+  }
+
+  const loadLayoutConfig = (): void => {
+    const config = storage.get<any>('chatallai_layout_config')
+    if (config) {
+      if (config.cardConfigs) {
+        cardConfigs.value = config.cardConfigs
       }
-      storage.set('chatallai_layout_config', config)
-    } catch (error) {
-      console.error('Failed to save layout config:', error)
+      if (config.gridSettings) {
+        gridSettings.value = { ...gridSettings.value, ...config.gridSettings }
+      }
     }
   }
 
-  /**
-   * 加载布局配置
-   */
-  const loadLayoutConfig = (): void => {
-    try {
-      const config = storage.get<any>('chatallai_layout_config')
-      if (config) {
-        if (config.cardConfigs) {
-          cardConfigs.value = config.cardConfigs
-        }
-        if (config.gridSettings) {
-          gridSettings.value = { ...gridSettings.value, ...config.gridSettings }
-        }
-        console.log('成功加载布局配置:', config.gridSettings)
-      } else {
-        console.log('未找到保存的布局配置，使用默认设置')
-      }
-    } catch (error) {
-      console.error('Failed to load layout config:', error)
-    }
-  }
+  watch(
+    [cardConfigs, gridSettings],
+    () => {
+      saveLayoutConfig()
+    },
+    { deep: true }
+  )
+
+  loadLayoutConfig()
 
   /**
    * 获取卡片配置

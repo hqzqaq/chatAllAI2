@@ -1,10 +1,10 @@
 /**
- * 窗口控制处理器
- * 处理窗口管理相关的IPC通信，如最小化、最大化、关闭、全屏等
+ * 窗口与应用控制处理器
+ * 统一处理窗口控制、应用信息和应用生命周期相关的 IPC 通信
  */
 
-import { IpcMainInvokeEvent } from 'electron'
-import { app } from 'electron'
+import { IpcMainInvokeEvent, app } from 'electron'
+import { IPCChannel } from '../../../src/types/ipc'
 import { BaseIPCHandler, IWindowManager, ILogger } from './types'
 
 export class WindowControlHandler extends BaseIPCHandler {
@@ -19,38 +19,55 @@ export class WindowControlHandler extends BaseIPCHandler {
     return 'WindowControlHandler'
   }
 
-  getChannels(): string[] {
+  getChannels(): (IPCChannel | string)[] {
     return [
-      'get-app-version',
-      'get-system-info',
-      'minimize-window',
-      'close-window',
-      'maximize-window',
-      'unmaximize-window',
-      'is-maximized',
-      'toggle-fullscreen'
+      // 窗口控制
+      IPCChannel.MINIMIZE_WINDOW,
+      IPCChannel.MAXIMIZE_WINDOW,
+      IPCChannel.UNMAXIMIZE_WINDOW,
+      IPCChannel.CLOSE_WINDOW,
+      IPCChannel.TOGGLE_FULLSCREEN,
+      IPCChannel.IS_MAXIMIZED,
+
+      // 应用信息
+      IPCChannel.GET_APP_VERSION,
+      IPCChannel.GET_SYSTEM_INFO,
+
+      // 应用生命周期
+      IPCChannel.APP_READY,
+      IPCChannel.APP_QUIT
     ]
   }
 
-  async handleInvoke(channel: string, data: any, event: IpcMainInvokeEvent): Promise<any> {
+  async handleInvoke(channel: IPCChannel | string, data: any, event: IpcMainInvokeEvent): Promise<any> {
     return this.executeSafely(async() => {
       switch (channel) {
-        case 'get-app-version':
-          return this.handleGetAppVersion()
-        case 'get-system-info':
-          return this.handleGetSystemInfo()
-        case 'minimize-window':
+        // 窗口控制
+        case IPCChannel.MINIMIZE_WINDOW:
           return this.handleMinimizeWindow()
-        case 'close-window':
-          return this.handleCloseWindow()
-        case 'maximize-window':
+        case IPCChannel.MAXIMIZE_WINDOW:
           return this.handleMaximizeWindow()
-        case 'unmaximize-window':
+        case IPCChannel.UNMAXIMIZE_WINDOW:
           return this.handleUnmaximizeWindow()
-        case 'is-maximized':
-          return this.handleIsMaximized()
-        case 'toggle-fullscreen':
+        case IPCChannel.CLOSE_WINDOW:
+          return this.handleCloseWindow()
+        case IPCChannel.TOGGLE_FULLSCREEN:
           return this.handleToggleFullScreen()
+        case IPCChannel.IS_MAXIMIZED:
+          return this.handleIsMaximized()
+
+        // 应用信息
+        case IPCChannel.GET_APP_VERSION:
+          return this.handleGetAppVersion()
+        case IPCChannel.GET_SYSTEM_INFO:
+          return this.handleGetSystemInfo()
+
+        // 应用生命周期
+        case IPCChannel.APP_READY:
+          return this.handleAppReady()
+        case IPCChannel.APP_QUIT:
+          return this.handleAppQuit()
+
         default:
           throw new Error(`Unknown channel: ${channel}`)
       }
@@ -58,8 +75,62 @@ export class WindowControlHandler extends BaseIPCHandler {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  handleSend(channel: string, data: any, event: any): void {
-    // 窗口控制不需要send类型的通道
+  handleSend(channel: IPCChannel | string, data: any, event: any): void {
+    // 窗口与应用控制不需要 send 类型的通道
+  }
+
+  /**
+   * 最小化窗口
+   */
+  private async handleMinimizeWindow(): Promise<{ success: boolean }> {
+    this.logger.info('Minimizing window')
+    const success = this.windowManager.minimizeWindow('main')
+    return { success }
+  }
+
+  /**
+   * 最大化窗口
+   */
+  private async handleMaximizeWindow(): Promise<{ success: boolean }> {
+    this.logger.info('Maximizing window')
+    const success = this.windowManager.maximizeWindow('main')
+    return { success }
+  }
+
+  /**
+   * 取消最大化窗口
+   */
+  private async handleUnmaximizeWindow(): Promise<{ success: boolean }> {
+    this.logger.info('Unmaximizing window')
+    const success = this.windowManager.unmaximizeWindow('main')
+    return { success }
+  }
+
+  /**
+   * 关闭窗口并退出应用
+   */
+  private async handleCloseWindow(): Promise<{ success: boolean }> {
+    this.logger.info('Closing window')
+    app.quit()
+    return { success: true }
+  }
+
+  /**
+   * 切换全屏状态
+   */
+  private async handleToggleFullScreen(): Promise<{ success: boolean }> {
+    this.logger.info('Toggling fullscreen')
+    const success = this.windowManager.toggleFullScreen('main')
+    return { success }
+  }
+
+  /**
+   * 检查窗口是否最大化
+   */
+  private async handleIsMaximized(): Promise<boolean> {
+    this.logger.info('Checking if window is maximized')
+    const window = this.windowManager.getMainWindow()
+    return window ? window.isMaximized() : false
   }
 
   /**
@@ -83,51 +154,22 @@ export class WindowControlHandler extends BaseIPCHandler {
   }
 
   /**
-   * 最小化窗口
+   * 处理应用就绪
    */
-  private async handleMinimizeWindow(): Promise<void> {
-    this.logger.info('Minimizing window')
-    this.windowManager.minimizeWindow('main')
+  private async handleAppReady(): Promise<{ success: boolean; version: string }> {
+    this.logger.info('Application ready')
+    return {
+      success: true,
+      version: app.getVersion()
+    }
   }
 
   /**
-   * 关闭窗口
+   * 处理应用退出
    */
-  private async handleCloseWindow(): Promise<void> {
-    this.logger.info('Closing window')
+  private async handleAppQuit(): Promise<{ success: boolean }> {
+    this.logger.info('Application quitting')
     app.quit()
-  }
-
-  /**
-   * 最大化窗口
-   */
-  private async handleMaximizeWindow(): Promise<void> {
-    this.logger.info('Maximizing window')
-    this.windowManager.maximizeWindow('main')
-  }
-
-  /**
-   * 取消最大化窗口
-   */
-  private async handleUnmaximizeWindow(): Promise<void> {
-    this.logger.info('Unmaximizing window')
-    this.windowManager.unmaximizeWindow('main')
-  }
-
-  /**
-   * 检查窗口是否最大化
-   */
-  private async handleIsMaximized(): Promise<boolean> {
-    this.logger.info('Checking if window is maximized')
-    const window = this.windowManager.getMainWindow()
-    return window ? window.isMaximized() : false
-  }
-
-  /**
-   * 切换全屏状态
-   */
-  private async handleToggleFullScreen(): Promise<void> {
-    this.logger.info('Toggling fullscreen')
-    this.windowManager.toggleFullScreen('main')
+    return { success: true }
   }
 }

@@ -16,6 +16,7 @@ import type {
   AIResponse
 } from '../types/summary'
 import { storage } from '../utils/storage'
+import { usePersistentRef } from '../composables/usePersistentRef'
 
 /**
  * 总结状态管理
@@ -35,8 +36,21 @@ export const useSummaryStore = defineStore('summary', () => {
     message: ''
   })
 
-  // 总结历史记录（最近10条）
-  const history = ref<SummaryHistoryItem[]>([])
+  const {
+    data: history,
+    save: saveHistoryToStorage,
+    load: loadHistoryFromStorage
+  } = usePersistentRef<SummaryHistoryItem[]>(
+    'summary-history',
+    [],
+    {
+      deserialize: (stored: unknown) => (stored as SummaryHistoryItem[])
+        .map((item) => ({
+          ...item,
+          timestamp: new Date(item.timestamp)
+        }))
+    }
+  )
 
   // 总结模型卡片状态（用于在侧边栏显示独立的总结选项卡）
   const summaryCardProvider = ref<{ providerId: string; providerName: string; isVisible: boolean } | null>(null)
@@ -191,16 +205,11 @@ export const useSummaryStore = defineStore('summary', () => {
       status: result.status
     }
 
-    // 添加到历史记录开头
     history.value.unshift(historyItem)
 
-    // 只保留最近10条
     if (history.value.length > 10) {
       history.value = history.value.slice(0, 10)
     }
-
-    // 保存到本地存储
-    saveHistoryToStorage()
   }
 
   /**
@@ -223,45 +232,11 @@ export const useSummaryStore = defineStore('summary', () => {
     const index = history.value.findIndex((item) => item.id === id)
     if (index > -1) {
       history.value.splice(index, 1)
-      saveHistoryToStorage()
     }
   }
 
-  /**
-   * 清除所有历史记录
-   */
   const clearHistory = (): void => {
     history.value = []
-    saveHistoryToStorage()
-  }
-
-  /**
-   * 保存历史记录到本地存储
-   */
-  const saveHistoryToStorage = (): void => {
-    try {
-      storage.set('summary-history', history.value)
-    } catch (error) {
-      console.error('保存总结历史记录失败:', error)
-    }
-  }
-
-  /**
-   * 从本地存储加载历史记录
-   */
-  const loadHistoryFromStorage = (): void => {
-    try {
-      const parsed = storage.get<SummaryHistoryItem[]>('summary-history')
-      if (parsed) {
-        history.value = parsed.map((item: SummaryHistoryItem) => ({
-          ...item,
-          timestamp: new Date(item.timestamp)
-        }))
-      }
-    } catch (error) {
-      console.error('加载总结历史记录失败:', error)
-      history.value = []
-    }
   }
 
   /**
@@ -327,9 +302,6 @@ export const useSummaryStore = defineStore('summary', () => {
   function generateSummaryId(): string {
     return `summary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
-
-  // 初始化时加载历史记录
-  loadHistoryFromStorage()
 
   return {
     // 状态

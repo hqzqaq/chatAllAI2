@@ -16,10 +16,7 @@ export {
   IPCErrorHandler
 } from './types'
 
-// 应用控制处理器
-export { AppControlHandler } from './AppControlHandler'
-
-// 窗口控制处理器
+// 窗口与应用控制处理器
 export { WindowControlHandler } from './WindowControlHandler'
 
 // WebView管理处理器

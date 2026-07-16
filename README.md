@@ -203,12 +203,12 @@ IPC处理器采用 Handler 模式，按职责拆分为独立模块：
 
 ```
 electron/managers/handlers/
-├── AppControlHandler.ts    # 应用级控制（退出、重启等）
+
 ├── FileOperationHandler.ts # 文件操作（上传、导出等）
 ├── MessageHandler.ts       # 消息分发与AI回复收集
 ├── SessionHandler.ts       # 会话管理（Cookie导入等）
 ├── WebViewHandler.ts       # WebView控制（脚本注入、可见性等）
-└── WindowControlHandler.ts # 窗口控制（最大化、最小化等）
+└── WindowControlHandler.ts # 窗口与应用控制（最大化、最小化、退出等）
 ```
 
 #### 3. WebContentsView管理
@@ -533,12 +533,11 @@ chat-all-ai/
 ├── electron/                # Electron主进程
 │   ├── managers/            # 管理器模块
 │   │   ├── handlers/        # IPC处理器（按职责拆分）
-│   │   │   ├── AppControlHandler.ts    # 应用控制
 │   │   │   ├── FileOperationHandler.ts # 文件操作
 │   │   │   ├── MessageHandler.ts       # 消息处理
 │   │   │   ├── SessionHandler.ts       # 会话管理
 │   │   │   ├── WebViewHandler.ts       # WebView控制
-│   │   │   └── WindowControlHandler.ts # 窗口控制
+│   │   │   └── WindowControlHandler.ts # 窗口与应用控制
 │   │   ├── IPCHandler.ts       # IPC通信注册中心
 │   │   ├── SessionManager.ts   # 会话持久化管理
 │   │   ├── WebViewManager.ts   # WebContentsView生命周期管理

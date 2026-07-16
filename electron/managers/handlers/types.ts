@@ -24,7 +24,7 @@ export interface IWindowManager {
   maximizeWindow(windowId: string): boolean
   unmaximizeWindow(windowId: string): boolean
   showWindow(windowId: string): boolean
-  toggleFullScreen(windowId: string): void
+  toggleFullScreen(windowId: string): boolean
 }
 
 /**

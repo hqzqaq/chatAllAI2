@@ -9,6 +9,7 @@ import {
 import { EventEmitter } from 'events'
 import { WindowManager } from './WindowManager'
 import { SessionManager } from './SessionManager'
+import { IPCChannel } from '../../src/types/ipc'
 
 export class WebViewManager extends EventEmitter {
   private windowManager: WindowManager
@@ -196,7 +197,7 @@ export class WebViewManager extends EventEmitter {
   ): void {
     const sendEvent = (data: Record<string, unknown>) => {
       if (mainWindow.isDestroyed()) return
-      mainWindow.webContents.send('webview:event', { providerId, ...data })
+      mainWindow.webContents.send(IPCChannel.WEBVIEW_EVENT, { providerId, ...data })
     }
 
     view.webContents.on('did-start-loading', () => {
@@ -230,7 +231,7 @@ export class WebViewManager extends EventEmitter {
       }
     })
 
-    ipcMain.on('webview-ai-status-change', (_event, data) => {
+    ipcMain.on(IPCChannel.WEBVIEW_AI_STATUS_CHANGE, (_event, data) => {
       if (data.providerId === providerId) {
         sendEvent({ type: 'ai-status-change', ...data })
       }

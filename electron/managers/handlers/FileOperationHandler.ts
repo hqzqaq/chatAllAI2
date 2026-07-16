@@ -207,7 +207,7 @@ export class FileOperationHandler extends BaseIPCHandler {
       // 或者可以通过事件机制通知WebViewHandler执行
 
       this.logger.info('[FileUpload:Main] Script generated successfully')
-      return { success: true, providerId, script }
+      return { success: true, providerId }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       const stack = error instanceof Error ? error.stack : ''
