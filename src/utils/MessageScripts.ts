@@ -7,24 +7,17 @@
  * @version 1.0
  */
 
+import { resolveScript } from './ScriptResolver'
+
 /**
  * 安全转义字符串，用于JavaScript字符串字面量
+ * 使用 JSON.stringify 进行标准化转义，确保所有特殊字符都被正确处理
  * @param str 要转义的字符串
  * @returns 转义后的安全字符串
  */
-import { resolveScript } from './ScriptResolver'
-
 function escapeJavaScriptString(str: string): string {
-  // 使用更安全的转义方式，确保字符串在JavaScript中安全使用
-  return str
-    .replace(/\\/g, '\\\\') // 转义反斜杠
-    .replace(/'/g, '\\\'') // 转义单引号
-    .replace(/"/g, '\\"') // 转义双引号
-    .replace(/\n/g, '\\n') // 转义换行符
-    .replace(/\r/g, '\\r') // 转义回车符
-    .replace(/\t/g, '\\t') // 转义制表符
-    .replace(/\f/g, '\\f') // 转义换页符
-    .replace(/\v/g, '\\v') // 转义垂直制表符
+  const jsonStr = JSON.stringify(str)
+  return jsonStr.slice(1, -1)
 }
 
 /**
@@ -934,22 +927,4 @@ function getGeminiStudioScript(escapedMessage: string): string {
     return false;
   }
 })();`
-}
-
-/**
- * 获取所有支持的提供商列表
- */
-export function getSupportedProviders(): string[] {
-  return [
-    'kimi', 'grok', 'deepseek', 'doubao', 'qwen', 'copilot',
-    'glm', 'yuanbao', 'miromind', 'gemini', 'chatgpt', 'mimo',
-    'stepfun', 'qwen-studio', 'gemini-studio'
-  ]
-}
-
-/**
- * 检查提供商是否支持
- */
-export function isProviderSupported(providerId: string): boolean {
-  return getSupportedProviders().includes(providerId)
 }

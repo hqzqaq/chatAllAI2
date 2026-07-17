@@ -136,3 +136,41 @@ export function createDefaultProvider(config: ProviderConfig): AIProvider {
     retryCount: 0
   }
 }
+
+/**
+ * 获取所有内置 provider 的 ID 列表
+ * @returns provider ID 数组
+ */
+export function getProviderIds(): string[] {
+  return providerConfigs.map((config) => config.id)
+}
+
+/**
+ * 检查指定的 provider 是否受支持（内置）
+ * @param providerId AI 提供商 ID
+ * @returns 是否受支持
+ */
+export function isProviderSupported(providerId: string): boolean {
+  return providerConfigs.some((config) => config.id === providerId)
+}
+
+/**
+ * 根据 ID 获取 provider 配置
+ * @param providerId AI 提供商 ID
+ * @returns provider 配置，不存在则返回 undefined
+ */
+export function getProviderConfig(providerId: string): ProviderConfig | undefined {
+  return providerConfigs.find((config) => config.id === providerId)
+}
+
+/**
+ * 获取 provider 配置的 Map，用于 O(1) 查找
+ * @returns provider 配置 Map
+ */
+export function getProviderConfigMap(): Map<string, ProviderConfig> {
+  const map = new Map<string, ProviderConfig>()
+  providerConfigs.forEach((config) => {
+    map.set(config.id, config)
+  })
+  return map
+}

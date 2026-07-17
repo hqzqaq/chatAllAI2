@@ -1,159 +1,58 @@
 /**
  * 获取AI最后回复消息的脚本
+ * 使用配置驱动模式，通过 selector 配置生成获取最后一条消息的脚本
+ *
+ * @author huquanzhi
+ * @since 2024-12-19 14:30
+ * @version 2.0
+ */
+
+import { resolveScript } from './ScriptResolver'
+
+/**
+ * 最后一条消息选择器配置
+ * key: providerId
+ * value: 消息元素的 CSS 选择器
+ */
+const lastMessageSelectors: Record<string, string> = {
+  kimi: '.segment-content',
+  grok: '[data-testid="assistant-message"]',
+  deepseek: '.ds-markdown',
+  doubao: '[data-target-id="message-box-target-id"]',
+  qwen: '.markdown-pc-special-class',
+  copilot: '[data-testid="ai-message-body"]',
+  glm: '.answer-content-wrap',
+  yuanbao: '.agent-chat__list__item__content',
+  miromind: '.report-container',
+  gemini: 'model-response',
+  chatgpt: '[data-message-author-role="assistant"]',
+  mimo: '.markdown-prose',
+  minimax: '.message-content',
+  stepfun: '.max-w-none.text-sm.leading-relaxed.text-foreground',
+  'qwen-studio': '.custom-qwen-markdown',
+  'gemini-studio': '.text-chunk-host'
+}
+
+/**
+ * 根据选择器生成获取最后一条消息的脚本
+ * @param selector 消息元素的 CSS 选择器
+ * @returns JavaScript 脚本字符串
+ */
+function createLastMessageScript(selector: string): string {
+  return `(() => {
+    const messages = document.querySelectorAll('${selector}');
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage ? lastMessage.textContent || '' : '';
+  })()`
+}
+
+/**
+ * 获取AI最后回复消息的脚本
  * @param providerId AI提供商ID
  * @returns 对应的JavaScript脚本字符串
  */
-import { resolveScript } from './ScriptResolver'
-
 export function getLLMLastMessageScript(providerId: string): string {
-  const scripts: Record<string, () => string> = {
-    kimi: () => getKimiLastMessageScript(),
-    grok: () => getGrokLastMessageScript(),
-    deepseek: () => getDeepSeekLastMessageScript(),
-    doubao: () => getDouBaoLastMessageScript(),
-    qwen: () => getQwenLastMessageScript(),
-    copilot: () => getCopilotLastMessageScript(),
-    glm: () => getGLMLastMessageScript(),
-    yuanbao: () => getYuanBaoLastMessageScript(),
-    miromind: () => getMiromindLastMessageScript(),
-    gemini: () => getGeminiLastMessageScript(),
-    chatgpt: () => getChatGPTLastMessageScript(),
-    mimo: () => getMimoLastMessageScript(),
-    minimax: () => getMinimaxLastMessageScript(),
-    stepfun: () => getStepFunLastMessageScript(),
-    'qwen-studio': () => getQwenStudioLastMessageScript(),
-    'gemini-studio': () => getGeminiStudioLastMessageScript()
-  }
-
-  const scriptGenerator = scripts[providerId]
-  const defaultScript = scriptGenerator ? scriptGenerator() : ''
+  const selector = lastMessageSelectors[providerId]
+  const defaultScript = selector ? createLastMessageScript(selector) : ''
   return resolveScript(providerId, 'getLLMLastMessage', defaultScript)
-}
-
-function getKimiLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.segment-content');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getGrokLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('[data-testid="assistant-message"]');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getDeepSeekLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.ds-markdown');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getDouBaoLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('[data-target-id="message-box-target-id"]');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getQwenLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.markdown-pc-special-class');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getCopilotLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('[data-testid="ai-message-body"]');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getGLMLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.answer-content-wrap');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getYuanBaoLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.agent-chat__list__item__content');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getMiromindLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.report-container');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getGeminiLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('model-response');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getChatGPTLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('[data-message-author-role="assistant"]');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getMimoLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.markdown-prose');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getMinimaxLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.message-content');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getStepFunLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.max-w-none.text-sm.leading-relaxed.text-foreground');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getQwenStudioLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.custom-qwen-markdown');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
-}
-
-function getGeminiStudioLastMessageScript(): string {
-  return `(() => {
-    const messages = document.querySelectorAll('.text-chunk-host');
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage ? lastMessage.textContent || '' : '';
-  })()`
 }
