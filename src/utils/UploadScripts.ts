@@ -4,7 +4,7 @@
  *
  * @author huquanzhi
  * @since 2026-05-23 10:30
- * @version 1.0
+ * @version 2.0
  */
 
 import { resolveScript } from './ScriptResolver'
@@ -16,32 +16,29 @@ export interface UploadFileData {
 }
 
 /**
+ * 有特殊上传实现的 provider 映射表
+ * 其他 provider 都使用通用上传脚本
+ */
+const customUploadScriptGenerators: Record<string, (file: UploadFileData) => string> = {
+  chatgpt: getChatGPTUploadScript,
+  gemini: getGeminiUploadScript,
+  deepseek: getDeepSeekUploadScript,
+  kimi: getKimiUploadScript,
+  doubao: getDouBaoUploadScript,
+  yuanbao: getYuanBaoUploadScript,
+  glm: getGLMUploadScript,
+  mimo: getMimoUploadScript
+}
+
+/**
  * 获取文件上传注入脚本
  * @param providerId AI提供商ID
  * @param file 文件数据
  * @returns 注入到webview中执行的JavaScript脚本
  */
 export function getFileUploadScript(providerId: string, file: UploadFileData): string {
-  const scripts: Record<string, string> = {
-    chatgpt: getChatGPTUploadScript(file),
-    gemini: getGeminiUploadScript(file),
-    deepseek: getDeepSeekUploadScript(file),
-    kimi: getKimiUploadScript(file),
-    doubao: getDouBaoUploadScript(file),
-    qwen: getQwenUploadScript(file),
-    grok: getGrokUploadScript(file),
-    yuanbao: getYuanBaoUploadScript(file),
-    copilot: getCopilotUploadScript(file),
-    glm: getGLMUploadScript(file),
-    miromind: getMiromindUploadScript(file),
-    mimo: getMimoUploadScript(file),
-    minimax: getMinimaxUploadScript(file),
-    stepfun: getStepFunUploadScript(file),
-    'qwen-studio': getQwenStudioUploadScript(file),
-    'gemini-studio': getGeminiStudioUploadScript(file)
-  }
-
-  const defaultScript = scripts[providerId] || getGenericUploadScript(file)
+  const customGenerator = customUploadScriptGenerators[providerId]
+  const defaultScript = customGenerator ? customGenerator(file) : getGenericUploadScript(file)
   return resolveScript(providerId, 'fileUpload', defaultScript, {
     name: file.name,
     mimeType: file.mimeType,
@@ -919,20 +916,6 @@ function getDouBaoUploadScript(file: UploadFileData): string {
 }
 
 /**
- * 通义千问 文件上传脚本
- */
-function getQwenUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
-}
-
-/**
- * Grok 文件上传脚本
- */
-function getGrokUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
-}
-
-/**
  * 元宝 文件上传脚本
  */
 function getYuanBaoUploadScript(file: UploadFileData): string {
@@ -1002,13 +985,6 @@ function getYuanBaoUploadScript(file: UploadFileData): string {
   console.warn('[FileUpload:YuanBao] ========== FAILED ==========');
   return { success: false, message: 'Drag/drop upload failed' };
 })()`
-}
-
-/**
- * Copilot 文件上传脚本
- */
-function getCopilotUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
 }
 
 /**
@@ -1145,13 +1121,6 @@ function getGLMUploadScript(file: UploadFileData): string {
   console.warn('[FileUpload:GLM] No file input or upload button found');
   return { success: false, message: 'No upload mechanism found on GLM' };
 })()`
-}
-
-/**
- * Miromind 文件上传脚本
- */
-function getMiromindUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
 }
 
 /**
@@ -1305,37 +1274,6 @@ function getMimoUploadScript(file: UploadFileData): string {
   console.warn('[FileUpload:Mimo] ========== FAILED ==========');
   return { success: false, message: 'No upload mechanism found on Mimo' };
 })()`
-}
-
-/**
- * Minimax 文件上传脚本
- */
-function getMinimaxUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
-}
-
-/**
- * StepFun 文件上传脚本
- * 使用通用上传脚本
- */
-function getStepFunUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
-}
-
-/**
- * Qwen Studio 文件上传脚本
- * 使用通用上传脚本
- */
-function getQwenStudioUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
-}
-
-/**
- * Gemini Studio 文件上传脚本
- * Gemini Studio 使用 Angular Material 风格，支持拖拽上传
- */
-function getGeminiStudioUploadScript(file: UploadFileData): string {
-  return getGenericUploadScript(file)
 }
 
 /**

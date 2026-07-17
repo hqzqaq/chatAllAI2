@@ -6,78 +6,13 @@
     <el-card class="input-card">
       <div class="input-body">
         <!-- 模型选择器 -->
-        <div class="model-selector">
-          <el-checkbox-group
-            v-model="selectedProviders"
-            class="provider-checkboxes"
-            @change="handleProviderSelection"
-          >
-            <el-checkbox
-              v-for="provider in sortedProviders"
-              :key="provider.id"
-              :label="provider.id"
-              :disabled="provider.loadingState === 'loading'"
-              class="provider-checkbox"
-              draggable="true"
-              @dragstart="handleDragStart($event, provider)"
-              @dragover="handleDragOver($event)"
-              @dragleave="handleDragLeave($event)"
-              @drop="handleDrop($event, provider)"
-              @dragend="handleDragEnd"
-            >
-              <div class="provider-option">
-                <img
-                  :src="provider.icon"
-                  :alt="provider.name"
-                  class="provider-icon-small"
-                  @error="handleIconError"
-                >
-                <span class="provider-name">{{ provider.name }}</span>
-                <el-tag
-                  v-if="provider.isCustom"
-                  type="info"
-                  size="small"
-                  class="custom-tag"
-                >
-                  自定义
-                </el-tag>
-                <el-tag
-                  v-if="getProviderAIStatus(provider.id) === 'responding'"
-                  type="warning"
-                  size="small"
-                  class="ai-status-tag"
-                >
-                  回答中
-                </el-tag>
-                <el-tag
-                  v-else-if="provider.isLoggedIn && selectedProviders.includes(provider.id)"
-                  type="success"
-                  size="small"
-                  class="status-tag"
-                >
-                  已登录
-                </el-tag>
-                <el-icon
-                  v-if="provider.loadingState === 'loading'"
-                  class="loading-icon"
-                >
-                  <Loading />
-                </el-icon>
-              </div>
-            </el-checkbox>
-            <div
-              class="provider-checkbox add-provider-btn"
-              @click="handleAddProvider"
-            >
-              <div class="provider-option add-option">
-                <el-icon class="add-icon">
-                  <Plus />
-                </el-icon>
-                <span class="provider-name">添加模型</span>
-              </div>
-            </div>
-          </el-checkbox-group>
-        </div>
+        <ProviderSelector
+          v-model:selected-providers="selectedProviders"
+          :providers="availableProviders"
+          :ai-status-map="aiStatusMap"
+          @add-provider="handleAddProvider"
+          @provider-selection-change="handleProviderSelection"
+        />
 
         <div
           v-if="attachedFiles.length > 0"
@@ -256,16 +191,16 @@ import {
   computed, onMounted, onUnmounted, ref, nextTick
 } from 'vue'
 import {
-  Position, Refresh, Delete, Loading, Plus, Minus, Document, Rank,
+  Position, Refresh, Delete, Document,
   Lightning, DocumentChecked, Upload, Close
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '../../stores'
 import { messageDispatcher } from '../../services/MessageDispatcher'
 import type { MessageSendResult, AttachedFileInfo } from '../../services/MessageDispatcher'
-import type { AIProvider } from '@/types'
 import PromptManager from './PromptManager.vue'
 import AddProviderDialog from './AddProviderDialog.vue'
+import ProviderSelector from './ProviderSelector.vue'
 
 const chatStore = useChatStore()
 
@@ -273,8 +208,6 @@ const chatStore = useChatStore()
 const emit = defineEmits<{(e: 'summary'): void
   (e: 'update:collapsed', collapsed: boolean): void
 }>()
-
-const draggedProvider = ref<AIProvider | null>(null)
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
@@ -319,7 +252,7 @@ const handleAddProvider = (): void => {
 }
 
 const handleProviderAdded = (_providerId: string): void => {
-  // 新添加的提供商会自动出现在 sortedProviders 中
+  // 新添加的提供商会自动出现在 availableProviders 中
 }
 
 // 快捷 Prompt 管理
@@ -390,29 +323,6 @@ const currentMessage = computed({
 
 const availableProviders = computed(() => chatStore.providers)
 
-const sortedProviders = computed(() => {
-  const providers = [...availableProviders.value]
-  return providers.sort((a, b) => {
-    const aSelected = selectedProviders.value.includes(a.id)
-    const bSelected = selectedProviders.value.includes(b.id)
-
-    if (aSelected && !bSelected) {
-      return -1
-    }
-    if (!aSelected && bSelected) {
-      return 1
-    }
-
-    if (aSelected && bSelected) {
-      const aIndex = selectedProviders.value.indexOf(a.id)
-      const bIndex = selectedProviders.value.indexOf(b.id)
-      return bIndex - aIndex
-    }
-
-    return 0
-  })
-})
-
 // 应用选中的提供商到聊天存储
 const applySelectedProviders = (): void => {
   chatStore.providers.forEach((provider) => {
@@ -428,7 +338,7 @@ const applySelectedProviders = (): void => {
 
 // 处理提供商选择变化
 const handleProviderSelection = (value: string[]): void => {
-  availableProviders.value.forEach((it: AIProvider) => {
+  availableProviders.value.forEach((it: any) => {
     if (!value.includes(it.id)) {
       // eslint-disable-next-line no-param-reassign
       it.isLoggedIn = false
@@ -436,85 +346,6 @@ const handleProviderSelection = (value: string[]): void => {
   })
   applySelectedProviders()
 }
-
-const handleDragStart = (event: DragEvent, provider: AIProvider): void => {
-  draggedProvider.value = provider
-  const { dataTransfer } = event
-  if (dataTransfer) {
-    dataTransfer.effectAllowed = 'move'
-  }
-  const target = event.target as HTMLElement
-  const checkbox = target.closest('.provider-checkbox')
-  if (checkbox) {
-    checkbox.classList.add('dragging')
-  }
-}
-
-const handleDragOver = (event: DragEvent): void => {
-  event.preventDefault()
-  const { dataTransfer } = event
-  if (dataTransfer) {
-    dataTransfer.dropEffect = 'move'
-  }
-  const target = event.target as HTMLElement
-  const checkbox = target.closest('.provider-checkbox')
-  if (checkbox && !checkbox.classList.contains('dragging')) {
-    checkbox.classList.add('drag-over')
-  }
-}
-
-const handleDragLeave = (event: DragEvent): void => {
-  const target = event.target as HTMLElement
-  const checkbox = target.closest('.provider-checkbox')
-  if (checkbox) {
-    checkbox.classList.remove('drag-over')
-  }
-}
-
-const handleDragEnd = (): void => {
-  const draggingCheckboxes = document.querySelectorAll('.provider-checkbox.dragging')
-  draggingCheckboxes.forEach((el) => el.classList.remove('dragging'))
-  const dragOverCheckboxes = document.querySelectorAll('.provider-checkbox.drag-over')
-  dragOverCheckboxes.forEach((el) => el.classList.remove('drag-over'))
-}
-
-const handleDrop = (event: DragEvent, targetProvider: AIProvider): void => {
-  event.preventDefault()
-
-  const target = event.target as HTMLElement
-  const checkbox = target.closest('.provider-checkbox')
-  if (checkbox) {
-    checkbox.classList.remove('drag-over')
-  }
-
-  if (!draggedProvider.value || draggedProvider.value.id === targetProvider.id) {
-    draggedProvider.value = null
-    return
-  }
-
-  const draggedIndex = selectedProviders.value.indexOf(draggedProvider.value.id)
-  const targetIndex = selectedProviders.value.indexOf(targetProvider.id)
-
-  if (draggedIndex !== -1 && targetIndex !== -1) {
-    const newSelectedProviders = [...selectedProviders.value]
-    newSelectedProviders.splice(draggedIndex, 1)
-    newSelectedProviders.splice(targetIndex, 0, draggedProvider.value.id)
-    selectedProviders.value = newSelectedProviders
-  }
-
-  draggedProvider.value = null
-}
-
-// 处理图标加载错误
-const handleIconError = (event: Event): void => {
-  const img = event.target as HTMLImageElement
-  img.src = '/icons/default.svg'
-}
-
-// AI状态相关方法
-const getProviderAIStatus = (
-  providerId: string
-): 'waiting_input' | 'responding' | 'completed' | undefined => aiStatusMap.value[providerId]
 
 const updateAIStatus = (providerId: string, status: 'waiting_input' | 'responding' | 'completed'): void => {
   aiStatusMap.value[providerId] = status

@@ -1,41 +1,53 @@
 /**
  * AI状态监控脚本工具类
  * 提供不同AI网站的状态监控脚本，用于检测AI是否正在回复
+ * 使用配置驱动模式，通过 selector 配置生成状态监控脚本
  *
  * @author huquanzhi
  * @since 2025-10-11 15:57
- * @version 1.0
+ * @version 2.0
  */
+
+import { resolveScript } from './ScriptResolver'
+
+/**
+ * 消息元素选择器配置
+ * key: providerId
+ * value: 消息元素的 CSS 选择器
+ */
+const statusMonitorSelectors: Record<string, string> = {
+  doubao: '[data-target-id="message-box-target-id"]',
+  kimi: '[class="chat-content-list"]',
+  grok: '[data-testid="assistant-message"]',
+  deepseek: '.ds-markdown',
+  qwen: '[class^="wrapper"]',
+  copilot: '[data-content="conversation"]',
+  glm: '[class="detail chatScrollContainer conversation-list"]',
+  yuanbao: '[class="agent-chat__list__content-wrapper"]',
+  chatgpt: '[data-message-author-role="assistant"]',
+  mimo: '#message-list',
+  minimax: '#message-container',
+  gemini: 'model-response',
+  stepfun: '.max-w-none.text-sm.leading-relaxed.text-foreground',
+  'qwen-studio': '.custom-qwen-markdown',
+  'gemini-studio': '.text-chunk-host'
+}
 
 /**
  * 获取AI状态监控脚本
  * @param providerId AI提供商ID
  * @returns 对应的JavaScript脚本字符串
  */
-import { resolveScript } from './ScriptResolver'
-
 export function getStatusMonitorScript(providerId: string): string {
-  const scripts: Record<string, (id: string) => string> = {
-    doubao: getDouBaoStatusMonitorScript,
-    kimi: getKimiStatusMonitorScript,
-    grok: getGrokStatusMonitorScript,
-    deepseek: getDeepSeekStatusMonitorScript,
-    qwen: getQwenStatusMonitorScript,
-    copilot: getCopilotStatusMonitorScript,
-    glm: getGLMStatusMonitorScript,
-    yuanbao: getYuanBaoStatusMonitorScript,
-    miromind: getMiromindStatusMonitorScript,
-    chatgpt: getChatGPTStatusMonitorScript,
-    mimo: getMimoStatusMonitorScript,
-    minimax: getMinimaxStatusMonitorScript,
-    gemini: getGeminiStatusMonitorScript,
-    stepfun: getStepFunStatusMonitorScript,
-    'qwen-studio': getQwenStudioStatusMonitorScript,
-    'gemini-studio': getGeminiStudioStatusMonitorScript
+  let defaultScript: string
+
+  if (providerId === 'miromind') {
+    defaultScript = getMiromindStatusMonitorScript(providerId)
+  } else {
+    const selector = statusMonitorSelectors[providerId] || ''
+    defaultScript = getGenericStatusMonitorScript(providerId, selector)
   }
 
-  const scriptGenerator = scripts[providerId]
-  const defaultScript = scriptGenerator ? scriptGenerator(providerId) : getGenericStatusMonitorScript(providerId, '')
   return resolveScript(providerId, 'statusMonitor', defaultScript, { providerId })
 }
 
@@ -50,63 +62,7 @@ export function getStopMonitorScript(): string {
 }
 
 /**
- * 豆包状态监控脚本
- */
-function getDouBaoStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[data-target-id="message-box-target-id"]')
-}
-
-/**
- * Kimi状态监控脚本
- */
-function getKimiStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[class="chat-content-list"]')
-}
-
-/**
- * Grok状态监控脚本
- */
-function getGrokStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[data-testid="assistant-message"]')
-}
-
-/**
- * DeepSeek状态监控脚本
- */
-function getDeepSeekStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '.ds-markdown')
-}
-
-/**
- * 通义千问状态监控脚本
- */
-function getQwenStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[class^="wrapper"]')
-}
-
-/**
- * Copilot状态监控脚本
- */
-function getCopilotStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[data-content="conversation"]')
-}
-
-/**
- * GLM状态监控脚本
- */
-function getGLMStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[class="detail chatScrollContainer conversation-list"]')
-}
-
-/**
- * 元宝状态监控脚本
- */
-function getYuanBaoStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[class="agent-chat__list__content-wrapper"]')
-}
-
-/**
- * miromind状态监控脚本
+ * miromind状态监控脚本（基于按钮检测的特殊实现）
  */
 function getMiromindStatusMonitorScript(providerId: string): string {
   return `
@@ -180,7 +136,7 @@ function getMiromindStatusMonitorScript(providerId: string): string {
 }
 
 /**
- * 通用状态监控脚本
+ * 通用状态监控脚本（基于 DOM 元素 + MutationObserver 检测）
  */
 function getGenericStatusMonitorScript(providerId: string, elementSelector: string): string {
   return `
@@ -306,60 +262,4 @@ function getGenericStatusMonitorScript(providerId: string, elementSelector: stri
       postStatus('waiting_input');
     })();
   `
-}
-
-/**
- * 通用状态监控脚本
- */
-function getProviderStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[data-test-id="chat-history-container"]')
-}
-
-/**
- * ChatGPT状态监控脚本
- */
-function getChatGPTStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '[data-message-author-role="assistant"]')
-}
-
-/**
- * mimo状态监控脚本
- */
-function getMimoStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '#message-list')
-}
-
-/**
- * minimax状态监控脚本
- */
-function getMinimaxStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '#message-container')
-}
-
-/**
- * gemini状态监控脚本
- */
-function getGeminiStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, 'model-response')
-}
-
-/**
- * stepfun状态监控脚本
- */
-function getStepFunStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '.max-w-none.text-sm.leading-relaxed.text-foreground')
-}
-
-/**
- * qwen-studio状态监控脚本
- */
-function getQwenStudioStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '.custom-qwen-markdown')
-}
-
-/**
- * gemini-studio状态监控脚本
- */
-function getGeminiStudioStatusMonitorScript(providerId: string): string {
-  return getGenericStatusMonitorScript(providerId, '.text-chunk-host')
 }
