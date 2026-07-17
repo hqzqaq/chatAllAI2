@@ -201,6 +201,7 @@ import type { MessageSendResult, AttachedFileInfo } from '../../services/Message
 import PromptManager from './PromptManager.vue'
 import AddProviderDialog from './AddProviderDialog.vue'
 import ProviderSelector from './ProviderSelector.vue'
+import { useCollapseState } from '@/composables/useCollapseState'
 
 const chatStore = useChatStore()
 
@@ -259,32 +260,14 @@ const handleProviderAdded = (_providerId: string): void => {
 const quickPrompt = ref<string>('')
 
 // 折叠状态管理
-const isCollapsed = ref<boolean>(false)
-
-/**
- * 加载折叠状态
- */
-const loadCollapsedState = (): void => {
-  try {
-    const stored = localStorage.getItem('unified-input-collapsed')
-    if (stored !== null) {
-      isCollapsed.value = JSON.parse(stored)
-    }
-  } catch (error) {
-    console.error('加载折叠状态失败:', error)
-  }
-}
-
-/**
- * 保存折叠状态
- */
-const saveCollapsedState = (): void => {
-  try {
-    localStorage.setItem('unified-input-collapsed', JSON.stringify(isCollapsed.value))
-  } catch (error) {
-    console.error('保存折叠状态失败:', error)
-  }
-}
+const {
+  isCollapsed,
+  loadCollapsedState,
+  saveCollapsedState
+} = useCollapseState({
+  storageKey: 'unified-input-collapsed',
+  defaultCollapsed: false
+})
 
 /**
  * 切换折叠状态
@@ -1170,9 +1153,6 @@ onMounted(() => {
 
   // 加载快捷 Prompt
   loadQuickPrompt()
-
-  // 加载折叠状态
-  loadCollapsedState()
 
   // 初始检查：为当前已登录的提供商启动AI状态监控
   startAIStatusMonitoringForLoggedInProviders()
