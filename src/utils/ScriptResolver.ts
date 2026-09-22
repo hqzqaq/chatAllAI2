@@ -28,8 +28,9 @@ export function resolveScript(
       }
       return result
     }
-  } catch {
-    // Store not available, use default
+  } catch (error) {
+    // Store not available (e.g. called in electron main process), use default
+    console.warn(`[ScriptResolver] Failed to load custom script for ${providerId}/${scriptType}, using default:`, error)
   }
   return defaultScript
 }

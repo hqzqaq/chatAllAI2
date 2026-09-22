@@ -9,6 +9,7 @@
 import type { AIProvider } from '../types'
 import type { SummaryResult, AIResponse, SummaryOptions } from '../types/summary'
 import { getLLMLastMessageScript } from '../utils/GetLLMLastMessage'
+import { getSendMessageScript } from '../utils/MessageScripts'
 import { generateSummaryPrompt } from '../utils/SummaryPrompts'
 import { parseProviderIdFromElementId } from '../utils/webviewHelper'
 import { useSummaryStore } from '../stores/summary'
@@ -258,8 +259,12 @@ export class SummaryService {
       // 额外等待一段时间确保页面完全加载
       await this.delay(2000)
 
+      // 在渲染进程中生成脚本（pinia可用，能读取自定义脚本配置）
+      const scriptProviderId = parseProviderIdFromElementId(targetWebviewId)
+      const sendScript = getSendMessageScript(scriptProviderId, prompt)
+
       // 发送消息到指定的AI
-      await window.electronAPI.sendMessageToWebView(targetWebviewId, prompt)
+      await window.electronAPI.executeWebViewScript({ providerId: scriptProviderId, script: sendScript })
 
       console.log(`总结请求已发送到 ${summaryProvider.name} (WebView: ${targetWebviewId})`)
 

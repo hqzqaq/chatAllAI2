@@ -56,10 +56,10 @@ const scriptConfigs: Record<string, ScriptConfig> = {
     useNativeSetter: true
   },
   doubao: {
-    type: 'textarea-enter',
-    inputSelector: 'textarea[placeholder]',
-    sendDelay: 200,
-    useNativeSetter: true
+    type: 'editable-button',
+    inputSelector: '.tiptap.ProseMirror',
+    sendButtonSelector: 'button:has(svg[class*=g-send-msg-btn-text])',
+    sendDelay: 500
   },
   glm: {
     type: 'textarea-enter',

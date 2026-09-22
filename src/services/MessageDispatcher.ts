@@ -7,6 +7,7 @@
 
 import type { AIProvider, Message } from '../types'
 import { getNewChatScript } from '../utils/NewChatScripts'
+import { getSendMessageScript } from '../utils/MessageScripts'
 
 /**
  * 浏览器兼容的事件发射器
@@ -430,12 +431,15 @@ export class MessageDispatcher extends BrowserEventEmitter {
 
   /**
    * 发送消息到单个提供商
+   * 在渲染进程中生成脚本（pinia可用，能读取自定义脚本配置），
+   * 再通过 executeWebViewScript 传递给主进程执行
    */
   private async sendToProvider(provider: AIProvider, message: Message): Promise<MessageSendResult> {
+    const script = getSendMessageScript(provider.id, message.content)
     return this.executeSendOperation(
       provider,
       message.id,
-      () => window.electronAPI!.sendMessageToWebView(provider.webviewId, message.content),
+      () => window.electronAPI!.executeWebViewScript({ providerId: provider.id, script }),
       'message'
     )
   }
